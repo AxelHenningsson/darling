@@ -6,7 +6,9 @@ import matplotlib.pyplot as plt
 import meshio
 import numpy as np
 import scipy.ndimage
+from scipy.signal import fftconvolve
 from matplotlib.colors import hsv_to_rgb
+import numba
 
 import darling
 
@@ -54,24 +56,46 @@ class _Visualizer(object):
         plt.tight_layout()
         plt.show()
 
-    def covariance(self):
+    def covariance(self, mask=None):
+        """ 
+        Plot the covariance matrix of the data set. Using RGBA colormap to plot the covariance matrix with transparency.
+
+        Args:
+            mask (:obj:`numpy array`): A boolean mask with the same shape as the data set. If provided, the
+                covariance matrix will be plotted with transparency according to the mask values. Defaults to None.
+        """
         plt.style.use("dark_background")
-        fig, ax = plt.subplots(2, 2, figsize=(9, 9), sharex=True, sharey=True)
+        fig, ax = plt.subplots(2, 2, figsize=(18, 18), sharex=True, sharey=True)
         fig.suptitle(
             "Covariance Map \nsecond moment around motor coordinates", fontsize=22
         )
         im_ratio = self.dset.covariance.shape[0] / self.dset.covariance.shape[1]
+
+        if mask is not None:
+            mask = mask.astype(bool) 
+
         for i in range(2):
             for j in range(2):
-                im = ax[i, j].imshow(self.dset.covariance[:, :, i, j], cmap="magma")
+                data = self.dset.covariance[:, :, i, j]
+
+                if mask is not None:
+                    alpha_channel = np.where(mask, 1, 0) 
+                    rgba_data = plt.cm.magma(data)  
+                    rgba_data[..., 3] = alpha_channel  
+                else:
+                    rgba_data = plt.cm.magma(data) 
+
+                im = ax[i, j].imshow(rgba_data, interpolation='nearest')
                 fig.colorbar(im, ax=ax[i, j], fraction=0.046 * im_ratio, pad=0.04)
+
                 ax[i, j].set_title(
-                    "Covar[" + self.labels[i] + ", " + self.labels[j] + "]", fontsize=14
+                    f"Covar[{self.labels[i]}, {self.labels[j]}]", fontsize=14
                 )
                 if j == 0:
                     ax[i, j].set_ylabel(self.ylabel, fontsize=14)
                 if i == 1:
                     ax[i, j].set_xlabel(self.xlabel, fontsize=14)
+
         plt.tight_layout()
         plt.show()
 
@@ -132,24 +156,47 @@ class _Visualizer(object):
         colormap = hsv_to_rgb(hsv_key)
         return colormap
 
-    def mosaicity(self):
+    def mosaicity(self, mask = None):
+        """
+        Plot the mosaicity map. This takes the motor limits in order to avoid issues with zeros in the data.
+        Sets the blue channel to 0.75 to make the mosaicity map more readable. The colormap is plotted on the right based on the motor limits.
 
-        # Calculate Mosa Imager
+        Args:
+            mask (:obj:`numpy array`): A boolean mask with the same shape as the data set. If provided, the
+                mosaicity map will be plotted with transparency according to the mask values. Defaults to None.
+    
+        """
+        motor1_min, motor1_max = self.dset.motors[0].min(), self.dset.motors[0].max()
+        motor2_min, motor2_max = self.dset.motors[1].min(), self.dset.motors[1].max()
+
+    
         mean = self.dset.mean.copy()
-        ranges = np.array(
-            [
-                [mean[:, :, 0].min(), mean[:, :, 0].max()],
-                [mean[:, :, 1].min(), mean[:, :, 1].max()],
-            ]
-        )
-        ranges_magnitude = [ranges[0, 1] - ranges[0, 0], ranges[1, 1] - ranges[1, 0]]
-        chi_norm = (mean[:, :, 0] - mean[:, :, 0].min()) / ranges_magnitude[0] - 0.5
-        phi_norm = (mean[:, :, 1] - mean[:, :, 1].min()) / ranges_magnitude[1] - 0.5
-        angles, radius = self._mosa(chi_norm, phi_norm)
-        hsv_key = self._hsv_key(angles, radius)
+    
+        mean[:, :, 0] = np.clip(mean[:, :, 0], motor1_min, motor1_max)
+        mean[:, :, 1] = np.clip(mean[:, :, 1], motor2_min, motor2_max)
 
-        mosa = hsv_to_rgb(hsv_key)
+        
+        chi_scaled = (mean[:, :, 0] - motor1_min) / (motor1_max - motor1_min)
+        phi_scaled = (mean[:, :, 1] - motor2_min) / (motor2_max - motor2_min)
+
+        if mask is not None:
+            mask = mask.astype(bool) 
+            chi_scaled = np.where(mask, chi_scaled, np.nan)
+            phi_scaled = np.where(mask, phi_scaled, np.nan)
+
+
+        mosa = np.stack((chi_scaled, phi_scaled, np.ones_like(chi_scaled)), axis=-1)
+        mosa[np.isnan(mosa)] = 0  
+        mosa[mosa > 1] = 1  
+        mosa[mosa < 0] = 0  
+        RGB_scaled = hsv_to_rgb(mosa)
+        RGB_scaled[..., 2] *= 0.75  
         colormap = self._hsv_colormap()
+        colormap[..., 2] *= 0.75
+
+        alpha_channel = np.where(np.isnan(chi_scaled), 0, 1)
+
+        RGBA_scaled = np.dstack((RGB_scaled, alpha_channel))
 
         plt.style.use("dark_background")
         fig, axs = plt.subplots(
@@ -159,31 +206,31 @@ class _Visualizer(object):
             "Mosaicity Map \n maps motors to a cylindrical HSV colorspace",
             fontsize=22,
         )
-        axs[0].imshow(mosa)
+
+        axs[0].imshow(RGBA_scaled)
         axs[0].set_title(r"Mosaicity Map", fontsize=14)
         axs[0].set_xlabel(self.xlabel, fontsize=14)
         axs[0].set_ylabel(self.ylabel, fontsize=14)
+
         axs[1].imshow(colormap)
         axs[1].set_xlabel(self.motor_xlabel, fontsize=14)
         axs[1].set_ylabel(self.motor_ylabel, fontsize=14)
         axs[1].set_title(r"Color Map", fontsize=14)
+
         chiTicks = np.linspace(0, colormap.shape[1] - 1, 5)
-        chi_label = np.linspace(ranges[0, 0], ranges[0, 1], 5)
-        chi_label = np.round(chi_label, decimals=3)
-        chi_label = np.array([f"{chi:.3f}" for chi in chi_label])
+        chi_labels = np.linspace(motor1_min, motor1_max, 5)  
         axs[1].set_xticks(chiTicks)
-        axs[1].set_xticklabels(chi_label)
+        axs[1].set_xticklabels([f"{chi:.3f}" for chi in chi_labels])
 
-        phiTicks = np.linspace(0, colormap.shape[1] - 1, 5)
-        phi_label = np.linspace(ranges[1, 0], ranges[1, 1], 5)
-        phi_label = np.round(phi_label, decimals=3)
-        phi_label = np.array([f"{phi:.3f}" for phi in phi_label])
-
+        phiTicks = np.linspace(0, colormap.shape[0] - 1, 5)
+        phi_labels = np.linspace(motor2_min, motor2_max, 5)  
         axs[1].set_yticks(phiTicks)
-        axs[1].set_yticklabels(phi_label)
+        axs[1].set_yticklabels([f"{phi:.3f}" for phi in phi_labels])
 
         plt.tight_layout()
         plt.show()
+
+
 
 
 class DataSet(object):
@@ -231,7 +278,9 @@ class DataSet(object):
         else:
             self.data, self.motors = self.reader(args, scan_id, roi)
 
-    def subtract(self, value):
+
+
+    def substract(self, value):
         """Subtract a fixed integer value form the data. Protects against uint16 sign flips.
 
         Args:
@@ -241,6 +290,7 @@ class DataSet(object):
         self.data.clip(value, None, out=self.data)
         self.data -= value
 
+
     def estimate_background(self):
         """Automatic background correction based on image statistics.
 
@@ -249,7 +299,7 @@ class DataSet(object):
         the value corresponding to the 99.99% percentile is returned. I.e the far tail of the noise is returned.
 
         """
-        sample_size = 40000
+        sample_size = 200000
         index = np.random.permutation(sample_size)
         sample = self.data.flat[index]
         sample = np.sort(sample)
@@ -260,6 +310,7 @@ class DataSet(object):
             noise = noise[np.abs(noise) < mu + 2 * 3.891 * std]  # 99.99% confidence
         background = np.max(noise)
         return background
+    
 
     def moments(self):
         """Compute first and second moments.
@@ -451,6 +502,94 @@ class DataSet(object):
             cells,
             point_data=point_data,
         ).write(filename)
+
+
+    @numba.guvectorize(
+        [
+            (numba.uint16[:, :, :], 
+             numba.float32[:], 
+             numba.uint16[:, :, :]),
+        ],
+        "(x,y,z),(d)->(x,y,z)",
+        nopython=True,
+        target="parallel",
+    )
+    def _shift(image, shift_vector, output):
+        """
+        3D image shifting.
+
+        Args:
+            image (:obj:`numpy array`): 3D array to shift.
+            shift_vector (:obj:`numpy array`): 3D shift vector.
+            output (:obj:`numpy array`): 3D output array for the shifted image.
+        """
+        shift_x, shift_y, shift_z = map(int, shift_vector)
+        x_size, y_size, z_size = image.shape
+
+        for x in range(x_size):
+            for y in range(y_size):
+                for z in range(z_size):
+                    new_x = x + shift_x
+                    new_y = y + shift_y
+                    new_z = z + shift_z
+
+                    if 0 <= new_x < x_size and 0 <= new_y < y_size and 0 <= new_z < z_size:
+                        output[new_x, new_y, new_z] = image[x, y, z]
+                    else:
+                        output[x, y, z] = 0 
+    def correct_shifts(self, num_subvolumes=5, subvolume_size=None):
+        """
+        Optimized shift correction using FFT-based cross-correlation and Numba for shifting.
+        Based on Felix Frankus code using correlate instead of fftconvolve.
+
+        Args:
+            num_subvolumes (:obj:`int`): Number of subvolumes to use for shift estimation.
+            subvolume_size (:obj:`tuple` of :obj:`int`): Size of the subvolume used for shift estimation.
+        """
+        reference_image = self.data[..., 0].astype(np.uint16)
+        corrected_data = np.zeros_like(self.data, dtype=np.uint16)
+        corrected_data[..., 0] = reference_image
+
+        if subvolume_size is None:
+            subvolume_size = tuple([int(0.1 * s) for s in reference_image.shape])
+        print("Subvolume size:", subvolume_size)
+
+        for i in range(1, self.data.shape[-1]):
+            target_image = self.data[..., i].astype(np.uint16)
+            shifts = []
+
+            for _ in range(num_subvolumes):
+                start_idx = [
+                    np.random.randint(0, ref_dim - sub_dim)
+                    for ref_dim, sub_dim in zip(reference_image.shape, subvolume_size)
+                ]
+                end_idx = [start + size for start, size in zip(start_idx, subvolume_size)]
+
+                subvol_ref = reference_image[start_idx[0]:end_idx[0],
+                                            start_idx[1]:end_idx[1],
+                                            start_idx[2]:end_idx[2]]
+                subvol_tgt = target_image[start_idx[0]:end_idx[0],
+                                        start_idx[1]:end_idx[1],
+                                        start_idx[2]:end_idx[2]]
+
+                correlation = fftconvolve(subvol_tgt.astype(np.float32), 
+                                        subvol_ref[::-1, ::-1, ::-1].astype(np.float32), 
+                                        mode="same")
+                max_corr_idx = np.unravel_index(np.argmax(correlation), correlation.shape)
+
+                center = np.array(correlation.shape) // 2
+                shift_vector = np.array(max_corr_idx) - center
+                shifts.append(shift_vector)
+
+            avg_shift = np.rint(np.mean(shifts, axis=0)).astype(np.float32)
+            print(f"Image {i}: Average shift:", avg_shift)
+
+            corrected_image = np.zeros_like(target_image, dtype=np.uint16)
+            self._shift(target_image, avg_shift, corrected_image)
+            corrected_data[..., i] = corrected_image
+
+        self.data = corrected_data
+        print("Shifts corrected.")
 
 
 if __name__ == "__main__":
