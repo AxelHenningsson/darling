@@ -34,7 +34,7 @@ import numba
 import numpy as np
 
 import darling._color as color
-import darling._gaussian_fit as gfit
+import darling._gaussian as gfit
 
 
 def rgb(property_2d, norm="dynamic", coordinates=None):
@@ -113,12 +113,12 @@ def rgb(property_2d, norm="dynamic", coordinates=None):
         assert norm.shape == (2, 2), "scale must be of shape (2, 2)"
 
     for i in range(2):
-        assert np.nanmin(property_2d[..., i]) >= norm[i, 0], (
-            "property_2d values exceed norm, please select a feasible normalization range"
-        )
-        assert np.nanmin(property_2d[..., i]) <= norm[i, 1], (
-            "property_2d values exceed norm, please select a feasible normalization range"
-        )
+        assert (
+            np.nanmin(property_2d[..., i]) >= norm[i, 0]
+        ), "property_2d values exceed norm, please select a feasible normalization range"
+        assert (
+            np.nanmin(property_2d[..., i]) <= norm[i, 1]
+        ), "property_2d values exceed norm, please select a feasible normalization range"
 
     x, y = color.normalize(property_2d, norm)
     rgb_map = color.rgb(x, y)
@@ -187,7 +187,7 @@ def kam(property_2d, size=(3, 3)):
     return np.sum(kam_map, axis=-1) / counts_map
 
 
-def moments(data, coordinates, method='statistical'):
+def moments(data, coordinates, method="statistical"):
     """Compute the sample mean and covariance of a 4D or 5D DFXM data-set.
 
     The data-set represents a DFXM scan with 2 or 3 degrees of freedom. These could be phi and chi or phi and energy, etc.
@@ -231,10 +231,10 @@ def moments(data, coordinates, method='statistical'):
     """
     mu = mean(data, coordinates)
     cov = covariance(data, coordinates, first_moments=mu)
-    
-    if method == 'statistical':
+
+    if method == "statistical":
         return mu, cov
-    elif method == 'gaussian':
+    elif method == "gaussian":
         mu_gauss = mean_gaussian(data, coordinates, mu, cov)
         cov_gauss = covariance_gaussian(data, coordinates, mu_gauss, cov)
         return mu_gauss, cov_gauss
@@ -246,7 +246,7 @@ def mean_gaussian(data, coordinates, stat_mean, stat_cov):
     """Compute first moments by fitting Gaussians using statistical initialization."""
     _check_data(data, coordinates)
     dum = np.arange(len(coordinates)).astype(np.float32)
-    
+
     if len(coordinates) == 2:
         X, Y = np.array(coordinates).astype(np.float32)
         a, b, m, n = data.shape
@@ -254,7 +254,7 @@ def mean_gaussian(data, coordinates, stat_mean, stat_cov):
         gfit.moments_2d_gaussian(data, X, Y, dum, stat_mean, stat_cov, res)
     else:
         raise NotImplementedError("3D Gaussian fitting not yet implemented")
-    
+
     return res
 
 
@@ -265,12 +265,12 @@ def covariance_gaussian(data, coordinates, first_moments, stat_cov):
     dum = np.arange(dim).astype(np.float32)
     res = np.zeros((data.shape[0], data.shape[1], dim, dim), dtype=np.float32)
     points = np.array([c.flatten() for c in coordinates]).astype(np.float32)
-    
+
     if dim == 2:
         gfit.covariance_2d_gaussian(data, first_moments, points, dum, stat_cov, res)
     else:
         raise NotImplementedError("3D Gaussian fitting not yet implemented")
-        
+
     return res
 
 
@@ -395,17 +395,17 @@ def _check_data(data, coordinates):
     if len(coordinates) == 2:
         assert len(data.shape) == 4, "2D scan data array must be of shape=(a, b, n, m)"
     elif len(coordinates) == 3:
-        assert len(data.shape) == 5, (
-            "3D scan data array must be of shape=(a, b, n, m, o)"
-        )
+        assert (
+            len(data.shape) == 5
+        ), "3D scan data array must be of shape=(a, b, n, m, o)"
     else:
         raise ValueError("The coordinate array must have 2 or 3 motors")
     for c in coordinates:
         if not isinstance(c, np.ndarray):
             raise ValueError("Coordinate array must be a numpy array")
-    assert np.allclose(list(c.shape), list(data.shape)[2:]), (
-        "coordinate array do not match data shape"
-    )
+    assert np.allclose(
+        list(c.shape), list(data.shape)[2:]
+    ), "coordinate array do not match data shape"
 
 
 @numba.guvectorize(
