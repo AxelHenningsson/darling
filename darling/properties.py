@@ -34,6 +34,7 @@ import numba
 import numpy as np
 
 import darling._color as color
+import darling._gaussian_fit as gfit
 
 
 def rgb(property_2d, norm="dynamic", coordinates=None):
@@ -186,7 +187,7 @@ def kam(property_2d, size=(3, 3)):
     return np.sum(kam_map, axis=-1) / counts_map
 
 
-def moments(data, coordinates):
+def moments(data, coordinates, method='statistical'):
     """Compute the sample mean and covariance of a 4D or 5D DFXM data-set.
 
     The data-set represents a DFXM scan with 2 or 3 degrees of freedom. These could be phi and chi or phi and energy, etc.
@@ -230,7 +231,47 @@ def moments(data, coordinates):
     """
     mu = mean(data, coordinates)
     cov = covariance(data, coordinates, first_moments=mu)
-    return mu, cov
+    
+    if method == 'statistical':
+        return mu, cov
+    elif method == 'gaussian':
+        mu_gauss = mean_gaussian(data, coordinates, mu, cov)
+        cov_gauss = covariance_gaussian(data, coordinates, mu_gauss, cov)
+        return mu_gauss, cov_gauss
+    else:
+        raise ValueError("method must be either 'statistical' or 'gaussian'")
+
+
+def mean_gaussian(data, coordinates, stat_mean, stat_cov):
+    """Compute first moments by fitting Gaussians using statistical initialization."""
+    _check_data(data, coordinates)
+    dum = np.arange(len(coordinates)).astype(np.float32)
+    
+    if len(coordinates) == 2:
+        X, Y = np.array(coordinates).astype(np.float32)
+        a, b, m, n = data.shape
+        res = np.zeros((a, b, 2), dtype=np.float32)
+        gfit.moments_2d_gaussian(data, X, Y, dum, stat_mean, stat_cov, res)
+    else:
+        raise NotImplementedError("3D Gaussian fitting not yet implemented")
+    
+    return res
+
+
+def covariance_gaussian(data, coordinates, first_moments, stat_cov):
+    """Compute covariance by fitting Gaussians using statistical initialization."""
+    _check_data(data, coordinates)
+    dim = len(coordinates)
+    dum = np.arange(dim).astype(np.float32)
+    res = np.zeros((data.shape[0], data.shape[1], dim, dim), dtype=np.float32)
+    points = np.array([c.flatten() for c in coordinates]).astype(np.float32)
+    
+    if dim == 2:
+        gfit.covariance_2d_gaussian(data, first_moments, points, dum, stat_cov, res)
+    else:
+        raise NotImplementedError("3D Gaussian fitting not yet implemented")
+        
+    return res
 
 
 def mean(data, coordinates):

@@ -64,6 +64,7 @@ class ID03(object):
             "diffry": "instrument/diffry/data",
             "diffrx": "instrument/diffrx/data",
             "ccmth": "instrument/positioners/ccmth",
+            "mu": "instrument/positioners/mu",
         }
 
     def __call__(self, scan_id):
