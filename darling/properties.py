@@ -470,7 +470,6 @@ def _second_moments2D(chi_phi, first_moments, points, dum, res):
         m[0] -= first_moments[0]
         m[1] -= first_moments[1]
         a = chi_phi.flatten()
-        m -= np.sum(m * a) / I
         cov = np.dot(m * a, m.T) / I
         res[...] = cov
 
@@ -510,7 +509,6 @@ def _second_moments3D(data, first_moments, points, dum, res):
         m[1] -= first_moments[1]
         m[2] -= first_moments[2]
         a = data.flatten()
-        m -= np.sum(m * a) / I
         cov = np.dot(m * a, m.T) / I
         res[...] = cov
 
