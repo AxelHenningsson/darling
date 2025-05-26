@@ -58,7 +58,7 @@ def rgb(x, y):
         :obj:`numpy array`: rgb values of shape (a, b, 3)
     """
     # angle of the point in the plane parameterised by 0,1
-    angles = (np.arctan2(x, y) + np.pi) / (2 * np.pi)
+    angles = (np.arctan2(-y, -x) + 2 * np.pi) % (2 * np.pi) / (2 * np.pi)
 
     # radius of the point in the plane
     radius = np.sqrt(x**2 + y**2)
@@ -94,7 +94,7 @@ def colorkey(norm, resolution=512):
             X.shape=Y.shape=colorkey.shape=(resolution, resolution).
     """
     ang_grid = np.linspace(-1, 1, resolution) / (np.sqrt(2) + 1e-8)
-    ang1, ang2 = np.meshgrid(ang_grid, ang_grid)
+    ang1, ang2 = np.meshgrid(ang_grid, ang_grid, indexing='ij')
     colorkey = rgb(ang1, ang2)
     x = np.linspace(norm[0, 0], norm[0, 1], colorkey.shape[0])
     y = np.linspace(norm[1, 0], norm[1, 1], colorkey.shape[1])
