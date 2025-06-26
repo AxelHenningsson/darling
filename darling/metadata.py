@@ -33,7 +33,7 @@ class ID03(object):
             "motor_steps": {
                 "ascan": [3],
                 "fscan": [3],
-                "a2scan": [6], #[6, 6] I think these are actually 1D scans
+                "a2scan": [6],  # [6, 6] I think these are actually 1D scans
                 "d2scan": [6, 6],
                 "fscan2d": [3, 7],
                 "loopscan": [0],
@@ -41,7 +41,7 @@ class ID03(object):
             "motor_names": {
                 "ascan": [0],
                 "fscan": [0],
-                "a2scan": [0], #[0, 3] I think these are actually 1D scans
+                "a2scan": [0],  # [0, 3] I think these are actually 1D scans
                 "d2scan": [0, 3],
                 "fscan2d": [0, 4],
             },
@@ -51,7 +51,7 @@ class ID03(object):
         self.is_integrated = {
             "ascan": [False],
             "fscan": [True],
-            "a2scan": [False], #[False, False] I think these are actually 1D scans
+            "a2scan": [False],  # [False, False] I think these are actually 1D scans
             "d2scan": [False, False],
             "fscan2d": [False, True],
             "loopscan": [None],
@@ -125,7 +125,9 @@ class ID03(object):
         scan_params = {}
         scan_params["scan_command"] = self._get_scan_command(scan_id)
         scan_params["scan_shape"] = self._get_scan_shape(scan_params)
-        scan_params["motor_names"] = self._get_motor_names(scan_params, scan_id, scan_params["scan_shape"])
+        scan_params["motor_names"] = self._get_motor_names(
+            scan_params, scan_id, scan_params["scan_shape"]
+        )
         scan_params["integrated_motors"] = self._get_integrated_motors(scan_params)
         scan_params["data_name"] = self._get_data_name(
             scan_id, scan_params["scan_shape"]
@@ -190,21 +192,27 @@ class ID03(object):
         expected_number_of_frames = np.prod(scan_shape)
 
         for i, motor_name in enumerate(trial_motor_names):
-
-
             with h5py.File(self.abs_path_to_h5_file, "r") as h5f:
-
                 fallback = self.fallback_motor_map[motor_name]
 
                 # for each motor name check if the motor name exists with
                 # the expected number of values. If not, try the fallback naming
                 # and finally fail if nothing else works.
-                if motor_name in h5f[scan_id] and h5f[scan_id][motor_name].size==expected_number_of_frames:
+                if (
+                    motor_name in h5f[scan_id]
+                    and h5f[scan_id][motor_name].size == expected_number_of_frames
+                ):
                     motor_names.append(motor_name)
-                elif fallback is not None and fallback in h5f[scan_id] and h5f[scan_id][fallback].size==expected_number_of_frames:
+                elif (
+                    fallback is not None
+                    and fallback in h5f[scan_id]
+                    and h5f[scan_id][fallback].size == expected_number_of_frames
+                ):
                     motor_names.append(fallback)
                 else:
-                    raise ValueError(f"Could not find {motor_name} with fallback name {self.fallback_motor_map[motor_name]}")
+                    raise ValueError(
+                        f"Could not find {motor_name} with fallback name {self.fallback_motor_map[motor_name]}"
+                    )
 
         return motor_names
 

@@ -188,6 +188,7 @@ def label_sparse(data):
         plt.tight_layout()
         plt.show()
 
+
     .. image:: ../../docs/source/images/labeloverlap.png
 
     Args:

@@ -28,6 +28,8 @@ in theta, phi and chi can be retrieved as:
 
     assert mean.shape==(128, 128, 3)
     assert covariance.shape==(128, 128, 3, 3)
+
+
 """
 
 import numba
@@ -66,6 +68,7 @@ def rgb(property_2d, norm="dynamic", coordinates=None):
         im = ax.imshow(rgb_map)
         plt.tight_layout()
         plt.show()
+
 
     .. image:: ../../docs/source/images/rgbmapfull.png
 
@@ -176,6 +179,7 @@ def kam(property_2d, size=(3, 3)):
         plt.tight_layout()
         plt.show()
 
+
     .. image:: ../../docs/source/images/kam.png
 
     Args:
@@ -234,6 +238,7 @@ def moments(data, coordinates):
         # compute the first and second moments
         mean, covariance = darling.properties.moments(data, coordinates)
 
+
     Args:
         data (:obj:`numpy array`): Array of shape=(a, b, m) or shape=(a, b, m, n)
             or shape=(a, b, m, n, o) where the maps over which the mean will be
@@ -285,6 +290,7 @@ def mean(data, coordinates):
 
         # compute the first moments
         first_moment = darling.properties.mean(data, coordinates)
+
 
     Args:
         data (:obj:`numpy array`): Array of shape=(a, b, m) or shape=(a, b, m, n)
@@ -351,6 +357,7 @@ def covariance(data, coordinates, first_moments=None):
 
         # compute the second moments
         covariance = darling.properties.covariance(data, coordinates, first_moments=first_moment)
+
 
     Args:
         data (:obj:`numpy array`): Array of shape=(a, b, m) or shape=(a, b, m, n)
@@ -704,6 +711,7 @@ def gaussian_mixture(data, k=8, coordinates=None):
         im = ax.imshow(features["mean_motor1"][..., 0], cmap="plasma")
         plt.tight_layout()
         plt.show()
+
 
     .. image:: ../../docs/source/images/domains.png
 
