@@ -33,7 +33,7 @@ class ID03(object):
             "motor_steps": {
                 "ascan": [3],
                 "fscan": [3],
-                "a2scan": [6, 6],
+                "a2scan": [6], #[6, 6] I think these are actually 1D scans
                 "d2scan": [6, 6],
                 "fscan2d": [3, 7],
                 "loopscan": [0],
@@ -41,7 +41,7 @@ class ID03(object):
             "motor_names": {
                 "ascan": [0],
                 "fscan": [0],
-                "a2scan": [0, 3],
+                "a2scan": [0], #[0, 3] I think these are actually 1D scans
                 "d2scan": [0, 3],
                 "fscan2d": [0, 4],
             },
@@ -51,7 +51,7 @@ class ID03(object):
         self.is_integrated = {
             "ascan": [False],
             "fscan": [True],
-            "a2scan": [False, False],
+            "a2scan": [False], #[False, False] I think these are actually 1D scans
             "d2scan": [False, False],
             "fscan2d": [False, True],
             "loopscan": [None],
@@ -67,6 +67,33 @@ class ID03(object):
             "diffry": "instrument/diffry/data",
             "diffrx": "instrument/diffrx/data",
             "ccmth": "instrument/positioners/ccmth",
+            "cdx": "instrument/positioners/cdx",
+            "dcx": "instrument/positioners/dcx",
+            "dcz": "instrument/positioners/dcz",
+            "obx": "instrument/positioners/obz",
+            "oby": "instrument/positioners/obx",
+            "obz": "instrument/positioners/oby",
+            "sovg": "instrument/positioners/sovg",
+            "sovo": "instrument/positioners/sovo",
+            "soho": "instrument/positioners/sovo",
+            "sohg": "instrument/positioners/sovo",
+        }
+
+        self.fallback_motor_map = {
+            self.motor_map["mu"]: "instrument/mu/data",
+            self.motor_map["chi"]: None,
+            self.motor_map["phi"]: None,
+            self.motor_map["diffrz"]: None,
+            self.motor_map["diffry"]: None,
+            self.motor_map["diffrx"]: None,
+            self.motor_map["ccmth"]: None,
+            self.motor_map["cdx"]: None,
+            self.motor_map["dcx"]: None,
+            self.motor_map["dcz"]: None,
+            self.motor_map["obx"]: None,
+            self.motor_map["oby"]: None,
+            self.motor_map["obz"]: None,
+            self.motor_map["soho"]: "instrument/soho/value",
         }
 
     def __call__(self, scan_id):
@@ -98,11 +125,12 @@ class ID03(object):
         scan_params = {}
         scan_params["scan_command"] = self._get_scan_command(scan_id)
         scan_params["scan_shape"] = self._get_scan_shape(scan_params)
-        scan_params["motor_names"] = self._get_motor_names(scan_params, scan_id)
+        scan_params["motor_names"] = self._get_motor_names(scan_params, scan_id, scan_params["scan_shape"])
         scan_params["integrated_motors"] = self._get_integrated_motors(scan_params)
         scan_params["data_name"] = self._get_data_name(
             scan_id, scan_params["scan_shape"]
         )
+        scan_params["scan_id"] = scan_id
         return scan_params
 
     def _get_scan_command(self, scan_id):
@@ -134,12 +162,12 @@ class ID03(object):
         command = scan_params["scan_command"].split(" ")[0]
         params = np.array(scan_params["scan_command"].split(" ")[1:])
         scan_shape = params[self.scan_arg_pos["motor_steps"][command]].astype(int)
-        if command in ["ascan2d", "ascan"]:
+        if command in ["a2scan", "ascan"]:
             for i in range(len(scan_shape)):
                 scan_shape[i] += 1
         return scan_shape
 
-    def _get_motor_names(self, scan_params, scan_id):
+    def _get_motor_names(self, scan_params, scan_id, scan_shape):
         """Fetch motor names from the scan command.
 
         Returns:
@@ -151,19 +179,33 @@ class ID03(object):
         if command == "loopscan":
             return None
 
-        motor_names = [
+        trial_motor_names = [
             self.motor_map[params[i]] for i in self.scan_arg_pos["motor_names"][command]
         ]
 
-        # hack for inconsistent mu saving...
-        for i, motor_name in enumerate(motor_names):
-            if motor_name == "instrument/positioners/mu":
-                try:
-                    with h5py.File(self.abs_path_to_h5_file, "r") as h5f:
-                        if len(h5f[scan_id][motor_name]) == 1:
-                            raise ValueError()
-                except:
-                    motor_names[i] = "instrument/mu/data"
+        motor_names = []
+
+        # we expect the number of motor values to be the same as the
+        # number of scan points: np.prod(scan_shape)
+        expected_number_of_frames = np.prod(scan_shape)
+
+        for i, motor_name in enumerate(trial_motor_names):
+
+
+            with h5py.File(self.abs_path_to_h5_file, "r") as h5f:
+
+                fallback = self.fallback_motor_map[motor_name]
+
+                # for each motor name check if the motor name exists with
+                # the expected number of values. If not, try the fallback naming
+                # and finally fail if nothing else works.
+                if motor_name in h5f[scan_id] and h5f[scan_id][motor_name].size==expected_number_of_frames:
+                    motor_names.append(motor_name)
+                elif fallback is not None and fallback in h5f[scan_id] and h5f[scan_id][fallback].size==expected_number_of_frames:
+                    motor_names.append(fallback)
+                else:
+                    raise ValueError(f"Could not find {motor_name} with fallback name {self.fallback_motor_map[motor_name]}")
+
         return motor_names
 
     def _get_integrated_motors(self, scan_params):
