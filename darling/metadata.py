@@ -75,8 +75,8 @@ class ID03(object):
             "obz": "instrument/positioners/oby",
             "sovg": "instrument/positioners/sovg",
             "sovo": "instrument/positioners/sovo",
-            "soho": "instrument/positioners/sovo",
-            "sohg": "instrument/positioners/sovo",
+            "soho": "instrument/positioners/soho",
+            "sohg": "instrument/positioners/sohg",
         }
 
         self.fallback_motor_map = {
