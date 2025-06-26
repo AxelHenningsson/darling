@@ -4,6 +4,8 @@ import matplotlib.pyplot as plt
 import meshio
 import numpy as np
 import scipy.ndimage
+import h5py
+import hdf5plugin
 
 import darling
 
@@ -205,6 +207,10 @@ class DataSet(object):
         self.data = None
         self.motors = None
 
+        if scan_id is not None:
+            self.load_scan(scan_id, roi=None)
+
+
     def info(self):
         if self.data is not None:
             for k in self.reader.scan_params:
@@ -212,20 +218,29 @@ class DataSet(object):
         else:
             print("No data loaded, use load_scan() to load data.")
 
-    def load_scan(self, scan_id, roi=None):
+    def load_scan(self, scan_id, scan_motor=None, roi=None):
         """Load a scan into RAM.
 
         Args:
-            scan_id (:obj:`str`): scan id to load from, these could be internal keys to
-                different layers for instance.
+            scan_id (:obj:`str` or :obj:`list` or :obj:`str`): scan id or scan ids to load.
+            scan_motor (:obj:`str`): path in h5file to the motor that is changing with the scan_id.
+                Defaults to None. Must be set when scan_id is not a single string.
             roi (:obj:`tuple` of :obj:`int`): row_min row_max and column_min and column_max,
                 defaults to None, in which case all data is loaded. The roi refers to the detector
                 dimensions.
 
         """
+        if not (isinstance(scan_id, list) or isinstance(scan_id, str)):
+            raise ValueError("When scan_id must be a list of strings or a single string")
+        if isinstance(scan_id, list) and not isinstance(scan_motor, str):
+            raise ValueError("When scan_id is a list of keys scan_motor path must be set.")
+        if isinstance(scan_id, list) and len(scan_id)==1:
+            raise ValueError("When scan_id is a list of keys len(scan_id) must be > than 1.")
+
         if self.reader is None:
             config = darling.metadata.ID03(self.h5file)
-            scan_params = config(scan_id)
+            reference_scan_id = scan_id[0] if isinstance(scan_id, list) else scan_id
+            scan_params = config(reference_scan_id)
             if scan_params["motor_names"] is None:
                 self.reader = darling.reader.Darks(self.h5file)
             elif len(scan_params["motor_names"]) == 1:
@@ -234,7 +249,45 @@ class DataSet(object):
                 self.reader = darling.reader.MosaScan(self.h5file)
             else:
                 raise ValueError("Could not find a reader for your h5 file")
-        self.data, self.motors = self.reader(scan_id, roi)
+
+        number_of_scans = len(scan_id) if isinstance(scan_id, list) else 1
+
+        if number_of_scans==1:
+            self.data, self.motors = self.reader(scan_id, roi)
+        else:
+            scan_motor_values = np.zeros((len(scan_id), ))
+            with h5py.File(self.h5file) as h5file:
+                for i, sid in enumerate(scan_id):
+                    scan_motor_values[i] = h5file[sid][scan_motor][()]
+            print(scan_params)
+            reference_data_block, reference_motors = self.reader(scan_id[0], roi)
+
+            if reference_motors.ndim==2:
+                motor1 = reference_motors[0, :]
+                motor2 = scan_motor_values
+                motors = np.array( np.meshgrid( motor1, motor2, indexing='ij' ) )
+            elif reference_motors.ndim==3:
+                motor1 = reference_motors[0, :, 0]
+                motor2 = reference_motors[1, 0, :]
+                motor3 = scan_motor_values
+                motors = np.array( np.meshgrid( motor1, motor2, motor3, indexing='ij' ) )
+            else:
+                raise ValueError(f"Each scan_id must hold a 1D or 2D scan but {reference_motors.ndim}D was found at scan_id={scan_id[0]}")
+
+            data = np.zeros( (*reference_data_block.data.shape, number_of_scans), np.uint16 )
+            data[..., 0] = reference_data_block[...]
+            for i, sid in enumerate(scan_id[1:]):
+                data_block, _ = self.reader(sid, roi)
+                data[..., i + 1] = data_block[...]
+        
+
+            self.reader.scan_params['motor_names'].append( scan_motor )
+            self.reader.scan_params['scan_shape'] = np.array( [*self.reader.scan_params['scan_shape'], number_of_scans] )
+            self.reader.scan_params['integrated_motors'].append( False )
+            self.reader.scan_params['scan_id'] = scan_id
+
+            self.motors = motors
+            self.data = data
 
     def subtract(self, value):
         """Subtract a fixed integer value form the data. Protects against uint16 sign flips.
