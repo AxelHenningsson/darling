@@ -60,40 +60,50 @@ class ID03(object):
         # These are the expected h5 mappings between the scan command motor names and the
         # corresponding motor values storage location in the h5 file.
         self.motor_map = {
+            "ccmth": "instrument/positioners/ccmth",
+            "s8vg": "instrument/positioners/s8vg",
+            "s8vo": "instrument/positioners/s8vo",
+            "s8ho": "instrument/positioners/s8ho",
+            "s8hg": "instrument/positioners/s8hg",
             "chi": "instrument/chi/value",
             "phi": "instrument/phi/value",
             "mu": "instrument/positioners/mu",
             "diffrz": "instrument/diffrz/data",
             "diffry": "instrument/diffry/data",
             "diffrx": "instrument/diffrx/data",
-            "ccmth": "instrument/positioners/ccmth",
-            "cdx": "instrument/positioners/cdx",
-            "dcx": "instrument/positioners/dcx",
-            "dcz": "instrument/positioners/dcz",
-            "obx": "instrument/positioners/obz",
-            "oby": "instrument/positioners/obx",
-            "obz": "instrument/positioners/oby",
+            "omega": "instrument/positioners/omega",
+            "ux": "instrument/positioners/ux",
+            "uy": "instrument/positioners/uy",
+            "uz": "instrument/positioners/uz",
+            "mainx": "instrument/positioners/mainx",
+            "obx": "instrument/positioners/obx",
+            "oby": "instrument/positioners/oby",
+            "obz": "instrument/positioners/obz",
+            "obz3": "instrument/positioners/obz3",
+            "obpitch": "instrument/positioners/obpitch",
+            "obyaw": "instrument/positioners/obyaw",
             "sovg": "instrument/positioners/sovg",
             "sovo": "instrument/positioners/sovo",
             "soho": "instrument/positioners/soho",
             "sohg": "instrument/positioners/sohg",
+            "cdx": "instrument/positioners/cdx",
+            "dcx": "instrument/positioners/dcx",
+            "dcz": "instrument/positioners/dcz",
+            "ffz": "instrument/positioners/ffz",
+            "ffy": "instrument/positioners/ffy",
+            "ffsel": "instrument/positioners/ffsel",
+            "x_pixel_size": "instrument/pco_ff/x_pixel_size",
+            "y_pixel_size": "instrument/pco_ff/y_pixel_size",
         }
 
         self.fallback_motor_map = {
             self.motor_map["mu"]: "instrument/mu/data",
-            self.motor_map["chi"]: None,
-            self.motor_map["phi"]: None,
-            self.motor_map["diffrz"]: None,
-            self.motor_map["diffry"]: None,
-            self.motor_map["diffrx"]: None,
-            self.motor_map["ccmth"]: None,
-            self.motor_map["cdx"]: None,
-            self.motor_map["dcx"]: None,
-            self.motor_map["dcz"]: None,
-            self.motor_map["obx"]: None,
-            self.motor_map["oby"]: None,
-            self.motor_map["obz"]: None,
+            self.motor_map["chi"]: "instrument/positioners/chi",
+            self.motor_map["phi"]: "instrument/positioners/phi",
             self.motor_map["soho"]: "instrument/soho/value",
+            self.motor_map["ux"]: "instrument/positioners/samx",
+            self.motor_map["uy"]: "instrument/positioners/samy",
+            self.motor_map["uz"]: "instrument/positioners/samz",
         }
 
     def __call__(self, scan_id):
@@ -133,6 +143,11 @@ class ID03(object):
             scan_id, scan_params["scan_shape"]
         )
         scan_params["scan_id"] = scan_id
+
+        scan_params["invariant_motors"] = self._get_invariant_motors(
+            scan_params["motor_names"], scan_id
+        )
+
         return scan_params
 
     def _get_scan_command(self, scan_id):
@@ -169,6 +184,41 @@ class ID03(object):
                 scan_shape[i] += 1
         return scan_shape
 
+    def _get_invariant_motors(self, moving_motor_names, scan_id):
+        """Fetch the invariant motors from the hdf5 file.
+
+        These are motors that do not change with the scan command.
+        I.e they are static for the dataset.
+
+        Args:
+            moving_motor_names (:obj:`list` of :obj:`str`): The names of the scanned motors
+                (not to add to the invariant motors).
+            scan_id (:obj:`str`): The scan id to load from.
+
+        Returns:
+            :obj:`dict`: The invariant motors.
+        """
+        invariant_motors = {}
+        with h5py.File(self.abs_path_to_h5_file, "r") as h5f:
+            for motor_key, h5_motor_path in self.motor_map.items():
+                if h5_motor_path not in moving_motor_names:
+                    # this is a static motor, lets see if we can find it in the hdf5 file
+                    fallback = (
+                        self.fallback_motor_map[h5_motor_path]
+                        if h5_motor_path in self.fallback_motor_map
+                        else None
+                    )
+
+                    if h5_motor_path in h5f[scan_id]:
+                        invariant_motors[motor_key] = h5f[scan_id][h5_motor_path][()]
+                    elif fallback is not None and fallback in h5f[scan_id]:
+                        invariant_motors[motor_key] = h5f[scan_id][fallback][()]
+                    else:
+                        pass
+                        print(motor_key, h5_motor_path)
+
+        return invariant_motors
+
     def _get_motor_names(self, scan_params, scan_id, scan_shape):
         """Fetch motor names from the scan command.
 
@@ -191,9 +241,13 @@ class ID03(object):
         # number of scan points: np.prod(scan_shape)
         expected_number_of_frames = np.prod(scan_shape)
 
-        for i, motor_name in enumerate(trial_motor_names):
-            with h5py.File(self.abs_path_to_h5_file, "r") as h5f:
-                fallback = self.fallback_motor_map[motor_name]
+        with h5py.File(self.abs_path_to_h5_file, "r") as h5f:
+            for motor_name in trial_motor_names:
+                fallback = (
+                    self.fallback_motor_map[motor_name]
+                    if motor_name in self.fallback_motor_map
+                    else None
+                )
 
                 # for each motor name check if the motor name exists with
                 # the expected number of values. If not, try the fallback naming
@@ -211,7 +265,7 @@ class ID03(object):
                     motor_names.append(fallback)
                 else:
                     raise ValueError(
-                        f"Could not find {motor_name} with fallback name {self.fallback_motor_map[motor_name]}"
+                        f"Could not find {motor_name} with fallback name {fallback}"
                     )
 
         return motor_names
