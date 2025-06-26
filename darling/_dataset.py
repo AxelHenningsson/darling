@@ -1,168 +1,12 @@
 import time
 
-import matplotlib.pyplot as plt
+import h5py
+import hdf5plugin
 import meshio
 import numpy as np
 import scipy.ndimage
-import h5py
-import hdf5plugin
 
 import darling
-
-
-class _Visualizer(object):
-    # TODO: some of this should probably be in the properties module...
-
-    def __init__(self, dset_reference):
-        self.dset = dset_reference
-        self.xlabel = "Detector row index"
-        self.ylabel = "Detector column index"
-
-    def mean(self):
-        plt.style.use("dark_background")
-        fig, ax = plt.subplots(1, 2, figsize=(9, 6), sharex=True, sharey=True)
-        fig.suptitle(
-            "Mean Map \nfirst moment around motor coordinates",
-            fontsize=22,
-        )
-
-        im_ratio = self.dset.mean.shape[0] / self.dset.mean.shape[1]
-        for i in range(2):
-            im = ax[i].imshow(self.dset.mean[:, :, i], cmap="jet")
-            fig.colorbar(im, ax=ax[i], fraction=0.046 * im_ratio, pad=0.04)
-            ax[i].set_title(
-                "Mean in motor " + self.dset.reader.scan_params["motor_names"][i],
-                fontsize=14,
-            )
-            ax[i].set_xlabel(self.xlabel, fontsize=14)
-            if i == 0:
-                ax[i].set_ylabel(self.ylabel, fontsize=14)
-        plt.tight_layout()
-        return fig, ax
-
-    def covariance(self, mask=None):
-        """
-        Plot the covariance matrix of the data set. Using RGBA colormap to plot the covariance matrix with transparency.
-
-        Args:
-            mask (:obj:`numpy array`): A binary mask with the same shape as the data set. If provided, the
-                covariance matrix will be plotted where the mask = 1. Defaults to None.
-        """
-        plt.style.use("dark_background")
-        fig, ax = plt.subplots(2, 2, figsize=(18, 18), sharex=True, sharey=True)
-        fig.suptitle(
-            "Covariance Map \nsecond moment around motor coordinates",
-            fontsize=22,
-        )
-        im_ratio = self.dset.covariance.shape[0] / self.dset.covariance.shape[1]
-
-        for i in range(2):
-            for j in range(2):
-                data = self.dset.covariance[:, :, i, j]
-
-                _data = np.where(mask, data, np.nan) if mask is not None else data
-
-                im = ax[i, j].imshow(_data, interpolation="nearest", cmap="magma")
-                fig.colorbar(im, ax=ax[i, j], fraction=0.046 * im_ratio, pad=0.04)
-
-                ax[i, j].set_title(
-                    f"Covar[{self.dset.reader.scan_params['motor_names'][i]}, {self.dset.reader.scan_params['motor_names'][j]}]",
-                    fontsize=8,
-                )
-                if j == 0:
-                    ax[i, j].set_ylabel(self.ylabel, fontsize=14)
-                if i == 1:
-                    ax[i, j].set_xlabel(self.xlabel, fontsize=14)
-
-        plt.tight_layout()
-        return fig, ax
-
-    def kam(self):
-        plt.style.use("dark_background")
-        fig, ax = plt.subplots(1, 1, figsize=(9, 9), sharex=True, sharey=True)
-        fig.suptitle(
-            "(Projected) KAM Map \nlocal variation in orientation",
-            fontsize=22,
-        )
-        if self.dset.kam is None:
-            _ = self.dset.kernel_average_misorientation()
-        kam = np.full_like(self.dset.kam, fill_value=np.nan)
-        a, b = self.dset.kam_kernel_size
-        kam[
-            (a // 2) : -(a // 2),
-            (b // 2) : -(b // 2),
-        ] = self.dset.kam[
-            (a // 2) : -(a // 2),
-            (b // 2) : -(b // 2),
-        ]
-        im_ratio = kam.shape[0] / kam.shape[1]
-        im = ax.imshow(
-            kam,
-            cmap="jet",
-        )
-        fig.colorbar(im, ax=ax, fraction=0.046 * im_ratio, pad=0.04)
-        ax.set_xlabel(self.xlabel, fontsize=14)
-        ax.set_ylabel(self.ylabel, fontsize=14)
-        plt.tight_layout()
-        return fig, ax
-
-    def misorientation(self):
-        plt.style.use("dark_background")
-        fig, ax = plt.subplots(1, 1, figsize=(9, 9), sharex=True, sharey=True)
-        fig.suptitle(
-            "Misorientation Map \nL2 norm of mean map after median subtraction",
-            fontsize=22,
-        )
-        mean = self.dset.mean.copy()
-        mean[:, :, 0] -= np.median(mean[:, :, 0].flatten())
-        mean[:, :, 1] -= np.median(mean[:, :, 1].flatten())
-        misori = np.linalg.norm(mean, axis=-1)
-        im_ratio = misori.shape[0] / misori.shape[1]
-        im = ax.imshow(misori, cmap="viridis")
-        fig.colorbar(im, ax=ax, fraction=0.046 * im_ratio, pad=0.04)
-        ax.set_xlabel(self.xlabel, fontsize=14)
-        ax.set_ylabel(self.ylabel, fontsize=14)
-        plt.tight_layout()
-        return fig, ax
-
-    def mosaicity(self, norm="dynamic"):
-        """
-        Plot the mosaicity map. This takes the motor limits or data ranges for normalization.
-        Sets the blue channel to make the mosaicity map more readable. The colormap is plotted
-        on the right based on the selected scaling method.
-
-        Args:
-            use_motors (:obj:`bool`): If True, scales the mosaicity map using motor limits. If False, uses data ranges.
-            mask (:obj:`numpy array`): A 2D binary mask with the same shape as the data set. If provided, it scales the mosaicity map
-                where the mask == 1. Defaults to None.
-        """
-        rgbmap, colorkey, colorgrid = darling.properties.rgb(
-            self.dset.mean, norm=norm, coordinates=self.dset.motors
-        )
-
-        plt.style.use("dark_background")
-        fig, ax = plt.subplots(
-            1, 2, figsize=(12, 9), gridspec_kw={"width_ratios": [3, 1]}
-        )
-        fig.suptitle(
-            "Mosaicity Map \n maps motors to a cylindrical HSV colorspace",
-            fontsize=22,
-        )
-
-        ax[0].imshow(rgbmap)
-        ax[0].set_xlabel(self.xlabel, fontsize=14)
-        ax[0].set_ylabel(self.ylabel, fontsize=14)
-
-        ax[1].pcolormesh(*colorgrid, colorkey, shading="auto")
-        a = np.max(colorgrid[0]) - np.min(colorgrid[0])
-        b = np.max(colorgrid[1]) - np.min(colorgrid[1])
-        ax[1].set_aspect(a / b)
-
-        ax[1].set_xlabel(self.dset.reader.scan_params["motor_names"][0], fontsize=14)
-        ax[1].set_ylabel(self.dset.reader.scan_params["motor_names"][1], fontsize=14)
-        ax[1].set_title(r"Color Map", fontsize=14)
-        plt.tight_layout()
-        return fig, ax
 
 
 class DataSet(object):
@@ -198,7 +42,6 @@ class DataSet(object):
                 "reader should be a darling.reader.Reader or a string to the h5 file."
             )
 
-        self.plot = _Visualizer(self)
         self.mean, self.covariance = None, None
         self.mean_3d, self.covariance_3d = None, None
         self.kam = None
@@ -209,7 +52,6 @@ class DataSet(object):
 
         if scan_id is not None:
             self.load_scan(scan_id, roi=None)
-
 
     def info(self):
         if self.data is not None:
@@ -231,11 +73,17 @@ class DataSet(object):
 
         """
         if not (isinstance(scan_id, list) or isinstance(scan_id, str)):
-            raise ValueError("When scan_id must be a list of strings or a single string")
+            raise ValueError(
+                "When scan_id must be a list of strings or a single string"
+            )
         if isinstance(scan_id, list) and not isinstance(scan_motor, str):
-            raise ValueError("When scan_id is a list of keys scan_motor path must be set.")
-        if isinstance(scan_id, list) and len(scan_id)==1:
-            raise ValueError("When scan_id is a list of keys len(scan_id) must be > than 1.")
+            raise ValueError(
+                "When scan_id is a list of keys scan_motor path must be set."
+            )
+        if isinstance(scan_id, list) and len(scan_id) == 1:
+            raise ValueError(
+                "When scan_id is a list of keys len(scan_id) must be > than 1."
+            )
 
         if self.reader is None:
             config = darling.metadata.ID03(self.h5file)
@@ -252,39 +100,44 @@ class DataSet(object):
 
         number_of_scans = len(scan_id) if isinstance(scan_id, list) else 1
 
-        if number_of_scans==1:
+        if number_of_scans == 1:
             self.data, self.motors = self.reader(scan_id, roi)
         else:
-            scan_motor_values = np.zeros((len(scan_id), ))
+            scan_motor_values = np.zeros((len(scan_id),))
             with h5py.File(self.h5file) as h5file:
                 for i, sid in enumerate(scan_id):
                     scan_motor_values[i] = h5file[sid][scan_motor][()]
             print(scan_params)
             reference_data_block, reference_motors = self.reader(scan_id[0], roi)
 
-            if reference_motors.ndim==2:
+            if reference_motors.ndim == 2:
                 motor1 = reference_motors[0, :]
                 motor2 = scan_motor_values
-                motors = np.array( np.meshgrid( motor1, motor2, indexing='ij' ) )
-            elif reference_motors.ndim==3:
+                motors = np.array(np.meshgrid(motor1, motor2, indexing="ij"))
+            elif reference_motors.ndim == 3:
                 motor1 = reference_motors[0, :, 0]
                 motor2 = reference_motors[1, 0, :]
                 motor3 = scan_motor_values
-                motors = np.array( np.meshgrid( motor1, motor2, motor3, indexing='ij' ) )
+                motors = np.array(np.meshgrid(motor1, motor2, motor3, indexing="ij"))
             else:
-                raise ValueError(f"Each scan_id must hold a 1D or 2D scan but {reference_motors.ndim}D was found at scan_id={scan_id[0]}")
+                raise ValueError(
+                    f"Each scan_id must hold a 1D or 2D scan but {reference_motors.ndim}D was found at scan_id={scan_id[0]}"
+                )
 
-            data = np.zeros( (*reference_data_block.data.shape, number_of_scans), np.uint16 )
+            data = np.zeros(
+                (*reference_data_block.data.shape, number_of_scans), np.uint16
+            )
             data[..., 0] = reference_data_block[...]
             for i, sid in enumerate(scan_id[1:]):
                 data_block, _ = self.reader(sid, roi)
                 data[..., i + 1] = data_block[...]
-        
 
-            self.reader.scan_params['motor_names'].append( scan_motor )
-            self.reader.scan_params['scan_shape'] = np.array( [*self.reader.scan_params['scan_shape'], number_of_scans] )
-            self.reader.scan_params['integrated_motors'].append( False )
-            self.reader.scan_params['scan_id'] = scan_id
+            self.reader.scan_params["motor_names"].append(scan_motor)
+            self.reader.scan_params["scan_shape"] = np.array(
+                [*self.reader.scan_params["scan_shape"], number_of_scans]
+            )
+            self.reader.scan_params["integrated_motors"].append(False)
+            self.reader.scan_params["scan_id"] = scan_id
 
             self.motors = motors
             self.data = data

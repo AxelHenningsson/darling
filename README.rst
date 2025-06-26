@@ -44,31 +44,7 @@ Usecase
 Loading & plotting Data
 ================================================
 
-To load a dataset and plot it quickly, you can use the following code:
-
-.. code-block:: python
-
-   import darling
-   import matplotlib.pyplot as plt
-   path_to_data, _, _ = darling.assets.mosaicity_scan()
-   reader = darling.reader.MosaScan(path_to_data)
-   dset = darling.DataSet(reader)
-   dset.load_scan(scan_id="1.1")
-   background = dset.estimate_background()
-   dset.subtract(background)
-   mean, covariance = dset.moments()
-   fig, ax = dset.plot.mosaicity()
-   fig.suptitle('Mosaicity Map - a type of colorcoding of the $\chi$ - $\phi$ scan', fontsize=22, y=0.8)
-   plt.show()
-
-.. image:: https://github.com/AxelHenningsson/darling/blob/dev/docs/source/images/mosa.png?raw=true
-   :align: center
-
-================================================
-Deep Data Analysis
-================================================
-
-For more rigorous data analysis darling collects many useful tools in the properties module.
+Darling collects many useful tools in the properties module.
 
 For example, it is possible to model the angular intensity distribution of a scan using a Gaussian Mixture Model (GMM)
 and then color code the scan based on the first maxima of the GMM using a RGB color map known as a mosaicity map.
@@ -76,24 +52,31 @@ and then color code the scan based on the first maxima of the GMM using a RGB co
 
 .. code-block:: python
 
-   import darling
-   import matplotlib.pyplot as plt
+   import numpy as np
 
    # read some toy data in
-   reader = darling.reader.MosaScan(
-      "/home/naxhe/workspace/darling/assets/example_data/domains/2D_domains.h5"
-   )
-   dset = darling.DataSet(reader)
-   dset.load_scan(scan_id="1.1")
+   path_to_data, _, _ = darling.assets.domains()  # replace with your own data
+   scan_id = "1.1"  # tope level key in the hdf5 file
+   dset = darling.DataSet(path_to_data, scan_id)
 
-   # modle the intenstiy distribution using a GMM
+   # model the intensity distribution using a GMM
    features = darling.properties.gaussian_mixture(dset.data, k=4, coordinates=dset.motors)
-   
+
    # color code the scan based on the first maxima of the GMM
-   first_maxima_mean = np.concatenate( (features["mean_motor1"][..., 0, None], features["mean_motor2"][..., 0, None]), axis=-1) 
+   first_maxima_mean = np.concatenate(
+      (features["mean_motor1"][..., 0, None], features["mean_motor2"][..., 0, None]),
+      axis=-1,
+   )
    rgbmap, colorkey, colorgrid = darling.properties.rgb(
       first_maxima_mean, norm="dynamic", coordinates=dset.motors
    )
+
+To visualize the resulting mosaicity map, you can use the following code:
+
+
+.. code-block:: python
+
+   import matplotlib.pyplot as plt
 
    # plot the resulting mosaicity map
    plt.style.use('dark_background')
@@ -104,6 +87,9 @@ and then color code the scan based on the first maxima of the GMM using a RGB co
 
 .. image:: https://github.com/AxelHenningsson/darling/blob/dev/docs/source/images/domains_mosa.png?raw=true
    :align: center
+
+
+for more examples see the externally hosted documentation at https://axelhenningsson.github.io/darling/
 
 Installation
 ------------------------------------------------
