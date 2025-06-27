@@ -53,3 +53,11 @@ metadata
     :members:
     :show-inheritance:
 
+======================================
+transforms
+======================================
+
+.. automodule:: darling.transforms
+    :members:
+    :show-inheritance:
+

@@ -148,7 +148,6 @@ class DataSet(object):
             with h5py.File(self.h5file) as h5file:
                 for i, sid in enumerate(scan_id):
                     scan_motor_values[i] = h5file[sid][scan_motor][()]
-            print(scan_params)
             reference_data_block, reference_motors = self.reader(scan_id[0], roi)
 
             if reference_motors.ndim == 2:

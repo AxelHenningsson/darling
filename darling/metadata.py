@@ -215,7 +215,6 @@ class ID03(object):
                         invariant_motors[motor_key] = h5f[scan_id][fallback][()]
                     else:
                         pass
-                        print(motor_key, h5_motor_path)
 
         return invariant_motors
 
