@@ -208,13 +208,8 @@ def kam(property_2d, size=(3, 3)):
     return np.sum(kam_map, axis=-1) / counts_map
 
 
-<<<<<<< HEAD
 def moments(data, coordinates, method="statistical"):
     """Compute the sample mean and covariance of a 4D or 5D DFXM data-set.
-=======
-def moments(data, coordinates):
-    """Compute the sample mean amd covariance of a 3D, 4D or 5D DFXM data-set.
->>>>>>> main
 
     The data-set represents a DFXM scan with 1, 2 or 3 degrees of freedom.
     These could be mu, phi and chi, or phi and energy, etc. The total data array
