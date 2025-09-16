@@ -1,6 +1,6 @@
 import time
 
-import matplotlib.pyplot as plt
+import h5py
 import meshio
 import numpy as np
 import scipy.ndimage
@@ -8,199 +8,180 @@ import scipy.ndimage
 import darling
 
 
-class _Visualizer(object):
-    # TODO: some of this should probably be in the properties module...
-
-    def __init__(self, dset_reference):
-        self.dset = dset_reference
-        self.xlabel = "Detector row index"
-        self.ylabel = "Detector column index"
-
-    def mean(self):
-        plt.style.use("dark_background")
-        fig, ax = plt.subplots(1, 2, figsize=(9, 6), sharex=True, sharey=True)
-        fig.suptitle(
-            "Mean Map \nfirst moment around motor coordinates",
-            fontsize=22,
-        )
-
-        im_ratio = self.dset.mean.shape[0] / self.dset.mean.shape[1]
-        for i in range(2):
-            im = ax[i].imshow(self.dset.mean[:, :, i], cmap="jet")
-            fig.colorbar(im, ax=ax[i], fraction=0.046 * im_ratio, pad=0.04)
-            ax[i].set_title(
-                "Mean in motor " + self.dset.reader.scan_params["motor_names"][i],
-                fontsize=14,
-            )
-            ax[i].set_xlabel(self.xlabel, fontsize=14)
-            if i == 0:
-                ax[i].set_ylabel(self.ylabel, fontsize=14)
-        plt.tight_layout()
-        return fig, ax
-
-    def covariance(self, mask=None):
-        """
-        Plot the covariance matrix of the data set. Using RGBA colormap to plot the covariance matrix with transparency.
-
-        Args:
-            mask (:obj:`numpy array`): A binary mask with the same shape as the data set. If provided, the
-                covariance matrix will be plotted where the mask = 1. Defaults to None.
-        """
-        plt.style.use("dark_background")
-        fig, ax = plt.subplots(2, 2, figsize=(18, 18), sharex=True, sharey=True)
-        fig.suptitle(
-            "Covariance Map \nsecond moment around motor coordinates",
-            fontsize=22,
-        )
-        im_ratio = self.dset.covariance.shape[0] / self.dset.covariance.shape[1]
-
-        for i in range(2):
-            for j in range(2):
-                data = self.dset.covariance[:, :, i, j]
-
-                _data = np.where(mask, data, np.nan) if mask is not None else data
-
-                im = ax[i, j].imshow(_data, interpolation="nearest", cmap="magma")
-                fig.colorbar(im, ax=ax[i, j], fraction=0.046 * im_ratio, pad=0.04)
-
-                ax[i, j].set_title(
-                    f"Covar[{self.dset.reader.scan_params['motor_names'][i]}, {self.dset.reader.scan_params['motor_names'][j]}]",
-                    fontsize=8,
-                )
-                if j == 0:
-                    ax[i, j].set_ylabel(self.ylabel, fontsize=14)
-                if i == 1:
-                    ax[i, j].set_xlabel(self.xlabel, fontsize=14)
-
-        plt.tight_layout()
-        return fig, ax
-
-    def kam(self):
-        plt.style.use("dark_background")
-        fig, ax = plt.subplots(1, 1, figsize=(9, 9), sharex=True, sharey=True)
-        fig.suptitle(
-            "(Projected) KAM Map \nlocal variation in orientation",
-            fontsize=22,
-        )
-        if self.dset.kam is None:
-            _ = self.dset.kernel_average_misorientation()
-        kam = np.full_like(self.dset.kam, fill_value=np.nan)
-        a, b = self.dset.kam_kernel_size
-        kam[
-            (a // 2) : -(a // 2),
-            (b // 2) : -(b // 2),
-        ] = self.dset.kam[
-            (a // 2) : -(a // 2),
-            (b // 2) : -(b // 2),
-        ]
-        im_ratio = kam.shape[0] / kam.shape[1]
-        im = ax.imshow(
-            kam,
-            cmap="jet",
-        )
-        fig.colorbar(im, ax=ax, fraction=0.046 * im_ratio, pad=0.04)
-        ax.set_xlabel(self.xlabel, fontsize=14)
-        ax.set_ylabel(self.ylabel, fontsize=14)
-        plt.tight_layout()
-        return fig, ax
-
-    def misorientation(self):
-        plt.style.use("dark_background")
-        fig, ax = plt.subplots(1, 1, figsize=(9, 9), sharex=True, sharey=True)
-        fig.suptitle(
-            "Misorientation Map \nL2 norm of mean map after median subtraction",
-            fontsize=22,
-        )
-        mean = self.dset.mean.copy()
-        mean[:, :, 0] -= np.median(mean[:, :, 0].flatten())
-        mean[:, :, 1] -= np.median(mean[:, :, 1].flatten())
-        misori = np.linalg.norm(mean, axis=-1)
-        im_ratio = misori.shape[0] / misori.shape[1]
-        im = ax.imshow(misori, cmap="viridis")
-        fig.colorbar(im, ax=ax, fraction=0.046 * im_ratio, pad=0.04)
-        ax.set_xlabel(self.xlabel, fontsize=14)
-        ax.set_ylabel(self.ylabel, fontsize=14)
-        plt.tight_layout()
-        return fig, ax
-
-    def mosaicity(self, norm="dynamic"):
-        """
-        Plot the mosaicity map. This takes the motor limits or data ranges for normalization.
-        Sets the blue channel to make the mosaicity map more readable. The colormap is plotted
-        on the right based on the selected scaling method.
-
-        Args:
-            use_motors (:obj:`bool`): If True, scales the mosaicity map using motor limits. If False, uses data ranges.
-            mask (:obj:`numpy array`): A 2D binary mask with the same shape as the data set. If provided, it scales the mosaicity map
-                where the mask == 1. Defaults to None.
-        """
-        rgbmap, colorkey, colorgrid = darling.properties.rgb(
-            self.dset.mean, norm=norm, coordinates=self.dset.motors
-        )
-
-        plt.style.use("dark_background")
-        fig, ax = plt.subplots(
-            1, 2, figsize=(12, 9), gridspec_kw={"width_ratios": [3, 1]}
-        )
-        fig.suptitle(
-            "Mosaicity Map \n maps motors to a cylindrical HSV colorspace",
-            fontsize=22,
-        )
-
-        ax[0].imshow(rgbmap)
-        ax[0].set_xlabel(self.xlabel, fontsize=14)
-        ax[0].set_ylabel(self.ylabel, fontsize=14)
-
-        ax[1].pcolormesh(*colorgrid, colorkey, shading="auto")
-        a = np.max(colorgrid[0]) - np.min(colorgrid[0])
-        b = np.max(colorgrid[1]) - np.min(colorgrid[1])
-        ax[1].set_aspect(a / b)
-
-        ax[1].set_xlabel(self.dset.reader.scan_params["motor_names"][0], fontsize=14)
-        ax[1].set_ylabel(self.dset.reader.scan_params["motor_names"][1], fontsize=14)
-        ax[1].set_title(r"Color Map", fontsize=14)
-        plt.tight_layout()
-        return fig, ax
-
-
 class DataSet(object):
     """A DFXM data-set.
 
-    This is the master data class of darling. Given a reader the DataSet class will read data form
+    This is the master data class of darling. Given a data source the DataSet class will read data from
     arbitrary layers, process, threshold, compute moments, visualize results, and compile 3D feature maps.
 
     Args:
-        reader (:obj: `darling.reader.Reader`): A file reader implementing, at least, the functionallity
-            specified in darling.reader.Reader().
+        data_source (:obj: `string` or `darling.reader.Reader`): A string to the absolute h5 file path
+            location of the data, or a reader object implementing the darling.reader.Reader() interface.
 
     Attributes:
         reader (:obj: `darling.reader.Reader`): A file reader implementing, at least, the functionallity
             specified in darling.reader.Reader().
+        data (:obj: `numpy.ndarray`): The data array of shape (a,b,m,n,(o)) where a,b are the detector
+            dimensions and m,n,(o) are the motor dimensions.
+        motors (:obj: `numpy.ndarray`): The motor grids of shape (k, m,n,(o)) where k is the number of
+            motors and m,n,(o) are the motor dimensions.
+        h5file (:obj: `string`): The absolute path to the h5 file in which all data resides.
 
     """
 
-    def __init__(self, reader):
-        self.reader = reader
-        self.plot = _Visualizer(self)
+    def __init__(self, data_source, scan_id=None):
+        if isinstance(data_source, darling.reader.Reader):
+            self.reader = data_source
+            self.h5file = self.reader.abs_path_to_h5_file
+        elif isinstance(data_source, str):
+            self.reader = None
+            self.h5file = data_source
+        else:
+            raise ValueError(
+                "reader should be a darling.reader.Reader or a string to the h5 file."
+            )
+
         self.mean, self.covariance = None, None
         self.mean_3d, self.covariance_3d = None, None
         self.kam = None
         self.kam_kernel_size = None
 
-    def load_scan(self, scan_id, roi=None):
-        """Load a scan into RM.
+        self.data = None
+        self.motors = None
 
-        NOTE: Input args should match the darling.reader.Reader used, however it was implemented.
+        if scan_id is not None:
+            self.load_scan(scan_id, roi=None)
+
+    def info(self):
+        if self.data is not None:
+            for k in self.reader.scan_params:
+                print(f"{k:<20} :  {str(self.reader.scan_params[k]):<30}")
+        else:
+            print("No data loaded, use load_scan() to load data.")
+
+    @property
+    def scan_params(self):
+        """The scan parameters for the loaded data in a dictionary.
+
+        Example output:
+
+        {'scan_command': 'fscan2d chi -0.5 0.08 26 diffry 7 0.06 37 0.5 0.500417',
+        'scan_shape': array([26, 37]),
+        'motor_names': ['instrument/chi/value', 'instrument/diffry/data'],
+        'integrated_motors': [False, True],
+        'data_name': 'instrument/pco_ff/image',
+        'scan_id': '1.1',
+        'invariant_motors': {'ccmth': 6.679671220242654,
+                            's8vg': 0.09999999999999998,
+                            's8vo': 0.0,
+                            's8ho': 0.0,
+                            's8hg': 0.5,
+                            'phi': 0.0,
+                            'mainx': -5000.0,
+                            'obx': 263.1299999999999,
+                            'oby': 0.0,
+                            'obz': 85.35999999999876,
+                            'obz3': 0.0693999999999999,
+                            'obpitch': 17.979400000000002,
+                            'obyaw': -0.06589062499999998,
+                            'cdx': -11.8,
+                            'dcx': 545.0,
+                            'dcz': -150.0,
+                            'ffz': 1621.611386138614,
+                            'ffy': 0.0,
+                            'ffsel': -60.0,
+                            'x_pixel_size': 6.5,
+                            'y_pixel_size': 6.5}}
+
+        Returns:
+            :obj:`dict`: The scan parameters.
+        """
+        if self.reader is None:
+            raise ValueError("No data has been loaded, use load_scan() to load data.")
+        else:
+            return self.reader.scan_params
+
+    def load_scan(self, scan_id, scan_motor=None, roi=None):
+        """Load a scan into RAM.
 
         Args:
-            scan_id (:obj:`str`): scan id to load from, these are internal keys to diffirentiate
-                layers.
+            scan_id (:obj:`str` or :obj:`list` or :obj:`str`): scan id or scan ids to load.
+            scan_motor (:obj:`str`): path in h5file to the motor that is changing with the scan_id.
+                Defaults to None. Must be set when scan_id is not a single string.
             roi (:obj:`tuple` of :obj:`int`): row_min row_max and column_min and column_max,
                 defaults to None, in which case all data is loaded. The roi refers to the detector
                 dimensions.
 
         """
-        self.data, self.motors = self.reader(scan_id, roi)
+        if not (isinstance(scan_id, list) or isinstance(scan_id, str)):
+            raise ValueError(
+                "When scan_id must be a list of strings or a single string"
+            )
+        if isinstance(scan_id, list) and not isinstance(scan_motor, str):
+            raise ValueError(
+                "When scan_id is a list of keys scan_motor path must be set."
+            )
+        if isinstance(scan_id, list) and len(scan_id) == 1:
+            raise ValueError(
+                "When scan_id is a list of keys len(scan_id) must be > than 1."
+            )
+
+        if self.reader is None:
+            config = darling.metadata.ID03(self.h5file)
+            reference_scan_id = scan_id[0] if isinstance(scan_id, list) else scan_id
+            scan_params = config(reference_scan_id)
+            if scan_params["motor_names"] is None:
+                self.reader = darling.reader.Darks(self.h5file)
+            elif len(scan_params["motor_names"]) == 1:
+                self.reader = darling.reader.RockingScan(self.h5file)
+            elif len(scan_params["motor_names"]) == 2:
+                self.reader = darling.reader.MosaScan(self.h5file)
+            else:
+                raise ValueError("Could not find a reader for your h5 file")
+
+        number_of_scans = len(scan_id) if isinstance(scan_id, list) else 1
+
+        if number_of_scans == 1:
+            self.data, self.motors = self.reader(scan_id, roi)
+        else:
+            scan_motor_values = np.zeros((len(scan_id),))
+            with h5py.File(self.h5file) as h5file:
+                for i, sid in enumerate(scan_id):
+                    scan_motor_values[i] = h5file[sid][scan_motor][()]
+            print(scan_params)
+            reference_data_block, reference_motors = self.reader(scan_id[0], roi)
+
+            if reference_motors.ndim == 2:
+                motor1 = reference_motors[0, :]
+                motor2 = scan_motor_values
+                motors = np.array(np.meshgrid(motor1, motor2, indexing="ij"))
+            elif reference_motors.ndim == 3:
+                motor1 = reference_motors[0, :, 0]
+                motor2 = reference_motors[1, 0, :]
+                motor3 = scan_motor_values
+                motors = np.array(np.meshgrid(motor1, motor2, motor3, indexing="ij"))
+            else:
+                raise ValueError(
+                    f"Each scan_id must hold a 1D or 2D scan but {reference_motors.ndim}D was found at scan_id={scan_id[0]}"
+                )
+
+            data = np.zeros(
+                (*reference_data_block.data.shape, number_of_scans), np.uint16
+            )
+            data[..., 0] = reference_data_block[...]
+            for i, sid in enumerate(scan_id[1:]):
+                data_block, _ = self.reader(sid, roi)
+                data[..., i + 1] = data_block[...]
+
+            self.reader.scan_params["motor_names"].append(scan_motor)
+            self.reader.scan_params["scan_shape"] = np.array(
+                [*self.reader.scan_params["scan_shape"], number_of_scans]
+            )
+            self.reader.scan_params["integrated_motors"].append(False)
+            self.reader.scan_params["scan_id"] = scan_id
+
+            self.motors = motors
+            self.data = data
 
     def subtract(self, value):
         """Subtract a fixed integer value form the data. Protects against uint16 sign flips.
@@ -265,16 +246,33 @@ class DataSet(object):
         self.kam_kernel_size = size
         return self.kam
 
-    def integrate(self):
-        """Return the summed data stack along the motor dimensions avoiding data stack copying.
+    def integrate(self, axis=None, dtype=np.float32):
+        """Return the summed data stack along the specified axes, avoiding data stack copying.
+
+        If no axis is specified, the integration is performed over all dimensions
+        except the first two, which are assumed to be the detector dimensions.
+
+        Args:
+            axis (:obj:`int` or :obj:`tuple`, optional): The axis or axes along which to integrate.
+                If None, integrates over all axes except the first two.
+            dtype (:obj:`numpy.dtype`, optional): The data type of the output array.
+                Defaults to np.float32.
 
         Returns:
-            (:obj:`numpy array`): integrated frames, a 2D numpy array.
+            :obj:`numpy.ndarray`: Integrated frames, a 2D numpy array of reduced
+                shape and dtype `dtype`.
         """
-        out = np.zeros(
-            (self.data.shape[0], self.data.shape[1]), np.float32
-        )  # avoid casting and copying.
-        integrated_frames = np.sum(self.data, axis=(2, 3), out=out)
+        if axis is None:
+            out = np.zeros((self.data.shape[0], self.data.shape[1]), dtype=dtype)
+            integrated_frames = np.sum(
+                self.data, axis=tuple(range(2, self.data.ndim)), out=out
+            )
+        else:
+            shape = list(self.data.shape)
+            for ax in sorted(np.atleast_1d(axis), reverse=True):
+                shape.pop(ax)
+            out = np.zeros(shape, dtype=dtype)
+            integrated_frames = np.sum(self.data, axis=axis, out=out)
         return integrated_frames
 
     def estimate_mask(

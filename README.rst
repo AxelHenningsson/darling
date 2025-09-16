@@ -37,55 +37,59 @@ Until an associated journal publication is available, if you use this code in yo
 If you are interested in collaborating with us on DFXM data analysis, please reach out to us at: naxhe@dtu.dk
 and we can discuss the possibilities.
 
-Usecase (following the v1.0.0 release)
+Usecase
 ------------------------------------------------
+
+================================================
+Loading & plotting Data
+================================================
+
+Darling collects many useful tools in the properties module.
+
+For example, it is possible to model the angular intensity distribution of a scan using a Gaussian Mixture Model (GMM)
+and then color code the scan based on the first maxima of the GMM using a RGB color map known as a mosaicity map.
+
 
 .. code-block:: python
 
-   import darling
+   import numpy as np
+
+   # read some toy data in
+   path_to_data, _, _ = darling.assets.domains()  # replace with your own data
+   scan_id = "1.1"  # tope level key in the hdf5 file
+   dset = darling.DataSet(path_to_data, scan_id)
+
+   # model the intensity distribution using a GMM
+   features = darling.properties.gaussian_mixture(dset.data, k=4, coordinates=dset.motors)
+
+   # color code the scan based on the first maxima of the GMM
+   first_maxima_mean = np.concatenate(
+      (features["mean_motor1"][..., 0, None], features["mean_motor2"][..., 0, None]),
+      axis=-1,
+   )
+   rgbmap, colorkey, colorgrid = darling.properties.rgb(
+      first_maxima_mean, norm="dynamic", coordinates=dset.motors
+   )
+
+To visualize the resulting mosaicity map, you can use the following code:
+
+
+.. code-block:: python
+
    import matplotlib.pyplot as plt
-   path_to_data, _, _ = darling.assets.mosaicity_scan()
-   reader = darling.reader.MosaScan(path_to_data)
-   dset = darling.DataSet(reader)
-   dset.load_scan(scan_id="1.1")
-   background = dset.estimate_background()
-   dset.subtract(background)
-   mean, covariance = dset.moments()
-   fig, ax = dset.plot.mosaicity()
-   fig.suptitle('Mosaicity Map - a type of colorcoding of the $\chi$ - $\phi$ scan', fontsize=22, y=0.8)
+
+   # plot the resulting mosaicity map
+   plt.style.use('dark_background')
+   fig, ax = plt.subplots(1, 1, figsize=(7,7))
+   im = ax.imshow(rgbmap)
+   plt.tight_layout()
    plt.show()
 
-.. image:: https://github.com/AxelHenningsson/darling/blob/dev/docs/source/images/mosa.png?raw=true
+.. image:: https://github.com/AxelHenningsson/darling/blob/dev/docs/source/images/domains_mosa.png?raw=true
    :align: center
 
-Documentation
-------------------------------------------------
-Darling hosts documentation at https://axelhenningsson.github.io/darling/
 
-
-Release Notes v1.0.0
-------------------------------------------------
-Darling v1.0.0 is now available on the main branch. 
-
-This release features a simplified API for reading h5 files in which
-much of the needed information is automatically extracted.
-
-Moreover, the fundamental representation of the scan motors have been updated
-such that the darling.properties module now operates on 2D grids of coordinates
-in which the floating point values are allowed to be non-uniformly spaced.
-
-This allows for proceesing of data with motor drift, and maximises the precision
-of extracted moments.
-
-For use of the old darling v0.0.0 consider checkout from and older commit:
-
-.. code-block:: bash
-
-   git clone https://github.com/AxelHenningsson/darling.git
-   git checkout afe52
-   cd darling
-   pip install -e .
-
+for more examples see the externally hosted documentation at https://axelhenningsson.github.io/darling/
 
 Installation
 ------------------------------------------------
@@ -121,7 +125,22 @@ you can use it in an interactive notebook you may add the following two commands
    pip install ipykernel
    python -m ipykernel install --user --name=darling
 
-The following snippet has been verified to work on the ESRF slurm cluster 19 Dec 2024 in a browser terminal:
+================================================
+Note on jupyter & the ESRF slurm cluster
+================================================
+
+In the main ESRF slurm Python jupyter kernel it is possible to do the following hack to get the latest `darling` running.
+
+.. code-block:: bash
+
+   git clone https://github.com/AxelHenningsson/darling.git
+   sys.path.insert(0, os.path.abspath('./darling'))
+   import darling
+
+This trick is possible since that all dependencies of `darling` are already installed in the big Python jupyter kernel at ESRF.
+
+
+The following snippet has also been verified to work on the ESRF slurm cluster 19 Dec 2024 in a browser terminal:
 
 .. code-block:: bash
 
@@ -133,5 +152,9 @@ The following snippet has been verified to work on the ESRF slurm cluster 19 Dec
    pip install ipykernel
    python -m ipykernel install --user --name=darling
 
+This appraoch should work on other clusters as well, as long as some user permission to install exists.
 
+Documentation
+------------------------------------------------
+Darling hosts documentation at https://axelhenningsson.github.io/darling/
 

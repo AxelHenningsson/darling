@@ -4,11 +4,20 @@
 
 .. include:: ../../README.rst
 
+
 ======================================
 properties
 ======================================
 
 .. automodule:: darling.properties
+    :members:
+    :show-inheritance:
+
+======================================
+peaksearcher
+======================================
+
+.. automodule:: darling.peaksearcher
     :members:
     :show-inheritance:
 

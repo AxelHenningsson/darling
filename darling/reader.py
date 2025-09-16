@@ -11,9 +11,8 @@ all features of darling.
 import re
 
 import h5py
-import hdf5plugin
-import matplotlib.pyplot as plt
 import numpy as np
+
 import darling
 
 
@@ -113,41 +112,43 @@ class MosaScan(Reader):
             data = data.reshape(
                 (*self.scan_params["scan_shape"], data.shape[-2], data.shape[-1])
             )
-            data = data.swapaxes(0, 2)
+            data = data.swapaxes(0, -2)
             data = data.swapaxes(1, -1)
+
+        # ensure that the data is on a monotonically increasing grid (zigzag scans etc)
+        # TODO: this is an inplace-operation, and will produce a temporary copy of the entire dataset....
+        s = np.array(
+            list(zip(motors[0].flatten(), motors[1].flatten())),
+            dtype=[("m1", "f8"), ("m2", "f8")],
+        )
+        frame_indices = np.argsort(s, order=["m1", "m2"])
+        a, b, m, n = data.shape
+        data = data.reshape(a, b, m * n)[..., frame_indices].reshape(a, b, m, n)
+        motors[0, :] = motors[0, :].flatten()[frame_indices].reshape(m, n)
+        motors[1, :] = motors[1, :].flatten()[frame_indices].reshape(m, n)
 
         return data, motors
 
 
-class EnergyScan(Reader):
-    """Load a 2D energy scan. This is a id03 specific implementation matphing a specific beamline energy scan macro.
+class Darks(MosaScan):
+    """Load a series of motorless images. This is a id03 specific implementation matphing aspecific beamline mosa scan macro.
+
+    Typically used to red dark images collected with a loopscan.
 
     NOTE: This reader was specifically written for data collection at id03. For general purpose reading of data you
     must implement your own reader class. The exact reding of data is strongly dependent on data aqusition scheme and
-    data structure implementation. You may view the implemented darling readers as example templates for implementing
-    your own reader.
+    data structure implementation.
 
     Args:
-        abs_path_to_h5_file str (:obj:`str`): absolute path to one of the h5 file with the diffraction images. FOr an energy
-            scan there is one file per layer in z. This may be any one of these paths. Provided the file name ends with
-            layer_0.h5 the file path will be rebuilt upon read call.
+        abs_path_to_h5_file str (:obj:`str`): absolute path to the h5 file with the diffraction images.
     """
-
-    def __init__(self, abs_path_to_h5_file):
-        self.abs_path_to_h5_file = abs_path_to_h5_file
-        self.config = darling.metadata.ID03(abs_path_to_h5_file)
-        self.scan_params = None
-
-    def _get_layer_path(self, scan_id):
-        layer_number = str(int(scan_id[0]) - 1)
-        layer_tag = r"layer_" + layer_number + ".h5"
-        return re.sub(r"layer_\d+\.h5", layer_tag, self.abs_path_to_h5_file)
 
     def __call__(self, scan_id, roi=None):
         """Load a scan
 
-        this loads the mosa data array with shape N,N,m,n where N is the detector dimension and
-        m,n are the motor dimensions as ordered in the self.motor_names.
+        this loads the static scan data array with shape a,b,m where a,b are the detector dimensions and
+        m is the number of (motorless) images. You may view the implemented darling readers as example templates
+        for implementing your own reader.
 
         Args:
             scan_id (:obj:`str`):scan id to load from, e.g 1.1, 2.1 etc...
@@ -155,51 +156,94 @@ class EnergyScan(Reader):
                 defaults to None, in which case all data is loaded
 
         Returns:
-            data, motors : data of shape (a,b,m,n) and motors tuple of len=m and len=n
+            data, motors : data of shape=(a,b,m) and an empty motor array.
 
         """
-        abs_path_to_h5_file = self._get_layer_path(scan_id)
 
-        with h5py.File(abs_path_to_h5_file, "r") as h5f:
-            key0 = list(h5f.keys())[0]
-            self.config.abs_path_to_h5_file = abs_path_to_h5_file
-            self.scan_params = self.config(key0)
+        self.scan_params = self.config(scan_id)
 
-            _, det_rows, det_cols = h5f[key0][self.scan_params["data_name"]].shape
-            n_energy = len(h5f.keys())
-            n_phis = self.scan_params["scan_shape"][0]
+        with h5py.File(self.abs_path_to_h5_file, "r") as h5f:
+            motors = np.array([], dtype=np.float32)
 
-            if roi is None:
-                data = np.zeros((det_rows, det_cols, n_phis, n_energy), dtype=np.uint16)
-            else:
+            if roi:
                 r1, r2, c1, c2 = roi
-                data = np.zeros((r2 - r1, c2 - c1, n_phis, n_energy), dtype=np.uint16)
+                data = h5f[scan_id][self.scan_params["data_name"]][:, r1:r2, c1:c2]
+            else:
+                data = h5f[scan_id][self.scan_params["data_name"]][:, :, :]
 
-            energy = np.zeros((n_phis, n_energy))
-            phi = np.zeros((n_phis, n_energy))
+            data = data.reshape(
+                (*self.scan_params["scan_shape"], data.shape[-2], data.shape[-1])
+            )
+            data = data.swapaxes(0, -2)
+            data = data.swapaxes(1, -1)
 
-            ccmth_motor = self.config.motor_map["ccmth"]
-            phi_motor = self.scan_params["motor_names"][0]
+        return data, motors
 
-            # second motor is assumed to be integrated in 1 step
-            if self.scan_params["scan_shape"][1] != 1:
-                raise NotImplementedError(
-                    "The scan apears to be 3D with 2 angular motors + energy"
-                )
 
-            for i, key in enumerate(h5f.keys()):  # iterates over energies.
-                phi_stack = h5f[key][self.scan_params["data_name"]][:, :, :]
-                phi_stack = np.swapaxes(phi_stack, 0, 1)
-                phi_stack = np.swapaxes(phi_stack, 1, 2)
-                if roi is None:
-                    data[:, :, :, i] = phi_stack
-                else:
-                    data[:, :, :, i] = phi_stack[r1:r2, c1:c2, :]
+class RockingScan(MosaScan):
+    """Load a 1D rocking scan. This is a id03 specific implementation matphing aspecific beamline mosa scan macro.
 
-                energy[:, i] = h5f[key][ccmth_motor][()]
-                phi[:, i] = h5f[key][phi_motor][:]
+    A rocking scan is simply a set of 2D detector images collected at different rocking angles of the goniometer.
 
-        motors = np.array([phi, energy]).astype(np.float32)
+    NOTE: This reader was specifically written for data collection at id03. For general purpose reading of data you
+    must implement your own reader class. The exact reding of data is strongly dependent on data aqusition scheme and
+    data structure implementation.
+
+    Args:
+        abs_path_to_h5_file str (:obj:`str`): absolute path to the h5 file with the diffraction images.
+    """
+
+    def __call__(self, scan_id, roi=None):
+        """Load a scan
+
+        this loads the rocking scan data array with shape a,b,m where a,b are the detector dimensions and
+        m is the motor dimensions. You may view the implemented darling readers as example templates
+        for implementing your own reader.
+
+        Args:
+            scan_id (:obj:`str`):scan id to load from, e.g 1.1, 2.1 etc...
+            roi (:obj:`tuple` of :obj:`int`): row_min row_max and column_min and column_max,
+                defaults to None, in which case all data is loaded
+
+        Returns:
+            data, motors : data of shape=(a,b,m) and the
+                motor arrays as an array of shape=(k, n)
+                where k is the number of motors used in the
+                scan (i.e k=1 for a rocking scan).
+
+        """
+
+        self.scan_params = self.config(scan_id)
+
+        with h5py.File(self.abs_path_to_h5_file, "r") as h5f:
+            # Read in motrs
+            motors = [
+                h5f[scan_id][mn][...].reshape(*self.scan_params["scan_shape"])
+                for mn in self.scan_params["motor_names"]
+            ]
+            motors = np.array(motors).astype(np.float32)
+
+            # read in data and reshape
+            if roi:
+                r1, r2, c1, c2 = roi
+                data = h5f[scan_id][self.scan_params["data_name"]][:, r1:r2, c1:c2]
+            else:
+                data = h5f[scan_id][self.scan_params["data_name"]][:, :, :]
+
+            data = data.reshape(
+                (*self.scan_params["scan_shape"], data.shape[-2], data.shape[-1])
+            )
+            data = data.swapaxes(0, -2)
+            data = data.swapaxes(1, -1)
+
+        # ensure that the data is on a monotonically increasing grid (zigzag scans etc)
+        # TODO: this is an inplace-operation, and will produce a temporary copy of the entire dataset....
+
+        # ensure that the data is on a monotonically increasing grid (zigzag scans etc)
+        frame_indices = np.argsort(motors[0].flatten())
+        a, b, m = data.shape
+        data = data[..., frame_indices]
+        motors[0, :] = motors[0, frame_indices]
 
         return data, motors
 
