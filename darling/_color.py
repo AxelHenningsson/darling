@@ -94,7 +94,7 @@ def colorkey(norm, resolution=512):
             X.shape=Y.shape=colorkey.shape=(resolution, resolution).
     """
     ang_grid = np.linspace(-1, 1, resolution) / (np.sqrt(2) + 1e-8)
-    ang1, ang2 = np.meshgrid(ang_grid, ang_grid, indexing='ij')
+    ang1, ang2 = np.meshgrid(ang_grid, ang_grid, indexing="ij")
     colorkey = rgb(ang1, ang2)
     x = np.linspace(norm[0, 0], norm[0, 1], colorkey.shape[0])
     y = np.linspace(norm[1, 0], norm[1, 1], colorkey.shape[1])

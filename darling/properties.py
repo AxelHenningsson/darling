@@ -218,26 +218,28 @@ def moments(data, coordinates, method="statistical"):
     NOTE: Computation is done in parallel using shared memory with numba just
         in time compiling. For this reason the data array must be of type numpy uint16.
 
-    Example in a DFXM mosaicity-scan setting using random arrays:
+    Example in a DFXM mosaicity-scan setting using a small dataset, showing the difference between statistical and fitted moments:
 
-    .. code-block:: python
+   .. code-block:: python
 
-        import numpy as np
-        import darling
+        import matplotlib.pyplot as plt
+        from darling import assets, properties
 
-        # create coordinate arrays
-        phi = np.linspace(-1, 1, 8)
-        chi = np.linspace(-1, 1, 16)
-        coordinates = np.meshgrid(phi, chi, indexing='ij')
+        # load small real dataset
+        _, data, coordinates = assets.mosaicity_scan("1.1")
 
-        # create a random data array
-        detector_dim = (128, 128)
-        data = 64000 * np.random.rand(*detector_dim, len(phi), len(chi))
+        # 1) fast statistical moments
+        mu_stat, cov_stat = properties.moments(data, coordinates, method="statistical")
 
-        data = data.astype(np.uint16)
+        # 2) Gaussian-fitted moments
+        mu_fit,  cov_fit  = properties.moments(data, coordinates, method="gaussian")
 
-        # compute the first and second moments
-        mean, covariance = darling.properties.moments(data, coordinates)
+        # visualize motor-1 mean and the difference
+        plt.style.use("dark_background")
+        fig, ax = plt.subplots(1, 2, figsize=(8, 4))
+        im0 = ax[0].imshow(mu_stat[..., 0]); ax[0].set_title("mean motor1 (stat)")
+        im1 = ax[1].imshow(mu_fit[..., 0]);  ax[1].set_title("mean motor1 (gaussian)")
+        plt.tight_layout(); plt.show()
 
 
     Args:
@@ -779,9 +781,9 @@ def gaussian_mixture(data, k=8, coordinates=None):
 
     assert k > 0, "k must be larger than 0"
     assert data.dtype == np.uint16, "data must be of type uint16"
-    assert (len(data.shape) == 4) or (len(data.shape) == 3), (
-        "data array must be 3D or 4D"
-    )
+    assert (len(data.shape) == 4) or (
+        len(data.shape) == 3
+    ), "data array must be 3D or 4D"
 
     if coordinates is not None:
         if len(coordinates) == 1:
@@ -790,9 +792,9 @@ def gaussian_mixture(data, k=8, coordinates=None):
             # requires some reshaping to interface with the peaksearcher
             # numba functions.
             assert len(coordinates.shape) == 2, "coordinate array shape not reckognized"
-            assert len(coordinates[0]) == data.shape[2], (
-                "1d scan shape is a mismatch with the data array"
-            )
+            assert (
+                len(coordinates[0]) == data.shape[2]
+            ), "1d scan shape is a mismatch with the data array"
             _coordinates = np.zeros((2, coordinates.shape[1], 1))
             _coordinates[0] = coordinates.T
             _coordinates[1] = 1
@@ -806,18 +808,18 @@ def gaussian_mixture(data, k=8, coordinates=None):
         elif len(coordinates) == 2:
             assert len(coordinates[0].shape) == 2, "2D scan coordinates must be 2D"
             assert len(coordinates[1].shape) == 2, "2D scan coordinates must be 2D"
-            assert coordinates[0].shape[0] == data.shape[2], (
-                "2D scan coordinates must match data shape"
-            )
-            assert coordinates[0].shape[1] == data.shape[3], (
-                "2D scan coordinates must match data shape"
-            )
-            assert coordinates[1].shape[0] == data.shape[2], (
-                "2D scan coordinates must match data shape"
-            )
-            assert coordinates[1].shape[1] == data.shape[3], (
-                "2D scan coordinates must match data shape"
-            )
+            assert (
+                coordinates[0].shape[0] == data.shape[2]
+            ), "2D scan coordinates must match data shape"
+            assert (
+                coordinates[0].shape[1] == data.shape[3]
+            ), "2D scan coordinates must match data shape"
+            assert (
+                coordinates[1].shape[0] == data.shape[2]
+            ), "2D scan coordinates must match data shape"
+            assert (
+                coordinates[1].shape[1] == data.shape[3]
+            ), "2D scan coordinates must match data shape"
             props = peaksearcher._gaussian_mixture(data, k, coordinates)
         else:
             raise NotImplementedError("coordinates must be a tuple of length 1 or 2")
