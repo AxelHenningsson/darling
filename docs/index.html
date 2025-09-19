@@ -788,6 +788,444 @@ position of the i-th strongest peak etc.</p>
 </dd></dl>
 
 </section>
+<section id="module-darling.transforms">
+<span id="transforms"></span><h2>transforms<a class="headerlink" href="#module-darling.transforms" title="Link to this heading">#</a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="darling.transforms.reciprocal_basis">
+<span class="sig-prename descclassname"><span class="pre">darling.transforms.</span></span><span class="sig-name descname"><span class="pre">reciprocal_basis</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">lattice_parameters</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">degrees</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/AxelHenningsson/darling/tree/main/darling/transforms.py/"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darling.transforms.reciprocal_basis" title="Link to this definition">#</a></dt>
+<dd><p>Calculate the reciprocal basis vectors.</p>
+<p>Calculate B matrix such that B^-T contains the reals space lattice vectors as columns.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>lattice_parameters</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">numpy</span> <span class="pre">array</span></code> or <code class="xref py py-obj docutils literal notranslate"><span class="pre">list</span></code>) – unit cell parameters [a,b,c,alpha,beta,gamma].</p></li>
+<li><p><strong>degrees</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">bool</span></code>, optional) – If True, the angles (alpha, beta, gamma) are assumed to be in degrees, otherwise they are in radians. Defaults to True.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The B matrix. <code class="docutils literal notranslate"><span class="pre">shape=(3,3)</span></code></p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>B (<code class="xref py py-obj docutils literal notranslate"><span class="pre">numpy</span> <span class="pre">array</span></code>)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="darling.transforms.diffraction_vectors">
+<span class="sig-prename descclassname"><span class="pre">darling.transforms.</span></span><span class="sig-name descname"><span class="pre">diffraction_vectors</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">grain_orientation</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lattice_parameters</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hkl</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mu</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">omega</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">chi</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">phi</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">frame</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'lab'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mask</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">degrees</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/AxelHenningsson/darling/tree/main/darling/transforms.py/"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darling.transforms.diffraction_vectors" title="Link to this definition">#</a></dt>
+<dd><p>Compute the diffraction vectors over a spatial field.</p>
+<p>Diffraction vectors, G, are defined from the Laue equation:</p>
+<blockquote>
+<div><p>G_lab = O &#64; U &#64; B &#64; hkl</p>
+</div></blockquote>
+<p>where O is the goniometer rotation, U is the grain orientation, B is the reciprocal basis
+and hkl are the integer Miller indices. The vector</p>
+<blockquote>
+<div><p>G_crystal = B &#64; hkl</p>
+</div></blockquote>
+<p>is the diffraction vector in the crystal frame and the vector</p>
+<blockquote>
+<div><p>G_sample = U &#64; G_crystal</p>
+</div></blockquote>
+<p>is the diffraction vector in the sample frame. The rotation O is the goniometer rotation which maps
+from sample space to lab space as</p>
+<blockquote>
+<div><p>G_lab = O &#64; G_sample</p>
+</div></blockquote>
+<p>The lab reference frame is defined with x along the x-ray beam propagation direction, z towards the
+roof and y traverse, such that x, y and z form a right-handed coordinate system. The definition of
+U and B follows 3DXRD conventions.</p>
+<p>See also Poulsen 2004: <a class="reference external" href="https://orbit.dtu.dk/en/publications/3dxrd-a-new-probe-for-materials-science">https://orbit.dtu.dk/en/publications/3dxrd-a-new-probe-for-materials-science</a></p>
+<p>NOTE: Sometimes G is denoted as Q in DFXM.</p>
+<p>Here, any of the input angles can be a scalar or an array. The largest dimension of the input angles will be used
+to determine the shape of the output diffraction vector field. For instace if mu is mu.shape=(m,n) then the output
+diffraction vector field will have shape=(m,n,3) etc.</p>
+<dl class="simple">
+<dt>Computation is done in the following order:</dt><dd><ol class="arabic simple">
+<li><p>Convert hkl into the crystal frame via reciprocal_basis.</p></li>
+<li><p>Convert crystal diffraction vectors into the sample frame via grain_orientation.</p></li>
+<li><p>Convert sample diffraction vectors into the lab frame via goniometer.total_rotation (using the mean angular position of goniometer).</p></li>
+<li><p>Convert lab diffraction vectors into the requested frame via _from_lab_to_frame.</p></li>
+</ol>
+</dd>
+</dl>
+<p>NOTE: if no mask is provided a mask will be impliclty created as ~np.isnan(angle) where angle is one of mu, omega, chi or phi,
+depending on which one/ones of the input angles have a size&gt;1</p>
+<p>Example use-case for a mosaicity-scan:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">darling</span>
+
+<span class="n">U0</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span>
+    <span class="p">[</span>
+        <span class="p">[</span><span class="mf">0.83550027</span><span class="p">,</span> <span class="mf">0.33932153</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.43220389</span><span class="p">],</span>
+        <span class="p">[</span><span class="mf">0.01167249</span><span class="p">,</span> <span class="mf">0.77541728</span><span class="p">,</span> <span class="mf">0.63134127</span><span class="p">],</span>
+        <span class="p">[</span><span class="mf">0.54936605</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.53253069</span><span class="p">,</span> <span class="mf">0.64390062</span><span class="p">],</span>
+    <span class="p">]</span>
+<span class="p">)</span>
+<span class="n">hkl</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
+<span class="n">lattice_parameters</span> <span class="o">=</span> <span class="p">[</span><span class="mf">4.05</span><span class="p">,</span> <span class="mf">4.05</span><span class="p">,</span> <span class="mf">4.05</span><span class="p">,</span> <span class="mi">90</span><span class="p">,</span> <span class="mi">90</span><span class="p">,</span> <span class="mi">90</span><span class="p">]</span>
+<span class="n">mosa</span> <span class="o">=</span> <span class="n">darling</span><span class="o">.</span><span class="n">assets</span><span class="o">.</span><span class="n">mosa_field</span><span class="p">()</span>
+
+<span class="n">diff_vecs</span> <span class="o">=</span> <span class="n">darling</span><span class="o">.</span><span class="n">transforms</span><span class="o">.</span><span class="n">diffraction_vectors</span><span class="p">(</span>
+    <span class="n">grain_orientation</span><span class="o">=</span><span class="n">U0</span><span class="p">,</span>
+    <span class="n">lattice_parameters</span><span class="o">=</span><span class="n">lattice_parameters</span><span class="p">,</span>
+    <span class="n">hkl</span><span class="o">=</span><span class="n">hkl</span><span class="p">,</span>
+    <span class="n">mu</span><span class="o">=</span><span class="n">mosa</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span>
+    <span class="n">omega</span><span class="o">=</span><span class="mf">17.83</span><span class="p">,</span>
+    <span class="n">chi</span><span class="o">=</span><span class="n">mosa</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span>
+    <span class="n">phi</span><span class="o">=</span><span class="mf">0.61</span><span class="p">,</span>
+    <span class="n">frame</span><span class="o">=</span><span class="s2">&quot;sample&quot;</span><span class="p">,</span>
+    <span class="n">mask</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">degrees</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>grain_orientation</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">numpy</span> <span class="pre">array</span></code> or <code class="xref py py-obj docutils literal notranslate"><span class="pre">scipy.spatial.transform.Rotation</span></code>) – The grain orientation as shape=(3,3) matrix or rotation object.</p></li>
+<li><p><strong>lattice_parameters</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">numpy</span> <span class="pre">array</span></code>) – The lattice parameters. shape=(6,)</p></li>
+<li><p><strong>hkl</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">numpy</span> <span class="pre">array</span></code>) – The hkl indices. shape=(3,)</p></li>
+<li><p><strong>mu</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">float</span></code> or <code class="xref py py-obj docutils literal notranslate"><span class="pre">numpy.ndarray</span></code>) – The mu angle. shape=(n,) or float</p></li>
+<li><p><strong>omega</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">float</span></code> or <code class="xref py py-obj docutils literal notranslate"><span class="pre">numpy.ndarray</span></code>) – The omega angle. shape=(n,) or float.</p></li>
+<li><p><strong>chi</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">float</span></code> or <code class="xref py py-obj docutils literal notranslate"><span class="pre">numpy.ndarray</span></code>) – The chi angle. shape=(n,) or float.</p></li>
+<li><p><strong>phi</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">float</span></code> or <code class="xref py py-obj docutils literal notranslate"><span class="pre">numpy.ndarray</span></code>) – The phi angle. shape=(n,) or float..</p></li>
+<li><p><strong>frame</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">str</span></code>, optional) – The frame of the diffraction vectors. Defaults to “lab”. Options are “lab”, “sample” or “crystal”.</p></li>
+<li><p><strong>mask</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">bool</span></code>, optional) – The mask to apply to the diffraction vectors. Defaults to None.</p></li>
+<li><p><strong>degrees</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">bool</span></code>, optional) – If True, the angles are assumed to be in degrees, otherwise they are in radians. Defaults to True.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><dl class="simple">
+<dt>The diffraction vectors as a field. shape=(n,3) or shape=(m,n,3) etc. depending on input angles. The reference</dt><dd><p>frame of the diffraction vectors is the one specified by the frame argument.</p>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">numpy.ndarray</span></code></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="darling.transforms.align_vector_bundle">
+<span class="sig-prename descclassname"><span class="pre">darling.transforms.</span></span><span class="sig-name descname"><span class="pre">align_vector_bundle</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">target_vector</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">vector_bundle</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/AxelHenningsson/darling/tree/main/darling/transforms.py/"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darling.transforms.align_vector_bundle" title="Link to this definition">#</a></dt>
+<dd><p>Align a target vector with a vector bundle.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>target_vector</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">numpy.ndarray</span></code>) – The target vector. shape=(3,)</p></li>
+<li><p><strong>vector_bundle</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">numpy.ndarray</span></code>) – The vector bundle. shape=(n,3)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><dl class="simple">
+<dt>The minimal rotations needed to align the target vector with each</dt><dd><p>vector in the vector bundle. len=n</p>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">scipy.spatial.transform.Rotation</span></code></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="darling.transforms.minimal_norm_rotation">
+<span class="sig-prename descclassname"><span class="pre">darling.transforms.</span></span><span class="sig-name descname"><span class="pre">minimal_norm_rotation</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">diffraction_vector_field</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lattice_parameters</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hkl</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">grain_orientation</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mask</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rotation_representation</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'object'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">degrees</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">difference_rotation</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/AxelHenningsson/darling/tree/main/darling/transforms.py/"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darling.transforms.minimal_norm_rotation" title="Link to this definition">#</a></dt>
+<dd><p>Find the smallest rotation elements in SO3 that aligns a mean diffraction vector with a field of target diffraction vectors.</p>
+<p>This function is usefull when estimating local grain orientations form an angular DFXM scan.</p>
+<p>Given that the input <code class="docutils literal notranslate"><span class="pre">diffraction_vector_field</span></code> are defomred versions of a fixed diffraction vector,</p>
+<blockquote>
+<div><p>G0_sample = <code class="docutils literal notranslate"><span class="pre">grain_orientation</span></code> &#64; B &#64; hkl</p>
+</div></blockquote>
+<p>This function finds orientation elements that can perturb <code class="docutils literal notranslate"><span class="pre">grain_orientation</span></code> such that G0_sample is aligned with the
+input <code class="docutils literal notranslate"><span class="pre">diffraction_vector_field</span></code> at each point. I.e the output rotations represent the local grain orientation, U=U(x)
+computed as a sequential transform, first rotating to the <code class="docutils literal notranslate"><span class="pre">grain_orientation</span></code>, and then applying the incremental rotations
+to reach each diffraction vector in the <code class="docutils literal notranslate"><span class="pre">diffraction_vector_field</span></code>. (when <code class="docutils literal notranslate"><span class="pre">difference_rotation</span></code> is True, only the
+incremental part of the rotation is returned)</p>
+<p>NOTE: When the <code class="docutils literal notranslate"><span class="pre">grain_orientation</span></code> is the identity matrix, the input <code class="docutils literal notranslate"><span class="pre">diffraction_vector_field</span></code> is expected to be in crystal coordinates.
+Otherwise it is expected to be in sample coordinates.</p>
+<p>Example use-case for a mosaicity-scan:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">darling</span>
+
+<span class="n">U0</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span>
+    <span class="p">[</span>
+        <span class="p">[</span><span class="mf">0.83550027</span><span class="p">,</span> <span class="mf">0.33932153</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.43220389</span><span class="p">],</span>
+        <span class="p">[</span><span class="mf">0.01167249</span><span class="p">,</span> <span class="mf">0.77541728</span><span class="p">,</span> <span class="mf">0.63134127</span><span class="p">],</span>
+        <span class="p">[</span><span class="mf">0.54936605</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.53253069</span><span class="p">,</span> <span class="mf">0.64390062</span><span class="p">],</span>
+    <span class="p">]</span>
+<span class="p">)</span>
+<span class="n">hkl</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
+<span class="n">lattice_parameters</span> <span class="o">=</span> <span class="p">[</span><span class="mf">4.05</span><span class="p">,</span> <span class="mf">4.05</span><span class="p">,</span> <span class="mf">4.05</span><span class="p">,</span> <span class="mi">90</span><span class="p">,</span> <span class="mi">90</span><span class="p">,</span> <span class="mi">90</span><span class="p">]</span>
+<span class="n">mosa</span> <span class="o">=</span> <span class="n">darling</span><span class="o">.</span><span class="n">assets</span><span class="o">.</span><span class="n">mosa_field</span><span class="p">()</span>
+
+<span class="n">diff_vecs</span> <span class="o">=</span> <span class="n">darling</span><span class="o">.</span><span class="n">transforms</span><span class="o">.</span><span class="n">diffraction_vectors</span><span class="p">(</span>
+    <span class="n">grain_orientation</span><span class="o">=</span><span class="n">U0</span><span class="p">,</span>
+    <span class="n">lattice_parameters</span><span class="o">=</span><span class="n">lattice_parameters</span><span class="p">,</span>
+    <span class="n">hkl</span><span class="o">=</span><span class="n">hkl</span><span class="p">,</span>
+    <span class="n">mu</span><span class="o">=</span><span class="n">mosa</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span>
+    <span class="n">omega</span><span class="o">=</span><span class="mf">17.83</span><span class="p">,</span>
+    <span class="n">chi</span><span class="o">=</span><span class="n">mosa</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span>
+    <span class="n">phi</span><span class="o">=</span><span class="mf">0.61</span><span class="p">,</span>
+    <span class="n">frame</span><span class="o">=</span><span class="s2">&quot;sample&quot;</span><span class="p">,</span>
+    <span class="n">mask</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">degrees</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="n">rotation_field</span> <span class="o">=</span> <span class="n">darling</span><span class="o">.</span><span class="n">transforms</span><span class="o">.</span><span class="n">minimal_norm_rotation</span><span class="p">(</span>
+    <span class="n">diff_vecs</span><span class="p">,</span>
+    <span class="n">lattice_parameters</span><span class="p">,</span>
+    <span class="n">hkl</span><span class="p">,</span>
+    <span class="n">grain_orientation</span><span class="o">=</span><span class="n">U0</span><span class="p">,</span>
+    <span class="n">mask</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">rotation_representation</span><span class="o">=</span><span class="s2">&quot;object&quot;</span><span class="p">,</span>
+    <span class="n">degrees</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">difference_rotation</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>diffraction_vector_field</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">numpy.ndarray</span></code>) – The diffraction vector field. shape=(n,3) or shape=(m,n,3) etc. When a <cite>grain_orientation</cite> is provided,
+the <cite>diffraction_vector_field</cite> is expected to be in sample frame. Otherwise it is expected to be in crystal coordinates.</p></li>
+<li><p><strong>lattice_parameters</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">numpy</span> <span class="pre">array</span></code>) – The lattice parameters. shape=(6,)</p></li>
+<li><p><strong>hkl</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">numpy</span> <span class="pre">array</span></code>) – The hkl indices. shape=(3,)</p></li>
+<li><p><strong>grain_orientation</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">numpy</span> <span class="pre">array</span></code> or <code class="xref py py-obj docutils literal notranslate"><span class="pre">scipy.spatial.transform.Rotation</span></code>, optional) – The grain orientation as shape=(3,3) matrix or rotation object. Defaults to <cite>np.eye(3)</cite>
+in which case the input <cite>diffraction_vector_field</cite> is expected to be in crystal coordinates. Otherwise <cite>diffraction_vector_field</cite> is expected to be in sample coordinates.</p></li>
+<li><p><strong>mask</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">bool</span></code>, optional) – The mask to apply to the diffraction vectors. Defaults to None.</p></li>
+<li><p><strong>rotation_representation</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">str</span></code>, optional) – The representation of the rotation. Defaults to “object”. Options are “object”, “quat”, “matrix”, “rotvec”. Additionally, “euler-seq”
+can be passed where seq are 3 characters belonging to the set {‘X’, ‘Y’, ‘Z’} for intrinsic rotations, or {‘x’, ‘y’, ‘z’}
+for extrinsic rotations. Adjacent axes cannot be the same. Extrinsic and intrinsic rotations cannot be mixed in one
+function call. This is a wrapper around scipy.spatial.transform.Rotation, for more details see the documentation for that class:
+<a class="reference external" href="https://docs.scipy.org/doc/scipy/reference/generated/scipy.spatial.transform.Rotation.html">https://docs.scipy.org/doc/scipy/reference/generated/scipy.spatial.transform.Rotation.html</a></p></li>
+<li><p><strong>degrees</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">bool</span></code>, optional) – If True, the angles are assumed to be in degrees, otherwise they are in radians. Defaults to True.</p></li>
+<li><p><strong>difference_rotation</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">bool</span></code>, optional) – If True, an incremental rotation is returned representing the difference rotation needed to bring the reference diffraction vector
+to the input <cite>diffraction_vector_field</cite>. If False, the full rotation is returned i.e the rotations represents the local grain orientation, U=U(x). Defaults to False.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The minimal norm rotations. shape=(n,3) or shape=(m,n,3) etc.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">numpy.ndarray</span></code></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="darling.transforms.as_rotation_representation">
+<span class="sig-prename descclassname"><span class="pre">darling.transforms.</span></span><span class="sig-name descname"><span class="pre">as_rotation_representation</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">rotation</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rotation_representation</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">degrees</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/AxelHenningsson/darling/tree/main/darling/transforms.py/"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darling.transforms.as_rotation_representation" title="Link to this definition">#</a></dt>
+<dd><p>Convert the rotation to the requested representation.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>rotation</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">scipy.spatial.transform.Rotation</span></code>) – The rotation to convert.</p></li>
+<li><p><strong>rotation_representation</strong> (<em>str</em>) – The representation of the rotation. Options are “object”, “quat”, “matrix”, “rotvec”. Additionally, “euler-seq”</p></li>
+<li><p><strong>{'X'</strong> (<em>can be passed where seq are 3 characters belonging to the set</em>)</p></li>
+<li><p><strong>'Y'</strong></p></li>
+<li><p><strong>rotations</strong> (<em>'Z'} for intrinsic</em>)</p></li>
+<li><p><strong>{'x'</strong> (<em>or</em>)</p></li>
+<li><p><strong>'y'</strong></p></li>
+<li><p><strong>'z'}</strong></p></li>
+<li><p><strong>one</strong> (<em>for extrinsic rotations. Adjacent axes cannot be the same. Extrinsic and intrinsic rotations cannot be mixed in</em>)</p></li>
+<li><p><strong>scipy.spatial.transform.Rotation</strong> (<em>function call. This is a wrapper around</em>)</p></li>
+<li><p><strong>class</strong> (<em>for more details see the documentation for that</em>)</p></li>
+<li><p><strong>https</strong> – //docs.scipy.org/doc/scipy/reference/generated/scipy.spatial.transform.Rotation.html</p></li>
+<li><p><strong>degrees</strong> (<em>bool</em><em>, </em><em>optional</em>) – If True, the angles are assumed to be in degrees, otherwise they are in radians. Defaults to True. Only used for euler-seq.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The rotation in the requested representation. Dimensions will match the input array.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">scipy.spatial.transform.Rotation</span></code></p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+<section id="module-darling.goniometer">
+<span id="goniometer"></span><h2>goniometer<a class="headerlink" href="#module-darling.goniometer" title="Link to this heading">#</a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="darling.goniometer.total_rotation">
+<span class="sig-prename descclassname"><span class="pre">darling.goniometer.</span></span><span class="sig-name descname"><span class="pre">total_rotation</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mu</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">omega</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">chi</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">phi</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">degrees</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rotation_representation</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'object'</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/AxelHenningsson/darling/tree/main/darling/goniometer.py/"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darling.goniometer.total_rotation" title="Link to this definition">#</a></dt>
+<dd><p>Goniometer rotation for the ID03 DFXM microscope (september 2025).</p>
+<p>This class is currently implemneted for the case of Dark Field X-ray Microscopy (DFXM) where
+the gonimeter/hexapod has 4 degrees of freedom (mu, omega, chi, phi). Stacked as:</p>
+<blockquote>
+<div><ol class="arabic simple">
+<li><p>base : mu</p></li>
+<li><p>bottom : omega</p></li>
+<li><p>top 1    : chi</p></li>
+<li><p>top 2    : phi</p></li>
+</ol>
+</div></blockquote>
+<p>Here mu is a rotation about the negative y-axis, omega is a positive rotation about the
+z-axis, chi is a positive rotation about the x-axis, and phi is a positive rotation about
+the y-axis.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>mu</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">float</span></code> or <code class="xref py py-obj docutils literal notranslate"><span class="pre">numpy.ndarray</span></code>) – Goniometer angle for the base cradle motor, mu. shape=(n,) or float.</p></li>
+<li><p><strong>omega</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">float</span></code> or <code class="xref py py-obj docutils literal notranslate"><span class="pre">numpy.ndarray</span></code>) – Goniometer angle for omega motor. shape=(n,) or float.</p></li>
+<li><p><strong>chi</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">float</span></code> or <code class="xref py py-obj docutils literal notranslate"><span class="pre">numpy.ndarray</span></code>) – Goniometer angle for chi motor. shape=(n,) or float.</p></li>
+<li><p><strong>phi</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">float</span></code> or <code class="xref py py-obj docutils literal notranslate"><span class="pre">numpy.ndarray</span></code>) – Goniometer angle for the top motor, phi. shape=(n,) or float.</p></li>
+<li><p><strong>degrees</strong> (<em>bool</em><em>, </em><em>optional</em>) – If True, the angles are assumed to be in degrees, otherwise they are in radians. Defaults to True.</p></li>
+<li><p><strong>rotation_representation</strong> (<em>str</em><em>, </em><em>optional</em>) – The representation of the rotation. Defaults to “object” in which case the rotation is</p></li>
+<li><p><strong>&quot;quat&quot;</strong> (<em>returned as a scipy.spatial.transform.Rotation object. Other options are</em>)</p></li>
+<li><p><strong>&quot;matrix&quot;</strong></p></li>
+<li><p><strong>Additoinally</strong> (<em>&quot;rotvec&quot;.</em>)</p></li>
+<li><p><strong>&quot;euler-seq&quot;</strong></p></li>
+<li><p><strong>{'X'</strong> (<em>can be passed where seq are 3 characters belonging to the set</em>)</p></li>
+<li><p><strong>'Y'</strong></p></li>
+<li><p><strong>rotations</strong> (<em>'Z'} for intrinsic</em>)</p></li>
+<li><p><strong>{'x'</strong> (<em>or</em>)</p></li>
+<li><p><strong>'y'</strong></p></li>
+<li><p><strong>'z'}</strong></p></li>
+<li><p><strong>one</strong> (<em>for extrinsic rotations. Adjacent axes cannot be the same. Extrinsic and intrinsic rotations cannot be mixed in</em>)</p></li>
+<li><p><strong>scipy.spatial.transform.Rotation</strong> (<em>function call. This is a wrapper around</em>)</p></li>
+<li><p><strong>class</strong> (<em>for more details see the documentation for that</em>)</p></li>
+<li><p><strong>https</strong> – //docs.scipy.org/doc/scipy/reference/generated/scipy.spatial.transform.Rotation.html</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The total rotation of the stage. Dimensions will match the largest input array.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">scipy.spatial.transform.Rotation</span></code></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="darling.goniometer.mu_rotation">
+<span class="sig-prename descclassname"><span class="pre">darling.goniometer.</span></span><span class="sig-name descname"><span class="pre">mu_rotation</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mu</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">degrees</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/AxelHenningsson/darling/tree/main/darling/goniometer.py/"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darling.goniometer.mu_rotation" title="Link to this definition">#</a></dt>
+<dd><p>Rotation about the negative y-axis.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>mu</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">float</span></code> or <code class="xref py py-obj docutils literal notranslate"><span class="pre">numpy.ndarray</span></code>) – Goniometer angle for the base cradle motor, mu.</p></li>
+<li><p><strong>degrees</strong> (<em>bool</em><em>, </em><em>optional</em>) – If True, the angles are assumed to be in degrees, otherwise they are in radians. Defaults to True.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The rotation about the negative y-axis. Dimensions will match the input array.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">scipy.spatial.transform.Rotation</span></code></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="darling.goniometer.omega_rotation">
+<span class="sig-prename descclassname"><span class="pre">darling.goniometer.</span></span><span class="sig-name descname"><span class="pre">omega_rotation</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">omega</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">degrees</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/AxelHenningsson/darling/tree/main/darling/goniometer.py/"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darling.goniometer.omega_rotation" title="Link to this definition">#</a></dt>
+<dd><p>Rotation about the z-axis.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>omega</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">float</span></code> or <code class="xref py py-obj docutils literal notranslate"><span class="pre">numpy.ndarray</span></code>) – Goniometer angle for omega motor.</p></li>
+<li><p><strong>degrees</strong> (<em>bool</em><em>, </em><em>optional</em>) – If True, the angles are assumed to be in degrees, otherwise they are in radians. Defaults to True.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The rotation about the z-axis. Dimensions will match the input array.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">scipy.spatial.transform.Rotation</span></code></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="darling.goniometer.chi_rotation">
+<span class="sig-prename descclassname"><span class="pre">darling.goniometer.</span></span><span class="sig-name descname"><span class="pre">chi_rotation</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">chi</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">degrees</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/AxelHenningsson/darling/tree/main/darling/goniometer.py/"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darling.goniometer.chi_rotation" title="Link to this definition">#</a></dt>
+<dd><p>Rotation about the x-axis.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>chi</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">float</span></code> or <code class="xref py py-obj docutils literal notranslate"><span class="pre">numpy.ndarray</span></code>) – Goniometer angle for chi motor.</p></li>
+<li><p><strong>degrees</strong> (<em>bool</em><em>, </em><em>optional</em>) – If True, the angles are assumed to be in degrees, otherwise they are in radians. Defaults to True.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The rotation about the x-axis. Dimensions will match the input array.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">scipy.spatial.transform.Rotation</span></code></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="darling.goniometer.phi_rotation">
+<span class="sig-prename descclassname"><span class="pre">darling.goniometer.</span></span><span class="sig-name descname"><span class="pre">phi_rotation</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">phi</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">degrees</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/AxelHenningsson/darling/tree/main/darling/goniometer.py/"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darling.goniometer.phi_rotation" title="Link to this definition">#</a></dt>
+<dd><p>Rotation about the y-axis.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>phi</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">float</span></code> or <code class="xref py py-obj docutils literal notranslate"><span class="pre">numpy.ndarray</span></code>) – Goniometer angle for the top motor.</p></li>
+<li><p><strong>degrees</strong> (<em>bool</em><em>, </em><em>optional</em>) – If True, the angles are assumed to be in degrees, otherwise they are in radians. Defaults to True.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The rotation about the y-axis. Dimensions will match the input array.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">scipy.spatial.transform.Rotation</span></code></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="darling.goniometer.median_rotation">
+<span class="sig-prename descclassname"><span class="pre">darling.goniometer.</span></span><span class="sig-name descname"><span class="pre">median_rotation</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mu</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">omega</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">chi</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">phi</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">degrees</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rotation_representation</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'object'</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/AxelHenningsson/darling/tree/main/darling/goniometer.py/"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darling.goniometer.median_rotation" title="Link to this definition">#</a></dt>
+<dd><p>Median rotation for the goniometer. Usefull when mu, omega, chi or phi are arrays of size&gt;1 and a single
+reference rotation is needed. The median is taken over the angles for each motor.</p>
+<p>Input angles can be either float or np.ndarray of arbitrary dimensions. angular medians are computed over
+all elements of the array that are not numpy.nans.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>mu</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">float</span></code> or <code class="xref py py-obj docutils literal notranslate"><span class="pre">numpy.ndarray</span></code>) – Goniometer angle for the base cradle motor, mu.</p></li>
+<li><p><strong>omega</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">float</span></code> or <code class="xref py py-obj docutils literal notranslate"><span class="pre">numpy.ndarray</span></code>) – Goniometer angle for omega motor.</p></li>
+<li><p><strong>chi</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">float</span></code> or <code class="xref py py-obj docutils literal notranslate"><span class="pre">numpy.ndarray</span></code>) – Goniometer angle for chi motor.</p></li>
+<li><p><strong>phi</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">float</span></code> or <code class="xref py py-obj docutils literal notranslate"><span class="pre">numpy.ndarray</span></code>) – Goniometer angle for the top motor.</p></li>
+<li><p><strong>degrees</strong> (<em>bool</em><em>, </em><em>optional</em>) – If True, the angles are assumed to be in degrees, otherwise they are in radians. Defaults to True.</p></li>
+<li><p><strong>rotation_representation</strong> (<em>str</em><em>, </em><em>optional</em>) – The representation of the rotation. Defaults to “object” in which case the rotation is</p></li>
+<li><p><strong>&quot;quat&quot;</strong> (<em>returned as a scipy.spatial.transform.Rotation object. Other options are</em>)</p></li>
+<li><p><strong>&quot;matrix&quot;</strong></p></li>
+<li><p><strong>Additoinally</strong> (<em>&quot;rotvec&quot;.</em>)</p></li>
+<li><p><strong>&quot;euler-seq&quot;</strong></p></li>
+<li><p><strong>{'X'</strong> (<em>can be passed where seq are 3 characters belonging to the set</em>)</p></li>
+<li><p><strong>'Y'</strong></p></li>
+<li><p><strong>rotations</strong> (<em>'Z'} for intrinsic</em>)</p></li>
+<li><p><strong>{'x'</strong> (<em>or</em>)</p></li>
+<li><p><strong>'y'</strong></p></li>
+<li><p><strong>'z'}</strong></p></li>
+<li><p><strong>one</strong> (<em>for extrinsic rotations. Adjacent axes cannot be the same. Extrinsic and intrinsic rotations cannot be mixed in</em>)</p></li>
+<li><p><strong>scipy.spatial.transform.Rotation</strong> (<em>function call. This is a wrapper around</em>)</p></li>
+<li><p><strong>class</strong> (<em>for more details see the documentation for that</em>)</p></li>
+<li><p><strong>https</strong> – //docs.scipy.org/doc/scipy/reference/generated/scipy.spatial.transform.Rotation.html</p></li>
+<li><p><strong>ValueError</strong> – Expected input goniometer angles (mu, omega, chi, phi) to be either float or np.ndarray of size&gt;1</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The median rotation. Dimensions will match the input array.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">scipy.spatial.transform.Rotation</span></code></p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
 <section id="module-darling.peaksearcher">
 <span id="peaksearcher"></span><h2>peaksearcher<a class="headerlink" href="#module-darling.peaksearcher" title="Link to this heading">#</a></h2>
 <p>This module defines a discrete peak searcher algorithm for 2D data.</p>
@@ -963,6 +1401,54 @@ motors and m,n,(o) are the motor dimensions.</p>
 <dt class="sig sig-object py" id="darling._dataset.DataSet.info">
 <span class="sig-name descname"><span class="pre">info</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/AxelHenningsson/darling/tree/main/darling/_dataset.py/"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darling._dataset.DataSet.info" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="darling._dataset.DataSet.scan_params">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">scan_params</span></span><a class="reference external" href="https://github.com/AxelHenningsson/darling/tree/main/darling/_dataset.py/"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darling._dataset.DataSet.scan_params" title="Link to this definition">#</a></dt>
+<dd><p>The scan parameters for the loaded data in a dictionary.</p>
+<p>Example output:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+    <span class="s1">&#39;scan_command&#39;</span><span class="p">:</span> <span class="s1">&#39;fscan2d chi -0.5 0.08 26 diffry 7 0.06 37 0.5 0.500417&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;scan_shape&#39;</span><span class="p">:</span> <span class="n">array</span><span class="p">([</span><span class="mi">26</span><span class="p">,</span> <span class="mi">37</span><span class="p">]),</span>
+    <span class="s1">&#39;motor_names&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s1">&#39;instrument/chi/value&#39;</span><span class="p">,</span> <span class="s1">&#39;instrument/diffry/data&#39;</span><span class="p">],</span>
+    <span class="s1">&#39;integrated_motors&#39;</span><span class="p">:</span> <span class="p">[</span><span class="kc">False</span><span class="p">,</span> <span class="kc">True</span><span class="p">],</span>
+    <span class="s1">&#39;data_name&#39;</span><span class="p">:</span> <span class="s1">&#39;instrument/pco_ff/image&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;scan_id&#39;</span><span class="p">:</span> <span class="s1">&#39;1.1&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;invariant_motors&#39;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s1">&#39;ccmth&#39;</span><span class="p">:</span> <span class="mf">6.679671220242654</span><span class="p">,</span>
+        <span class="s1">&#39;s8vg&#39;</span><span class="p">:</span> <span class="mf">0.09999999999999998</span><span class="p">,</span>
+        <span class="s1">&#39;s8vo&#39;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span>
+        <span class="s1">&#39;s8ho&#39;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span>
+        <span class="s1">&#39;s8hg&#39;</span><span class="p">:</span> <span class="mf">0.5</span><span class="p">,</span>
+        <span class="s1">&#39;phi&#39;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span>
+        <span class="s1">&#39;mainx&#39;</span><span class="p">:</span> <span class="o">-</span><span class="mf">5000.0</span><span class="p">,</span>
+        <span class="s1">&#39;obx&#39;</span><span class="p">:</span> <span class="mf">263.1299999999999</span><span class="p">,</span>
+        <span class="s1">&#39;oby&#39;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span>
+        <span class="s1">&#39;obz&#39;</span><span class="p">:</span> <span class="mf">85.35999999999876</span><span class="p">,</span>
+        <span class="s1">&#39;obz3&#39;</span><span class="p">:</span> <span class="mf">0.0693999999999999</span><span class="p">,</span>
+        <span class="s1">&#39;obpitch&#39;</span><span class="p">:</span> <span class="mf">17.979400000000002</span><span class="p">,</span>
+        <span class="s1">&#39;obyaw&#39;</span><span class="p">:</span> <span class="o">-</span><span class="mf">0.06589062499999998</span><span class="p">,</span>
+        <span class="s1">&#39;cdx&#39;</span><span class="p">:</span> <span class="o">-</span><span class="mf">11.8</span><span class="p">,</span>
+        <span class="s1">&#39;dcx&#39;</span><span class="p">:</span> <span class="mf">545.0</span><span class="p">,</span>
+        <span class="s1">&#39;dcz&#39;</span><span class="p">:</span> <span class="o">-</span><span class="mf">150.0</span><span class="p">,</span>
+        <span class="s1">&#39;ffz&#39;</span><span class="p">:</span> <span class="mf">1621.611386138614</span><span class="p">,</span>
+        <span class="s1">&#39;ffy&#39;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span>
+        <span class="s1">&#39;ffsel&#39;</span><span class="p">:</span> <span class="o">-</span><span class="mf">60.0</span><span class="p">,</span>
+        <span class="s1">&#39;x_pixel_size&#39;</span><span class="p">:</span> <span class="mf">6.5</span><span class="p">,</span>
+        <span class="s1">&#39;y_pixel_size&#39;</span><span class="p">:</span> <span class="mf">6.5</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>The scan parameters.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">dict</span></code></p>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="darling._dataset.DataSet.load_scan">
@@ -1333,6 +1819,36 @@ scan (i.e k=1 for a rocking scan).</p>
 <dd></dd></dl>
 
 <dl class="py function">
+<dt class="sig sig-object py" id="darling.assets.mosa_field">
+<span class="sig-prename descclassname"><span class="pre">darling.assets.</span></span><span class="sig-name descname"><span class="pre">mosa_field</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/AxelHenningsson/darling/tree/main/darling/assets.py/"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darling.assets.mosa_field" title="Link to this definition">#</a></dt>
+<dd><p>Load a 2D numpy array of a mosaicity field.</p>
+<p>mosa[…, 0] is the chi angle.
+mosa[…, 1] is the mu angle.</p>
+<p>data originates from the 1 -1 1 reflection of a 5% deformed Al1050 sample.</p>
+<p>ESRF ID03, experiment hc6042.
+dataset : Al_1050_strengthening_strainmosa_stregnthening_pct5_large_range
+Scan number : 5.1.
+Analysis: background subtraction, and a first maxima gaussian fitting.</p>
+<p>mean omega angle was 17.8345 and mean chi angle was 0.60997 the crystal to
+sample grain orientation matrix was measured to be :</p>
+<blockquote>
+<div><p>[0.83550027,  0.33932153, -0.43220389]
+[0.01167249,  0.77541728,  0.63134127]
+[0.54936605, -0.53253069,  0.64390062]</p>
+</div></blockquote>
+<p>from 3DXRD. The sample is in tensile strain with the grain 1-11 aling the
+tensile axis wich is identified as the lab-z axis.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>2D array of shape=(m, n) with mosaicity values.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>mosa (<code class="xref py py-obj docutils literal notranslate"><span class="pre">numpy</span> <span class="pre">array</span></code>)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
 <dt class="sig sig-object py" id="darling.assets.domains">
 <span class="sig-prename descclassname"><span class="pre">darling.assets.</span></span><span class="sig-name descname"><span class="pre">domains</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">scan_id</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'1.1'</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/AxelHenningsson/darling/tree/main/darling/assets.py/"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darling.assets.domains" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
@@ -1499,6 +2015,23 @@ scan_params[“data_name”]</p>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#darling.properties.gaussian_mixture"><code class="docutils literal notranslate"><span class="pre">gaussian_mixture()</span></code></a></li>
 </ul>
 </li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-darling.transforms">transforms</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#darling.transforms.reciprocal_basis"><code class="docutils literal notranslate"><span class="pre">reciprocal_basis()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#darling.transforms.diffraction_vectors"><code class="docutils literal notranslate"><span class="pre">diffraction_vectors()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#darling.transforms.align_vector_bundle"><code class="docutils literal notranslate"><span class="pre">align_vector_bundle()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#darling.transforms.minimal_norm_rotation"><code class="docutils literal notranslate"><span class="pre">minimal_norm_rotation()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#darling.transforms.as_rotation_representation"><code class="docutils literal notranslate"><span class="pre">as_rotation_representation()</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-darling.goniometer">goniometer</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#darling.goniometer.total_rotation"><code class="docutils literal notranslate"><span class="pre">total_rotation()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#darling.goniometer.mu_rotation"><code class="docutils literal notranslate"><span class="pre">mu_rotation()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#darling.goniometer.omega_rotation"><code class="docutils literal notranslate"><span class="pre">omega_rotation()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#darling.goniometer.chi_rotation"><code class="docutils literal notranslate"><span class="pre">chi_rotation()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#darling.goniometer.phi_rotation"><code class="docutils literal notranslate"><span class="pre">phi_rotation()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#darling.goniometer.median_rotation"><code class="docutils literal notranslate"><span class="pre">median_rotation()</span></code></a></li>
+</ul>
+</li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-darling.peaksearcher">peaksearcher</a><ul class="nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#darling.peaksearcher.label_sparse"><code class="docutils literal notranslate"><span class="pre">label_sparse()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#darling.peaksearcher.extract_features"><code class="docutils literal notranslate"><span class="pre">extract_features()</span></code></a></li>
@@ -1507,6 +2040,7 @@ scan_params[“data_name”]</p>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-darling._dataset">DataSet</a><ul class="nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#darling._dataset.DataSet"><code class="docutils literal notranslate"><span class="pre">DataSet</span></code></a><ul class="nav section-nav flex-column">
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darling._dataset.DataSet.info"><code class="docutils literal notranslate"><span class="pre">DataSet.info()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darling._dataset.DataSet.scan_params"><code class="docutils literal notranslate"><span class="pre">DataSet.scan_params</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darling._dataset.DataSet.load_scan"><code class="docutils literal notranslate"><span class="pre">DataSet.load_scan()</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darling._dataset.DataSet.subtract"><code class="docutils literal notranslate"><span class="pre">DataSet.subtract()</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darling._dataset.DataSet.estimate_background"><code class="docutils literal notranslate"><span class="pre">DataSet.estimate_background()</span></code></a></li>
@@ -1541,6 +2075,7 @@ scan_params[“data_name”]</p>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-darling.assets">assets</a><ul class="nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#darling.assets.path"><code class="docutils literal notranslate"><span class="pre">path()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#darling.assets.mosa_field"><code class="docutils literal notranslate"><span class="pre">mosa_field()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#darling.assets.domains"><code class="docutils literal notranslate"><span class="pre">domains()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#darling.assets.rocking_scan"><code class="docutils literal notranslate"><span class="pre">rocking_scan()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#darling.assets.motor_drift"><code class="docutils literal notranslate"><span class="pre">motor_drift()</span></code></a></li>

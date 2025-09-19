@@ -29,9 +29,11 @@ def mosa_field():
 
     mean omega angle was 17.8345 and mean chi angle was 0.60997 the crystal to
     sample grain orientation matrix was measured to be :
-                [0.83550027, 0.33932153, -0.43220389],
-                [0.01167249, 0.77541728, 0.63134127],
-                [0.54936605, -0.53253069, 0.64390062],
+
+                [0.83550027,  0.33932153, -0.43220389]
+                [0.01167249,  0.77541728,  0.63134127]
+                [0.54936605, -0.53253069,  0.64390062]
+
     from 3DXRD. The sample is in tensile strain with the grain 1-11 aling the
     tensile axis wich is identified as the lab-z axis.
 

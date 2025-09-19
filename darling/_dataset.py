@@ -65,36 +65,43 @@ class DataSet(object):
 
         Example output:
 
-        {'scan_command': 'fscan2d chi -0.5 0.08 26 diffry 7 0.06 37 0.5 0.500417',
-        'scan_shape': array([26, 37]),
-        'motor_names': ['instrument/chi/value', 'instrument/diffry/data'],
-        'integrated_motors': [False, True],
-        'data_name': 'instrument/pco_ff/image',
-        'scan_id': '1.1',
-        'invariant_motors': {'ccmth': 6.679671220242654,
-                            's8vg': 0.09999999999999998,
-                            's8vo': 0.0,
-                            's8ho': 0.0,
-                            's8hg': 0.5,
-                            'phi': 0.0,
-                            'mainx': -5000.0,
-                            'obx': 263.1299999999999,
-                            'oby': 0.0,
-                            'obz': 85.35999999999876,
-                            'obz3': 0.0693999999999999,
-                            'obpitch': 17.979400000000002,
-                            'obyaw': -0.06589062499999998,
-                            'cdx': -11.8,
-                            'dcx': 545.0,
-                            'dcz': -150.0,
-                            'ffz': 1621.611386138614,
-                            'ffy': 0.0,
-                            'ffsel': -60.0,
-                            'x_pixel_size': 6.5,
-                            'y_pixel_size': 6.5}}
+        .. code-block:: python
+
+            {
+                'scan_command': 'fscan2d chi -0.5 0.08 26 diffry 7 0.06 37 0.5 0.500417',
+                'scan_shape': array([26, 37]),
+                'motor_names': ['instrument/chi/value', 'instrument/diffry/data'],
+                'integrated_motors': [False, True],
+                'data_name': 'instrument/pco_ff/image',
+                'scan_id': '1.1',
+                'invariant_motors': {
+                    'ccmth': 6.679671220242654,
+                    's8vg': 0.09999999999999998,
+                    's8vo': 0.0,
+                    's8ho': 0.0,
+                    's8hg': 0.5,
+                    'phi': 0.0,
+                    'mainx': -5000.0,
+                    'obx': 263.1299999999999,
+                    'oby': 0.0,
+                    'obz': 85.35999999999876,
+                    'obz3': 0.0693999999999999,
+                    'obpitch': 17.979400000000002,
+                    'obyaw': -0.06589062499999998,
+                    'cdx': -11.8,
+                    'dcx': 545.0,
+                    'dcz': -150.0,
+                    'ffz': 1621.611386138614,
+                    'ffy': 0.0,
+                    'ffsel': -60.0,
+                    'x_pixel_size': 6.5,
+                    'y_pixel_size': 6.5
+                }
+            }
 
         Returns:
             :obj:`dict`: The scan parameters.
+
         """
         if self.reader is None:
             raise ValueError("No data has been loaded, use load_scan() to load data.")

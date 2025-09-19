@@ -14,6 +14,22 @@ properties
     :show-inheritance:
 
 ======================================
+transforms
+======================================
+
+.. automodule:: darling.transforms
+    :members:
+    :show-inheritance:
+
+======================================
+goniometer
+======================================
+
+.. automodule:: darling.goniometer
+    :members:
+    :show-inheritance:
+
+======================================
 peaksearcher
 ======================================
 

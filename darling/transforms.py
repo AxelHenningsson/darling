@@ -145,7 +145,7 @@ def diffraction_vectors(
 ):
     """Compute the diffraction vectors over a spatial field.
 
-    Diffraction vectors, G, are defined form the Laue equation:
+    Diffraction vectors, G, are defined from the Laue equation:
 
         G_lab = O @ U @ B @ hkl
 
@@ -161,10 +161,10 @@ def diffraction_vectors(
     is the diffraction vector in the sample frame. The rotation O is the goniometer rotation which maps
     from sample space to lab space as
 
-        G_lab = O @ G_sample'
+        G_lab = O @ G_sample
 
     The lab reference frame is defined with x along the x-ray beam propagation direction, z towards the
-    roof and y traverse, such that x, y and z form a right-handed coordinate system. The defenition of
+    roof and y traverse, such that x, y and z form a right-handed coordinate system. The definition of
     U and B follows 3DXRD conventions.
 
     See also Poulsen 2004: https://orbit.dtu.dk/en/publications/3dxrd-a-new-probe-for-materials-science
@@ -297,7 +297,7 @@ def minimal_norm_rotation(
     diffraction_vector_field,
     lattice_parameters,
     hkl,
-    grain_orientation=np.eye(3),
+    grain_orientation=None,
     mask=None,
     rotation_representation="object",
     degrees=True,
@@ -307,17 +307,17 @@ def minimal_norm_rotation(
 
     This function is usefull when estimating local grain orientations form an angular DFXM scan.
 
-    Given that the input `diffraction_vector_field` are defomred versions of a fixed diffraction vector,
+    Given that the input ``diffraction_vector_field`` are defomred versions of a fixed diffraction vector,
 
-        G0_sample = `grain_orientation` @ B @ hkl
+        G0_sample = ``grain_orientation`` @ B @ hkl
 
-    This function finds orientation elements that can perturb `grain_orientation` such that G0_sample is aligned with the
-    input `diffraction_vector_field` at each point. I.e the output rotations represent the local grain orientation, U=U(x)
-    computed as a sequential transform, first rotating to the `grain_orientation`, and then applying the incremental rotations
-    to reach each diffraction vector in the `diffraction_vector_field`. (when `difference_rotation` is True, only the
+    This function finds orientation elements that can perturb ``grain_orientation`` such that G0_sample is aligned with the
+    input ``diffraction_vector_field`` at each point. I.e the output rotations represent the local grain orientation, U=U(x)
+    computed as a sequential transform, first rotating to the ``grain_orientation``, and then applying the incremental rotations
+    to reach each diffraction vector in the ``diffraction_vector_field``. (when ``difference_rotation`` is True, only the
     incremental part of the rotation is returned)
 
-    NOTE: When the `grain_orientation` is the identity matrix, the input `diffraction_vector_field` is expected to be in crystal coordinates.
+    NOTE: When the ``grain_orientation`` is the identity matrix, the input ``diffraction_vector_field`` is expected to be in crystal coordinates.
     Otherwise it is expected to be in sample coordinates.
 
     Example use-case for a mosaicity-scan:
@@ -383,6 +383,7 @@ def minimal_norm_rotation(
     Returns:
         :obj:`numpy.ndarray`: The minimal norm rotations. shape=(n,3) or shape=(m,n,3) etc.
     """
+    grain_orientation = np.eye(3) if grain_orientation is None else grain_orientation
     angular_mask = ~np.isnan(diffraction_vector_field[..., 0]) if mask is None else mask
     U0 = _as_scipy_rotation(grain_orientation)
     B0 = reciprocal_basis(lattice_parameters)
