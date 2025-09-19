@@ -403,6 +403,7 @@ def _extract_features(labeled_array, data, nlabels, num_props, k):
     "(m,n),(p),(k)->(p,k)",
     nopython=True,
     target="parallel",
+    cache=True,
 )
 def _peaksearch_parallel(data, dum1, dum2, res2):
     """Label a grid of images in parallel and return all features for segmented peak."""
