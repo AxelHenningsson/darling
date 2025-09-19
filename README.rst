@@ -11,7 +11,7 @@ the python **[D]ark** field x-ray microscopy **[A]nalysis** & **[R]econstruction
    :alt: pure python
 
 .. image:: https://github.com/AxelHenningsson/darling/actions/workflows/pytest-linux-py310.yml/badge.svg
-   :target: https://github.com/AxelHenningsson/darling/actions/workflows/pytest-linux-py310.yml
+   :target: https://github.com/AxelHenningsson/darling/actions/workflows/pytest-linux-py310.yml/badge.svg?branch=main
    :alt: tests ubuntu-linux
 
 .. image:: https://img.shields.io/badge/code%20style-black-000000.svg
