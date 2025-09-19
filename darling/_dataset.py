@@ -67,9 +67,9 @@ class DataSet(object):
 
         .. code-block:: python
 
-            {
+            out = {
                 'scan_command': 'fscan2d chi -0.5 0.08 26 diffry 7 0.06 37 0.5 0.500417',
-                'scan_shape': array([26, 37]),
+                'scan_shape': [26, 37],
                 'motor_names': ['instrument/chi/value', 'instrument/diffry/data'],
                 'integrated_motors': [False, True],
                 'data_name': 'instrument/pco_ff/image',
@@ -98,6 +98,7 @@ class DataSet(object):
                     'y_pixel_size': 6.5
                 }
             }
+
 
         Returns:
             :obj:`dict`: The scan parameters.
