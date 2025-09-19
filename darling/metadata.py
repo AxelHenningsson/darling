@@ -201,7 +201,7 @@ class ID03(object):
         invariant_motors = {}
         with h5py.File(self.abs_path_to_h5_file, "r") as h5f:
             for motor_key, h5_motor_path in self.motor_map.items():
-                if h5_motor_path not in moving_motor_names:
+                if (moving_motor_names is None) or (h5_motor_path not in moving_motor_names):
                     # this is a static motor, lets see if we can find it in the hdf5 file
                     fallback = (
                         self.fallback_motor_map[h5_motor_path]
