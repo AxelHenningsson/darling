@@ -14,6 +14,39 @@ def path():
     return _asset_path
 
 
+def mosa_field():
+    """Load a 2D numpy array of a mosaicity field.
+
+    mosa[..., 0] is the chi angle.
+    mosa[..., 1] is the mu angle.
+
+    data originates from the 1 -1 1 reflection of a 5% deformed Al1050 sample.
+
+    ESRF ID03, experiment hc6042.
+    dataset : Al_1050_strengthening_strainmosa_stregnthening_pct5_large_range
+    Scan number : 5.1.
+    Analysis: background subtraction, and a first maxima gaussian fitting.
+
+    mean omega angle was 17.8345 and mean chi angle was 0.60997 the crystal to
+    sample grain orientation matrix was measured to be :
+                [0.83550027, 0.33932153, -0.43220389],
+                [0.01167249, 0.77541728, 0.63134127],
+                [0.54936605, -0.53253069, 0.64390062],
+    from 3DXRD. The sample is in tensile strain with the grain 1-11 aling the
+    tensile axis wich is identified as the lab-z axis.
+
+    Returns:
+        mosa (:obj:`numpy array`): 2D array of shape=(m, n) with mosaicity values.
+    """
+    data_path = os.path.join(
+        path(),
+        "example_data",
+        "misc",
+        "mosa_Al_1050_stregnthening_pct5_large_range.npy",
+    )
+    return np.load(data_path)
+
+
 def domains(scan_id="1.1"):
     data_path = os.path.join(
         _asset_path,
