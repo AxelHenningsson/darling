@@ -10,33 +10,23 @@ import darling
 
 
 @contextmanager
-def asset_path(*parts):
+def _asset_path(*parts):
     ref = files("darling").joinpath("assets", *parts)
     with as_file(ref) as p:
         yield Path(p)
 
 
-def read_bytes(*parts):
-    with asset_path(*parts) as p:
-        return p.read_bytes()
-
-
-def read_text(*parts, encoding="utf-8"):
-    with asset_path(*parts) as p:
-        return p.read_text(encoding=encoding)
-
-
-def read_numpy(*parts):
-    with asset_path(*parts) as p:
+def _read_numpy(*parts):
+    with _asset_path(*parts) as p:
         return np.load(p)
 
 
-def get_asset_abspath(*parts):
+def _get_asset_abspath(*parts):
     return str(files("darling").joinpath("assets", *parts).resolve())
 
 
-def path():
-    return get_asset_abspath()
+def _path():
+    return _get_asset_abspath()
 
 
 def mosa_field():
