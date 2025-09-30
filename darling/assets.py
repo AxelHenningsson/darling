@@ -1,17 +1,42 @@
 """Module to load example data and phantoms."""
 
-import os
+from contextlib import contextmanager
+from importlib.resources import as_file, files
+from pathlib import Path
 
 import numpy as np
 
 import darling
 
-_root_path = os.path.abspath(os.path.join(os.path.abspath(__file__), "..", ".."))
-_asset_path = os.path.join(_root_path, "assets")
+
+@contextmanager
+def asset_path(*parts):
+    ref = files("darling").joinpath("assets", *parts)
+    with as_file(ref) as p:
+        yield Path(p)
+
+
+def read_bytes(*parts):
+    with asset_path(*parts) as p:
+        return p.read_bytes()
+
+
+def read_text(*parts, encoding="utf-8"):
+    with asset_path(*parts) as p:
+        return p.read_text(encoding=encoding)
+
+
+def read_numpy(*parts):
+    with asset_path(*parts) as p:
+        return np.load(p)
+
+
+def get_asset_abspath(*parts):
+    return str(files("darling").joinpath("assets", *parts).resolve())
 
 
 def path():
-    return _asset_path
+    return get_asset_abspath()
 
 
 def mosa_field():
@@ -40,23 +65,13 @@ def mosa_field():
     Returns:
         mosa (:obj:`numpy array`): 2D array of shape=(m, n) with mosaicity values.
     """
-    data_path = os.path.join(
-        path(),
-        "example_data",
-        "misc",
-        "mosa_Al_1050_stregnthening_pct5_large_range.npy",
+    return read_numpy(
+        "example_data", "misc", "mosa_Al_1050_stregnthening_pct5_large_range.npy"
     )
-    return np.load(data_path)
 
 
 def domains(scan_id="1.1"):
-    data_path = os.path.join(
-        _asset_path,
-        "example_data",
-        "domains",
-        "2D_domains.h5",
-    )
-    """load a (tiny) part of a 2d mosaicity scan collected at the ESRF id03. 
+    """load a (tiny) part of a 2d mosaicity scan collected at the ESRF id03.
 
     in constrast to mosaicity_scan() this dataset features a domain structure
     partioned into cells.
@@ -78,6 +93,7 @@ def domains(scan_id="1.1"):
             angle coordinates.
 
     """
+    data_path = get_asset_abspath("example_data", "domains", "2D_domains.h5")
     reader = darling.reader.MosaScan(data_path)
     dset = darling.DataSet(reader)
     dset.load_scan(scan_id)
@@ -85,12 +101,6 @@ def domains(scan_id="1.1"):
 
 
 def rocking_scan():
-    data_path = os.path.join(
-        _asset_path,
-        "example_data",
-        "rocking_scan_id03",
-        "rocking.h5",
-    )
     """load a downsampled 1d rocking scan collected at the ESRF id03.
 
     Returns:
@@ -100,6 +110,7 @@ def rocking_scan():
         coordinates (:obj:`numpy array`): array of shape=(2,m,n) continaning angle coordinates.
 
     """
+    data_path = get_asset_abspath("example_data", "rocking_scan_id03", "rocking.h5")
     reader = darling.reader.RockingScan(data_path)
     dset = darling.DataSet(reader)
     dset.load_scan(scan_id="1.1")
@@ -107,12 +118,6 @@ def rocking_scan():
 
 
 def motor_drift(scan_id="1.1"):
-    data_path = os.path.join(
-        _asset_path,
-        "example_data",
-        "motor_drift",
-        "motor_drift.h5",
-    )
     """load a (tiny) part of a 2d mosaicity scan collected at the ESRF id03.
 
     NOTE: This dataset features motor drift and has been inlcuded in the darling
@@ -128,6 +133,7 @@ def motor_drift(scan_id="1.1"):
         coordinates (:obj:`numpy array`): array of shape=(2,m,n) continaning angle coordinates.
 
     """
+    data_path = get_asset_abspath("example_data", "motor_drift", "motor_drift.h5")
     reader = darling.reader.MosaScan(data_path)
     dset = darling.DataSet(reader)
     dset.load_scan(scan_id)
@@ -149,9 +155,7 @@ def mosaicity_scan(scan_id="1.1"):
         ``data[:,:,i,j]`` is a noisy detector image (uint16) for phi and chi at index ``i, j``.
         coordinates (:obj:`numpy array`): Array of shape (2, m, n) containing angle coordinates.
     """
-    data_path = os.path.join(
-        _asset_path, "example_data", "mosa_scan_id03", "mosa_scan.h5"
-    )
+    data_path = get_asset_abspath("example_data", "mosa_scan_id03", "mosa_scan.h5")
     reader = darling.reader.MosaScan(data_path)
     dset = darling.DataSet(reader)
     dset.load_scan(scan_id)

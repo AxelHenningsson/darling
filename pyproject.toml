@@ -1,23 +1,47 @@
 [build-system]
-    requires = ["setuptools>=42", "wheel"]
-    build-backend = "setuptools.build_meta"
+requires = ["hatchling >= 1.26"]
+build-backend = "hatchling.build"
 
-    [tool.setuptools]
-    py-modules = ["darling"]
+[tool.hatch.build]
+include = ["darling/**", "README.rst", "LICENSE"]
 
-    [project]
-    name = "darling"
-    version = "1.0.0"
-    description = "A python [D]ark field x-ray microscopy [A]nalysis &amp; [R]econstruction [L]ibrary for rapid data [IN]spection &amp; [G]raphing"
-    authors = [
-      { name = "{Axel Henningsson}", email = "{nilsaxelhenningsson@gmail.com}" }
-    ]
-    dependencies = ["numpy",
-                    "scipy",
-                    "matplotlib",
-                    "hdf5plugin",
-                    "h5py",
-                    "matplotlib",
-                    "numba",
-                    "meshio",
-                    ]
+[tool.hatch.build.targets.wheel]
+packages = ["darling"]
+
+[tool.hatch.build.targets.sdist]
+include = ["darling/**", "README.rst", "LICENSE"]
+
+[project]
+name = "darling"
+version = "1.0.0"
+description = "A python [D]ark field x-ray microscopy [A]nalysis &amp; [R]econstruction [L]ibrary for rapid data [IN]spection &amp; [G]raphing"
+readme = "README.rst"
+license = { file = "LICENSE" }
+requires-python = ">=3.9"
+authors = [
+  { name = "Axel Henningsson", email = "nilsaxelhenningsson@gmail.com" }
+]
+dependencies = [
+  "numpy",
+  "scipy",
+  "matplotlib",
+  "hdf5plugin",
+  "h5py",
+  "numba",
+  "meshio",
+]
+keywords = ["x-ray", "microscopy", "dfxm", "crystallography", "materials-science"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Science/Research",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+]
+
+[project.urls]
+Homepage = "https://axelhenningsson.github.io/darling/"
+Repository = "https://github.com/axelhenningsson/darling"
+Issues = "https://github.com/axelhenningsson/darling/issues"
