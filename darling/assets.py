@@ -25,7 +25,7 @@ def _get_asset_abspath(*parts):
     return str(files("darling").joinpath("assets", *parts).resolve())
 
 
-def _path():
+def path():
     return _get_asset_abspath()
 
 
@@ -55,7 +55,7 @@ def mosa_field():
     Returns:
         mosa (:obj:`numpy array`): 2D array of shape=(m, n) with mosaicity values.
     """
-    return read_numpy(
+    return _read_numpy(
         "example_data", "misc", "mosa_Al_1050_stregnthening_pct5_large_range.npy"
     )
 
@@ -83,7 +83,7 @@ def domains(scan_id="1.1"):
             angle coordinates.
 
     """
-    data_path = get_asset_abspath("example_data", "domains", "2D_domains.h5")
+    data_path = _get_asset_abspath("example_data", "domains", "2D_domains.h5")
     reader = darling.reader.MosaScan(data_path)
     dset = darling.DataSet(reader)
     dset.load_scan(scan_id)
@@ -100,7 +100,7 @@ def rocking_scan():
         coordinates (:obj:`numpy array`): array of shape=(2,m,n) continaning angle coordinates.
 
     """
-    data_path = get_asset_abspath("example_data", "rocking_scan_id03", "rocking.h5")
+    data_path = _get_asset_abspath("example_data", "rocking_scan_id03", "rocking.h5")
     reader = darling.reader.RockingScan(data_path)
     dset = darling.DataSet(reader)
     dset.load_scan(scan_id="1.1")
@@ -123,7 +123,7 @@ def motor_drift(scan_id="1.1"):
         coordinates (:obj:`numpy array`): array of shape=(2,m,n) continaning angle coordinates.
 
     """
-    data_path = get_asset_abspath("example_data", "motor_drift", "motor_drift.h5")
+    data_path = _get_asset_abspath("example_data", "motor_drift", "motor_drift.h5")
     reader = darling.reader.MosaScan(data_path)
     dset = darling.DataSet(reader)
     dset.load_scan(scan_id)
@@ -145,7 +145,7 @@ def mosaicity_scan(scan_id="1.1"):
         ``data[:,:,i,j]`` is a noisy detector image (uint16) for phi and chi at index ``i, j``.
         coordinates (:obj:`numpy array`): Array of shape (2, m, n) containing angle coordinates.
     """
-    data_path = get_asset_abspath("example_data", "mosa_scan_id03", "mosa_scan.h5")
+    data_path = _get_asset_abspath("example_data", "mosa_scan_id03", "mosa_scan.h5")
     reader = darling.reader.MosaScan(data_path)
     dset = darling.DataSet(reader)
     dset.load_scan(scan_id)
