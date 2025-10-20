@@ -126,10 +126,31 @@ def adam_update(
 
     return param, m, v
 
+@numba.jit(nopython=True)
+def gaussian_pred_map(x, y, p):
+    out = np.empty_like(x, dtype=np.float32)
+    ax, x0, y0, sx, sy, r = p[0], p[1], p[2], max(p[3],1e-10), max(p[4],1e-10), p[5]
+    inv = 1.0 / (2.0 * (1.0 - r*r))
+    for i in range(x.shape[0]):
+        for j in range(x.shape[1]):
+            dx = x[i,j]-x0; dy = y[i,j]-y0
+            z = (dx/sx)*(dx/sx) + (dy/sy)*(dy/sy) - 2.0*r*dx*dy/(sx*sy)
+            out[i,j] = ax * np.exp(-z * inv)
+    return out
+
+@numba.jit(nopython=True)
+def residual_map(data, x, y, params):
+    pred = gaussian_pred_map(x, y, params)
+    return pred - data.astype(np.float32)  
+
+@numba.jit(nopython=True)
+def nrmse(data, res):
+    denom = max(np.max(data.astype(np.float32)), 1e-12)
+    return np.sqrt(np.mean(res*res)) / denom
 
 @numba.jit(nopython=True)
 def fit_gaussian_2d(
-    data_flat, x_flat, y_flat, stat_mean, stat_cov, max_iter=1000, tolerance=1e-3
+    data_flat, x_flat, y_flat, stat_mean, stat_cov, weight_power, max_iter=5000, tolerance=1e-3
 ):
     """Fit a 2D Gaussian using Adam optimization with adaptive learning rates.
 
@@ -143,6 +164,7 @@ def fit_gaussian_2d(
         y_flat (numpy.ndarray): Flattened y-coordinates
         stat_mean (numpy.ndarray): Statistical mean vector [x0, y0]
         stat_cov (numpy.ndarray): Statistical covariance matrix
+        weight_power (float): Weight power for the weight function
         max_iter (int): Maximum number of iterations
         tolerance (float): Convergence tolerance for error reduction
 
@@ -169,7 +191,7 @@ def fit_gaussian_2d(
 
     min_error = np.inf
     best_params = params.copy()
-    patience = 25
+    patience = 50
     patience_counter = 0
 
     error_history = np.zeros(3)
@@ -198,7 +220,7 @@ def fit_gaussian_2d(
                 params[5],
             )
 
-            weight = data_norm[i] ** 6
+            weight = data_norm[i] ** weight_power
 
             residual = (pred - data_norm[i]) * weight
             total_error += residual**2
@@ -264,7 +286,9 @@ def fit_gaussian_2d(
 
             if t < 50:
                 if error_trend > 0:
-                    alphas *= 1.1
+                    alphas *= 1.2
+                elif error_trend > -0.01:
+                    alphas *= 0.8
             else:
                 if error_trend > 0:
                     alphas *= 1.05
@@ -304,7 +328,6 @@ def fit_gaussian_2d(
     params[0] *= scale
     return params
 
-
 @numba.guvectorize(
     [
         (
@@ -314,14 +337,16 @@ def fit_gaussian_2d(
             numba.float32[:],
             numba.float32[:],
             numba.float32[:, :],
+            numba.float32,
+            numba.float32[:],
             numba.float32[:],
         )
     ],
-    "(m,n),(m,n),(m,n),(p),(p),(p,p)->(p)",
+    "(m,n),(m,n),(m,n),(p),(p),(p,p),()->(p),()",
     nopython=True,
     target="parallel",
 )
-def moments_2d_gaussian(data, x, y, dum, stat_mean, stat_cov, res):
+def moments_2d_gaussian(data, x, y, dum, stat_mean, stat_cov, weight_power, res, rmse):
     """Compute first moments by fitting a 2D Gaussian using statistical initialization.
 
     This function uses the Gaussian fitting procedure to refine the statistical
@@ -334,7 +359,9 @@ def moments_2d_gaussian(data, x, y, dum, stat_mean, stat_cov, res):
         dum (numpy.ndarray): Dummy array for numba shapes
         stat_mean (numpy.ndarray): Statistical mean vector [x0, y0]
         stat_cov (numpy.ndarray): Statistical covariance matrix
-        res (numpy.ndarray): Output array for results
+        weight_power (float): Weight power for the weight function
+        res (numpy.ndarray): Output array for results of the mean
+        rmse (numpy.ndarray): Output array for results of the RMSE
 
     Returns:
         numpy.ndarray: Refined mean coordinates [x0, y0]
@@ -342,13 +369,17 @@ def moments_2d_gaussian(data, x, y, dum, stat_mean, stat_cov, res):
     if np.sum(data) < 1e-10:
         res[0] = 0.0
         res[1] = 0.0
+        rmse[0] = 0.0
         return
 
     params = fit_gaussian_2d(
-        data.flatten(), x.flatten(), y.flatten(), stat_mean, stat_cov
+        data.flatten(), x.flatten(), y.flatten(), stat_mean, stat_cov, weight_power
     )
     res[0] = params[1]  # x0
     res[1] = params[2]  # y0
+
+    rmap = residual_map(data, x, y, params)
+    rmse[0] = nrmse(data, rmap)
 
 
 @numba.guvectorize(
@@ -359,14 +390,15 @@ def moments_2d_gaussian(data, x, y, dum, stat_mean, stat_cov, res):
             numba.float32[:, :],
             numba.float32[:],
             numba.float32[:, :],
+            numba.float32,
             numba.float32[:, :],
         )
     ],
-    "(n,m),(p),(k,q),(p),(p,p)->(p,p)",
+    "(n,m),(p),(k,q),(p),(p,p),()->(p,p)",
     nopython=True,
     target="parallel",
 )
-def covariance_2d_gaussian(data, first_moments, points, dum, stat_cov, res):
+def covariance_2d_gaussian(data, first_moments, points, dum, stat_cov, weight_power, res):
     """Compute covariance by fitting a 2D Gaussian using statistical initialization.
 
     This function uses the Gaussian fitting procedure to refine the statistical
@@ -378,6 +410,7 @@ def covariance_2d_gaussian(data, first_moments, points, dum, stat_cov, res):
         points (numpy.ndarray): Coordinate points, shape (k, q)
         dum (numpy.ndarray): Dummy array for numba shapes
         stat_cov (numpy.ndarray): Statistical covariance matrix
+        weight_power (float): Weight power for the weight function
         res (numpy.ndarray): Output array for results
 
     Returns:
@@ -390,7 +423,7 @@ def covariance_2d_gaussian(data, first_moments, points, dum, stat_cov, res):
         return
 
     params = fit_gaussian_2d(
-        data.flatten(), points[0], points[1], first_moments, stat_cov
+        data.flatten(), points[0], points[1], first_moments, stat_cov, weight_power
     )
 
     sigma_x = max(params[3], 1e-10)
@@ -400,3 +433,7 @@ def covariance_2d_gaussian(data, first_moments, points, dum, stat_cov, res):
     res[0, 0] = sigma_x**2
     res[1, 1] = sigma_y**2
     res[0, 1] = res[1, 0] = rho * sigma_x * sigma_y
+
+
+
+

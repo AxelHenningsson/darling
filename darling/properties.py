@@ -208,7 +208,7 @@ def kam(property_2d, size=(3, 3)):
     return np.sum(kam_map, axis=-1) / counts_map
 
 
-def moments(data, coordinates, method="statistical"):
+def moments(data, coordinates, method="statistical", weight_power=1.0, return_rmse=False):
     """Compute the sample mean and covariance of a 4D or 5D DFXM data-set.
 
     The data-set represents a DFXM scan with 1, 2 or 3 degrees of freedom.
@@ -252,7 +252,8 @@ def moments(data, coordinates, method="statistical"):
             containing numpy nd arrays specifying the coordinates in each dimension
             respectively. I.e, as an example, these could be the phi and chi angular
             cooridnates as a meshgrid.
-
+        method (:obj:`str`): The method to use for the moment computation. Defaults to "statistical". "gaussian" uses a Gaussian fitting method to compute the moments.
+        weight_power (:obj:`float`): The power to use for the weight function in the Gaussian fitting method. Defaults to 1.0.
     Returns:
         :obj:`tuple` of :obj:`numpy array` : The mean map of shape=(a,b,...) and the
             covariance map of shape=(a,b,...).
@@ -263,31 +264,45 @@ def moments(data, coordinates, method="statistical"):
     if method == "statistical":
         return mu, cov
     elif method == "gaussian":
-        mu_gauss = mean_gaussian(data, coordinates, mu, cov)
-        cov_gauss = covariance_gaussian(data, coordinates, mu_gauss, cov)
-        return mu_gauss, cov_gauss
+        if return_rmse:
+            mu_gauss, rmse = mean_gaussian(data, coordinates, mu, cov, weight_power, return_rmse=True)
+            cov_gauss = covariance_gaussian(data, coordinates, mu_gauss, cov, weight_power)
+            return mu_gauss, cov_gauss, rmse
+        else:
+            mu_gauss = mean_gaussian(data, coordinates, mu, cov, weight_power)
+            cov_gauss = covariance_gaussian(data, coordinates, mu_gauss, cov, weight_power)
+            return mu_gauss, cov_gauss
     else:
         raise ValueError("method must be either 'statistical' or 'gaussian'")
 
 
-def mean_gaussian(data, coordinates, stat_mean, stat_cov):
+def mean_gaussian(data, coordinates, stat_mean, stat_cov, weight_power, return_rmse=False):
     """Compute first moments by fitting Gaussians using statistical initialization."""
+    weight_power = np.float32(weight_power)
     _check_data(data, coordinates)
     dum = np.arange(len(coordinates)).astype(np.float32)
 
     if len(coordinates) == 2:
         X, Y = np.array(coordinates).astype(np.float32)
         a, b, m, n = data.shape
-        res = np.zeros((a, b, 2), dtype=np.float32)
-        gfit.moments_2d_gaussian(data, X, Y, dum, stat_mean, stat_cov, res)
+        if return_rmse:
+            res = np.zeros((a, b, 2), dtype=np.float32)
+            rmse = np.zeros((a, b), dtype=np.float32)
+            gfit.moments_2d_gaussian(data, X, Y, dum, stat_mean, stat_cov, weight_power, res, rmse)
+            return res[..., 0:2], rmse
+        else:
+            res = np.zeros((a, b, 2), dtype=np.float32)
+            rmse = np.zeros((a, b), dtype=np.float32)
+            gfit.moments_2d_gaussian(data, X, Y, dum, stat_mean, stat_cov, weight_power, res, rmse)
+        return res[..., 0:2]
     else:
         raise NotImplementedError("3D Gaussian fitting not yet implemented")
 
-    return res
 
 
-def covariance_gaussian(data, coordinates, first_moments, stat_cov):
+def covariance_gaussian(data, coordinates, first_moments, stat_cov, weight_power):
     """Compute covariance by fitting Gaussians using statistical initialization."""
+    weight_power = np.float32(weight_power)
     _check_data(data, coordinates)
     dim = len(coordinates)
     dum = np.arange(dim).astype(np.float32)
@@ -295,7 +310,7 @@ def covariance_gaussian(data, coordinates, first_moments, stat_cov):
     points = np.array([c.flatten() for c in coordinates]).astype(np.float32)
 
     if dim == 2:
-        gfit.covariance_2d_gaussian(data, first_moments, points, dum, stat_cov, res)
+        gfit.covariance_2d_gaussian(data, first_moments, points, dum, stat_cov, weight_power, res)
     else:
         raise NotImplementedError("3D Gaussian fitting not yet implemented")
 
