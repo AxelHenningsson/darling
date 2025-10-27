@@ -188,8 +188,12 @@ class TestDataSet(unittest.TestCase):
         self.assertTrue(dset.data.shape[2] == dset.motors.shape[1])
         self.assertTrue(dset.motors.dtype == np.float32)
 
+    def test_fetch(self):
+        path = darling.assets.energy_mu_scan()[0]
+        dset = darling.DataSet(path, scan_id="1.1")
+        pico4 = dset.reader.fetch(key="1.2/instrument/pico4/data")
+        self.assertEqual(pico4.size, 1117)
+
 
 if __name__ == "__main__":
-    unittest.main()
-    unittest.main()
     unittest.main()
