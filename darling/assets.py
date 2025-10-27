@@ -152,6 +152,31 @@ def mosaicity_scan(scan_id="1.1"):
     return data_path, dset.data, dset.motors
 
 
+def energy_mu_scan():
+    """Load a (tiny) part of a 2D ccmth-mu scan collected at the ESRF ID03.
+
+    This is a central detector ROI for a BiFeO3 energy scan with a small slit inserted in the
+    backfocal plane. The scan is performed with the ccmth motor (i.e the monochromator) and the
+    mu motor (i.e the base cradle/rocking cradle).
+
+    Args:
+        scan_id (:obj:`str`): Must be '1.1'. Only one scan is available.
+
+    Returns:
+        data_path (:obj:`str`): Absolute path to h5 file.
+        data (:obj:`numpy array`): Array of shape (a, b, m, n) with intensity data.
+        ``data[:,:,i,j]`` is a noisy detector image (uint16) for ccmth and mu at index ``i, j``.
+        coordinates (:obj:`numpy array`): Array of shape (2, m, n) containing angle coordinates.
+    """
+    data_path = _get_asset_abspath(
+        "example_data",
+        "ccmth_mu_scan_id03",
+        "BiFeO3_energy_rocking_scan_closed_slits.h5",
+    )
+    dset = darling.DataSet(data_path, scan_id="1.1")
+    return data_path, dset.data, dset.motors
+
+
 def gaussian_blobs(N=32, m=9):
     """Phantom 2d scan of gaussian blobs with shifting means and covariance.
 
