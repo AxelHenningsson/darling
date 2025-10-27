@@ -69,3 +69,10 @@ metadata
     :members:
     :show-inheritance:
 
+======================================
+utils
+======================================
+
+.. automodule:: darling.utils
+    :members:
+    :show-inheritance:

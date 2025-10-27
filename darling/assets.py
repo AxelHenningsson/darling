@@ -71,17 +71,15 @@ def domains(scan_id="1.1"):
     gaussian fitting.
 
     Args:
-        scan_id (:obj:`str`): one of 1.1 or 2.1, specifying first or second layer
-            scanned in the sample.
+        scan_id (:obj:`str`): one of 1.1 or 2.1, specifying first or second layer scanned in the sample.
 
     Returns:
         data_path (:obj:`str`): absolute path to h5 file.
         data (:obj:`numpy array`):  Array of shape=(a, b, m, n) with intensity data.
-            ``data[:,:,i,j]`` is a noisy detector image in type uint16 for phi and
-            chi at index i and j respectively.
+        ``data[:,:,i,j]`` is a noisy detector image in type uint16 for phi and
+        chi at index i and j respectively.
         coordinates (:obj:`numpy array`): array of shape=(2,m,n) continaning
-            angle coordinates.
-
+        angle coordinates.
     """
     data_path = _get_asset_abspath("example_data", "domains", "2D_domains.h5")
     reader = darling.reader.MosaScan(data_path)
@@ -95,10 +93,9 @@ def rocking_scan():
 
     Returns:
         data_path (:obj:`str`): absolute path to h5 file.
-        data (:obj:`numpy array`):  Array of shape=(a, b, m, n) with intensity data. ``data[:,:,i,j]`` is a noisy
-            detector image in type uint16 for phi and chi at index i and j respectively.
+        data (:obj:`numpy array`):  Array of shape=(a, b, m, n) with intensity data. ``data[:,:,i,j]``
+        is a noisy detector image in type uint16 for phi and chi at index i and j respectively.
         coordinates (:obj:`numpy array`): array of shape=(2,m,n) continaning angle coordinates.
-
     """
     data_path = _get_asset_abspath("example_data", "rocking_scan_id03", "rocking.h5")
     reader = darling.reader.RockingScan(data_path)
@@ -118,10 +115,9 @@ def motor_drift(scan_id="1.1"):
 
     Returns:
         data_path (:obj:`str`): absolute path to h5 file.
-        data (:obj:`numpy array`):  Array of shape=(a, b, m, n) with intensity data. ``data[:,:,i,j]`` is a noisy
-            detector image in type uint16 for phi and chi at index i and j respectively.
+        data (:obj:`numpy array`):  Array of shape=(a, b, m, n) with intensity data. ``data[:,:,i,j]`` is a
+        noisy detector image in type uint16 for phi and chi at index i and j respectively.
         coordinates (:obj:`numpy array`): array of shape=(2,m,n) continaning angle coordinates.
-
     """
     data_path = _get_asset_abspath("example_data", "motor_drift", "motor_drift.h5")
     reader = darling.reader.MosaScan(data_path)
