@@ -9,6 +9,7 @@ from . import (
     properties,
     reader,
     transforms,
+    utils,
 )
 from ._dataset import DataSet
 
