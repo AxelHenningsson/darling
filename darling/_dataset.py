@@ -43,6 +43,10 @@ class DataSet(object):
         if scan_id is not None:
             self.load_scan(scan_id, roi=None)
 
+    @property
+    def dtype(self):
+        return self.data.dtype
+
     def info(self):
         if self.data is not None:
             for k in self.reader.scan_params:
@@ -182,15 +186,39 @@ class DataSet(object):
             self.motors = motors
             self.data = data
 
-    def subtract(self, value):
-        """Subtract a fixed integer value form the data. Protects against uint16 sign flips.
+    def subtract(self, background, dtype=np.uint16):
+        """Subtract a fixed integer value from the data block.
+
+        Warning: If dtype is not np.uint16, data will be cast to dtype, which will create a
+            temporary copy of the data.
 
         Args:
-            value (:obj:`int`): value to subtract.
+            background (:obj:`int` or :obj:`numpy.ndarray`): fixed background value or background array to subtract.
+                the array will be broadcast to the data block shape. I.e for a shape=(a,b,m,n) data block, the background
+                could be of detector dimension shape=(a,b) or shape=(a,b,1,1).
+            dtype (:obj:`numpy.dtype`): the data type of the output array. Defaults to np.uint16.
+                in which case the data is clipped to the range [0, 2^16-1]. protects against uint16
+                sign flips.
 
         """
-        self.data.clip(value, None, out=self.data)
-        self.data -= value
+        if isinstance(background, int):
+            bg = np.full(self.data.shape[:2], background, dtype=dtype)
+        elif isinstance(background, np.ndarray):
+            if background.squeeze().shape != self.data.shape[:2]:
+                raise ValueError(
+                    f"First two dimensions of background shape must match detector dimension shape, but {background.squeeze().shape} != {self.data.shape[:2]}"
+                )
+            bg = background.copy().squeeze().astype(dtype)
+
+        bg = bg[(...,) + (None,) * (self.data.ndim - bg.ndim)]
+
+        if self.dtype != dtype:
+            self.data = self.data.astype(dtype)
+
+        if np.issubdtype(self.dtype, np.unsignedinteger):
+            self.data.clip(bg, None, out=self.data)
+
+        self.data -= bg
 
 
 if __name__ == "__main__":

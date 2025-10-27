@@ -65,8 +65,17 @@ class TestDataSet(unittest.TestCase):
             dset = darling.DataSet(reader)
             dset.load_scan(scan_id="1.1", roi=None)
             mm = np.max(dset.data)
-            dset.subtract(value=200)
+            dset.subtract(200)
             self.assertEqual(np.max(dset.data), mm - 200)
+
+            dset.subtract(np.full(dset.data.shape[:2], 200))
+            self.assertEqual(np.max(dset.data), mm - 400)
+
+            dset.subtract(
+                np.full(dset.data.shape[:2], np.min(dset.data) + 1), dtype=np.int32
+            )
+            self.assertTrue(dset.dtype == np.int32)
+            self.assertTrue(np.min(dset.data) == -1)
 
     def check_data_2d(self, dset):
         self.assertTrue(dset.data.dtype == np.uint16)
