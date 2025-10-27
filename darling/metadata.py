@@ -106,6 +106,16 @@ class ID03(object):
             self.motor_map["uz"]: "instrument/positioners/samz",
         }
 
+        # these are names of additional sensors that run independently of motors.
+        # this is reserved for things stored in 1.2, 2.2, 3.2 etc... as opposed
+        # to 1.1, 2.1, 3.1 etc... which are the scan ids for the motors.
+        self.sensor_names = {
+            "pico4": "instrument/pico4/data",
+            "pico3": "instrument/pico3/data",
+            "current": "instrument/current/data",
+            "elapsed_time": "instrument/elapsed_time/value",
+        }
+
     def __call__(self, scan_id):
         """Return a dictionary of scan parameters, including scan shape, motor names etc.
 
@@ -148,7 +158,9 @@ class ID03(object):
             scan_params["motor_names"], scan_id
         )
 
-        return scan_params
+        sensors = self._get_sensor_data(scan_id)
+
+        return scan_params, sensors
 
     def _get_scan_command(self, scan_id):
         """The string representation of the scan command.
@@ -201,7 +213,9 @@ class ID03(object):
         invariant_motors = {}
         with h5py.File(self.abs_path_to_h5_file, "r") as h5f:
             for motor_key, h5_motor_path in self.motor_map.items():
-                if (moving_motor_names is None) or (h5_motor_path not in moving_motor_names):
+                if (moving_motor_names is None) or (
+                    h5_motor_path not in moving_motor_names
+                ):
                     # this is a static motor, lets see if we can find it in the hdf5 file
                     fallback = (
                         self.fallback_motor_map[h5_motor_path]
@@ -277,6 +291,27 @@ class ID03(object):
         """
         command = scan_params["scan_command"].split(" ")[0]
         return self.is_integrated[command]
+
+    def _get_sensor_data(self, scan_id):
+        """Fetch the sensor data from the h5 file.
+
+        This is reserved for things stored in 1.2, 2.2, 3.2 etc... as opposed
+        to 1.1, 2.1, 3.1 etc... which are the scan ids for the motors.
+
+        this includes things like the pico4 current data that monitors the direct beam current.
+
+        Returns:
+            :obj:`dict`: The sensor data.
+        """
+        sensor_scan_id = scan_id.split(".")[0] + ".2"
+        sensors = {}
+        with h5py.File(self.abs_path_to_h5_file, "r") as h5f:
+            for sensor_name, h5_sensor_path in self.sensor_names.items():
+                if sensor_scan_id in h5f and h5_sensor_path in h5f[sensor_scan_id]:
+                    sensors[sensor_name] = h5f[sensor_scan_id][h5_sensor_path][()]
+                else:
+                    sensors[sensor_name] = None
+        return sensors
 
     def _get_data_name(self, scan_id, scan_shape):
         """Find the h5 key to the stack of DFXM images.

@@ -107,7 +107,7 @@ class MosaScan(Reader):
 
         """
 
-        self.scan_params = self.config(scan_id)
+        self.scan_params, self.sensors = self.config(scan_id)
 
         with h5py.File(self.abs_path_to_h5_file, "r") as h5f:
             # Read in motrs
@@ -175,7 +175,7 @@ class Darks(MosaScan):
 
         """
 
-        self.scan_params = self.config(scan_id)
+        self.scan_params, self.sensors = self.config(scan_id)
 
         with h5py.File(self.abs_path_to_h5_file, "r") as h5f:
             motors = np.array([], dtype=np.float32)
@@ -228,7 +228,7 @@ class RockingScan(MosaScan):
 
         """
 
-        self.scan_params = self.config(scan_id)
+        self.scan_params, self.sensors = self.config(scan_id)
 
         with h5py.File(self.abs_path_to_h5_file, "r") as h5f:
             # Read in motrs

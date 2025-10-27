@@ -104,6 +104,20 @@ class DataSet(object):
         else:
             return self.reader.scan_params
 
+    @property
+    def sensors(self):
+        """The sensor data for the loaded data in a dictionary.
+
+        this contains things like the pico4 current data that monitors the direct beam current.
+
+        Returns:
+            :obj:`dict`: The sensor data.
+        """
+        if self.reader is None:
+            raise ValueError("No data has been loaded, use load_scan() to load data.")
+        else:
+            return self.reader.sensors
+
     def load_scan(self, scan_id, scan_motor=None, roi=None):
         """Load a scan into RAM.
 
@@ -132,7 +146,7 @@ class DataSet(object):
         if self.reader is None:
             config = darling.metadata.ID03(self.h5file)
             reference_scan_id = scan_id[0] if isinstance(scan_id, list) else scan_id
-            scan_params = config(reference_scan_id)
+            scan_params, sensors = config(reference_scan_id)
             if scan_params["motor_names"] is None:
                 self.reader = darling.reader.Darks(self.h5file)
             elif len(scan_params["motor_names"]) == 1:
