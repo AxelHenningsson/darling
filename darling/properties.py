@@ -485,6 +485,7 @@ def _check_data(data, coordinates):
     "(m),(m),(p)->(p)",
     nopython=True,
     target="parallel",
+    cache=True,
 )
 def _first_moments1D(data, x, dum, res):
     """Compute the sample mean of a 1D map.
@@ -515,6 +516,7 @@ def _first_moments1D(data, x, dum, res):
     "(m,n),(m,n),(m,n),(p)->(p)",
     nopython=True,
     target="parallel",
+    cache=True,
 )
 def _first_moments2D(data, x, y, dum, res):
     """Compute the sample mean of a 2D map.
@@ -549,6 +551,7 @@ def _first_moments2D(data, x, y, dum, res):
     "(m,n,o),(m,n,o),(m,n,o),(m,n,o),(p)->(p)",
     nopython=True,
     target="parallel",
+    cache=True,
 )
 def _first_moments3D(data, x, y, z, dum, res):
     """Compute the sample mean of a 3D map.
@@ -584,6 +587,7 @@ def _first_moments3D(data, x, y, z, dum, res):
     "(m),(p),(m),(p)->(p)",
     nopython=True,
     target="parallel",
+    cache=True,
 )
 def _second_moments1D(data, first_moments, points, dum, res):
     """Compute the sample variance of a 1D map.
@@ -618,6 +622,7 @@ def _second_moments1D(data, first_moments, points, dum, res):
     "(n,m),(p),(k,q),(p)->(p,p)",
     nopython=True,
     target="parallel",
+    cache=True,
 )
 def _second_moments2D(chi_phi, first_moments, points, dum, res):
     """Compute the sample covariance of a 2D map.
@@ -656,6 +661,7 @@ def _second_moments2D(chi_phi, first_moments, points, dum, res):
     "(n,m,o),(p),(k,q),(p)->(p,p)",
     nopython=True,
     target="parallel",
+    cache=True,
 )
 def _second_moments3D(data, first_moments, points, dum, res):
     """Compute the sample covariance of a 3D map.

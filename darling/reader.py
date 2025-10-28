@@ -8,8 +8,6 @@ all features of darling.
 
 """
 
-import re
-
 import h5py
 import numpy as np
 
@@ -29,6 +27,23 @@ class Reader(object):
 
     def __init__(self, abs_path_to_h5_file):
         self.abs_path_to_h5_file = abs_path_to_h5_file
+
+    def fetch(self, key):
+        """Fetch a value from the h5 file.
+
+        This is usefull to fetch excotic motor values or meta-data that has not yet been implemented
+        in the standard darling readers.
+
+        Args:
+            key (:obj:`str`): The key to fetch from the h5 file. (full h5 path in the h5 file)
+            scan_id (:obj:`str`): The scan id to fetch from. Defaults to None, in which case the scan id
+                is taken from the reader.scan_params["scan_id"].
+
+        Returns:
+            :obj:`numpy.ndarray`: The value from the h5 file.
+        """
+        with h5py.File(self.abs_path_to_h5_file) as h5file:
+            return h5file[key][...]
 
     def __call__(self, scan_id, roi=None):
         """Method to read a single 2D scan
@@ -54,7 +69,7 @@ class Reader(object):
 
 
 class MosaScan(Reader):
-    """Load a 2D mosa scan. This is a id03 specific implementation matphing a specific beamline mosa scan macro.
+    """Load a 2D mosa scan. This is a id03 specific implementation matching a specific beamline mosa scan macro.
 
     NOTE: This reader was specifically written for data collection at id03. For general purpose reading of data you
     must implement your own reader class. The exact reding of data is strongly dependent on data aqusition scheme and
@@ -92,7 +107,7 @@ class MosaScan(Reader):
 
         """
 
-        self.scan_params = self.config(scan_id)
+        self.scan_params, self.sensors = self.config(scan_id)
 
         with h5py.File(self.abs_path_to_h5_file, "r") as h5f:
             # Read in motrs
@@ -131,7 +146,7 @@ class MosaScan(Reader):
 
 
 class Darks(MosaScan):
-    """Load a series of motorless images. This is a id03 specific implementation matphing aspecific beamline mosa scan macro.
+    """Load a series of motorless images. This is a id03 specific implementation matching a specific beamline macro.
 
     Typically used to red dark images collected with a loopscan.
 
@@ -160,7 +175,7 @@ class Darks(MosaScan):
 
         """
 
-        self.scan_params = self.config(scan_id)
+        self.scan_params, self.sensors = self.config(scan_id)
 
         with h5py.File(self.abs_path_to_h5_file, "r") as h5f:
             motors = np.array([], dtype=np.float32)
@@ -181,7 +196,7 @@ class Darks(MosaScan):
 
 
 class RockingScan(MosaScan):
-    """Load a 1D rocking scan. This is a id03 specific implementation matphing aspecific beamline mosa scan macro.
+    """Load a 1D rocking scan. This is a id03 specific implementation matching a specific beamline macro.
 
     A rocking scan is simply a set of 2D detector images collected at different rocking angles of the goniometer.
 
@@ -213,7 +228,7 @@ class RockingScan(MosaScan):
 
         """
 
-        self.scan_params = self.config(scan_id)
+        self.scan_params, self.sensors = self.config(scan_id)
 
         with h5py.File(self.abs_path_to_h5_file, "r") as h5f:
             # Read in motrs

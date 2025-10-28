@@ -119,6 +119,12 @@ class TestRockingScan(unittest.TestCase):
         self.assertTrue(data.shape[2] == motors.shape[1])
         self.assertTrue(motors.dtype == np.float32)
 
+    def test_fetch(self):
+        path = darling.assets.energy_mu_scan()[0]
+        reader = darling.reader.MosaScan(path)
+        pico4 = reader.fetch(key="1.2/instrument/pico4/data")
+        self.assertEqual(pico4.size, 1117)
+
 
 if __name__ == "__main__":
     unittest.main()
