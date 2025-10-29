@@ -488,6 +488,7 @@ class TestMoments(unittest.TestCase):
         self.assertEqual(mu.shape[2], 2)
         self.assertEqual(mu.dtype, np.float32)
 
+
     def test_kam_2d(self):
         mu, _ = properties.moments(self.data, self.coordinates)
         kam = properties.kam(mu, size=(3, 3))
@@ -856,6 +857,63 @@ class TestGaussianMixture(unittest.TestCase):
         for key in features.keys():
             self.assertTrue("_col" not in key)
             self.assertTrue("_motor2" not in key)
+
+
+class TestKAM(unittest.TestCase):
+    def setUp(self):
+        self.debug = False
+        _, self.data, self.coordinates = assets.domains()
+
+    def test_kam_2d_valid(self):
+        """Test 2D kam input validation"""
+        data = np.random.rand(5, 5, 2)
+        result = properties.kam(data, size=(3, 3))
+        self.assertEqual(result.shape, (5, 5))
+        self.assertTrue(np.isfinite(result).all())
+        self.assertTrue(np.all(result >= 0))
+
+    def test_kam_2d_invalid(self):
+        """Invalid kernel/data dimension combination."""
+        data = np.random.rand(5, 5, 5, 5)
+        with self.assertRaises(ValueError):
+            properties.kam(data, size=(3, 3))
+
+        with self.assertRaises(AssertionError):
+            properties.kam(np.random.rand(5, 5), size=(2, 2))
+
+    def test_kam_3d(self):
+        """Test 3D KAM input validation"""
+        data = np.random.rand(4, 4, 4, 3)
+        result = properties.kam(data, size=(3, 3, 3))
+        self.assertEqual(result.shape, (4, 4, 4))
+        self.assertTrue(np.isfinite(result).all())
+        self.assertTrue(np.all(result >= 0))
+
+    def test_kam_3d_invalid(self):
+        """Invalid 3D inputs and kernel checks."""
+        data = np.random.rand(4, 4, 4)
+        with self.assertRaises(ValueError):
+            properties.kam(data, size=(3, 3, 3, 3))
+
+
+    def test_kam_3d_exact(self):
+        """Test results of kam on 3D data with the 3D kernel"""
+        data = np.zeros((5, 5, 5, 1))
+        data[2, 2, 2, 0] = 1  # single central voxel = 1
+        kam = properties.kam(data, size=(3, 3, 3))
+        # center voxel: all 26 neighbors differ by 1
+        self.assertTrue(np.isclose(kam[2, 2, 2], 1.0))
+
+        # immediate neighbors: only 1 differing voxel (the center)
+        self.assertTrue(np.isclose(kam[1, 2, 2], 1 / 26, atol=1e-6))
+        self.assertTrue(np.isclose(kam[2, 1, 2], 1 / 26, atol=1e-6))
+        self.assertTrue(np.isclose(kam[2, 2, 1], 1 / 26, atol=1e-6))
+        self.assertTrue(np.isclose(kam[3, 2, 2], 1 / 26, atol=1e-6))
+        self.assertTrue(np.isclose(kam[2, 3, 2], 1 / 26, atol=1e-6))
+        self.assertTrue(np.isclose(kam[2, 2, 3], 1 / 26, atol=1e-6))
+
+        # verify sum of KAM has expected magnitude pattern
+        self.assertTrue(np.isclose(np.sum(kam), 1 + 26 * (1 / 26), atol=1e-3))
 
 
 if __name__ == "__main__":
