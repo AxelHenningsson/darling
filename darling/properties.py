@@ -715,9 +715,10 @@ def _kam3D(data, ky, kx, kz, kam_map, counts_map):
     None
     """
     Y, X, Z, C = data.shape
-    for z in numba.prange(kz // 2, Z - kz // 2):
+
+    for x in numba.prange(kx // 2, X - kx // 2):
         for y in range(ky // 2, Y - ky // 2):
-            for x in range(kx // 2, X - kx // 2):
+            for z in range(kz // 2, Z - kz // 2):
                 c = data[y, x, z]
                 if not np.isnan(c[0]):
                     count = 0
