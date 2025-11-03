@@ -491,13 +491,13 @@ class TestMoments(unittest.TestCase):
 
     def test_kam_2d(self):
         mu, _ = properties.moments(self.data, self.coordinates)
-        kam = properties.kam(mu, size=(3, 3))
+        kam = properties.kam(mu, ndim=2, size=(3, 3))
         self.assertEqual(kam.shape[0], self.data.shape[0])
         self.assertEqual(kam.shape[1], self.data.shape[1])
 
         mu = np.zeros_like(mu)
         mu[5:8, 5:8, 0] = 1
-        kam = properties.kam(mu, size=(3, 3))
+        kam = properties.kam(mu, ndim=2, size=(3, 3))
         self.assertEqual(kam[6, 6], 0)
         self.assertEqual(kam[6 - 2, 6 - 2], 1 / 8.0)
         self.assertEqual(kam[6 + 2, 6 - 2], 1 / 8.0)
@@ -528,7 +528,7 @@ class TestMoments(unittest.TestCase):
     def test_kam_1d(self):
         _, data, coordinates = darling.assets.rocking_scan()
         mean, _ = properties.moments(data, coordinates)
-        kam = properties.kam(mean, size=(3, 3))
+        kam = properties.kam(mean, ndim=2, size=(3, 3))
         self.assertEqual(kam.shape[0], data.shape[0])
         self.assertEqual(kam.shape[1], data.shape[1])
 
@@ -859,48 +859,91 @@ class TestGaussianMixture(unittest.TestCase):
             self.assertTrue("_motor2" not in key)
 
 
+import unittest
+import numpy as np
+from darling import properties, assets
+
+
 class TestKAM(unittest.TestCase):
     def setUp(self):
-        self.debug = False
         _, self.data, self.coordinates = assets.domains()
 
     def test_kam_2d_valid(self):
-        """Test 2D kam input validation"""
+        """Valid 2D input with correct kernel size."""
         data = np.random.rand(5, 5, 2)
-        result = properties.kam(data, size=(3, 3))
-        self.assertEqual(result.shape, (5, 5))
-        self.assertTrue(np.isfinite(result).all())
-        self.assertTrue(np.all(result >= 0))
+        result = properties.kam(data, ndim=2, size=(3, 3))
+        np.testing.assert_equal(result.shape, (5, 5), err_msg="Unexpected KAM shape for 2D input")
+        np.testing.assert_array_equal(np.isfinite(result),True,err_msg="Non-finite values in 2D KAM result")
+        np.testing.assert_array_less(-1e-12, result + 1e-12, err_msg="KAM values should be nonnegative")
 
-    def test_kam_2d_invalid(self):
-        """Invalid kernel/data dimension combination."""
-        data = np.random.rand(5, 5, 5, 5)
+    def test_kam_2d_scalar_size(self):
+        """2D input with scalar kernel size."""
+        data = np.random.rand(5, 5, 2)
+        result = properties.kam(data, ndim=2, size=3)
+        np.testing.assert_equal(result.shape, (5, 5))
+        np.testing.assert_array_equal(np.isfinite(result),True)
+
+    def test_kam_2d_invalid_shape(self):
+        """Invalid vector_field dimensionality for 2D."""
         with self.assertRaises(ValueError):
-            properties.kam(data, size=(3, 3))
+            properties.kam(np.random.rand(5, 5, 5, 5), ndim=2, size=(3, 3))
+        with self.assertRaises(ValueError):
+            properties.kam(np.random.rand(5, 5), ndim=3, size=(3, 3))
 
+    def test_kam_2d_invalid_size(self):
+        """Invalid kernel definitions for 2D."""
+        data = np.random.rand(5, 5, 2)
+        with self.assertRaises(ValueError):
+            properties.kam(data, ndim=2, size=(3, 3, 3))
+        with self.assertRaises(TypeError):
+            properties.kam(data, ndim=2, size="3")
         with self.assertRaises(AssertionError):
-            properties.kam(np.random.rand(5, 5), size=(2, 2))
+            properties.kam(data, ndim=2, size=(4, 4))
 
-    def test_kam_3d(self):
-        """Test 3D KAM input validation"""
+    def test_kam_3d_valid(self):
+        """Valid 3D input and kernel."""
         data = np.random.rand(4, 4, 4, 3)
-        result = properties.kam(data, size=(3, 3, 3))
-        self.assertEqual(result.shape, (4, 4, 4))
-        self.assertTrue(np.isfinite(result).all())
-        self.assertTrue(np.all(result >= 0))
+        result = properties.kam(data, ndim=3, size=(3, 3, 3))
+        np.testing.assert_equal(result.shape, (4, 4, 4))
+        np.testing.assert_array_equal(np.isfinite(result),True)
+        np.testing.assert_array_less(-1e-12, result + 1e-12)
 
-    def test_kam_3d_invalid(self):
-        """Invalid 3D inputs and kernel checks."""
+    def test_kam_3d_scalar_size(self):
+        """3D input with scalar kernel size."""
+        data = np.random.rand(4, 4, 4, 3)
+        result = properties.kam(data, ndim=3, size=3)
+        np.testing.assert_equal(result.shape, (4, 4, 4))
+        np.testing.assert_array_equal(np.isfinite(result),True)
+
+
+    def test_kam_3d_invalid_shape(self):
+        """Invalid vector_field dimensionality for 3D."""
+        # Missing channel → internally reshaped → valid
         data = np.random.rand(4, 4, 4)
-        with self.assertRaises(ValueError):
-            properties.kam(data, size=(3, 3, 3, 3))
+        result = properties.kam(data, ndim=3, size=3)
+        np.testing.assert_equal(result.shape, (4, 4, 4))
+        np.testing.assert_array_equal(np.isfinite(result),True)
 
+        # Too many dims → invalid
+        data = np.random.rand(4, 4, 4, 4, 4)
+        with self.assertRaises(ValueError):
+            properties.kam(data, ndim=3, size=3)
+
+    def test_kam_3d_invalid_size(self):
+        """Invalid kernel definitions for 3D."""
+        data = np.random.rand(4, 4, 4, 3)
+        with self.assertRaises(ValueError):
+            properties.kam(data, ndim=3, size=(3, 3, 3, 3))
+        with self.assertRaises(TypeError):
+            properties.kam(data, ndim=3, size="invalid")
+        with self.assertRaises(AssertionError):
+            properties.kam(data, ndim=3, size=(2, 2, 2))
 
     def test_kam_3d_exact(self):
         """Test results of kam on 3D data with the 3D kernel"""
         data = np.zeros((5, 5, 5, 1))
         data[2, 2, 2, 0] = 1  # single central voxel = 1
-        kam = properties.kam(data, size=(3, 3, 3))
+        kam = properties.kam(data, ndim=3, size=(3, 3, 3))
         # center voxel: all 26 neighbors differ by 1
         self.assertTrue(np.isclose(kam[2, 2, 2], 1.0))
 
