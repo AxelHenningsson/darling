@@ -37,6 +37,7 @@ import numpy as np
 
 import darling._color as color
 import darling.peaksearcher as peaksearcher
+import darling._gaussian as _gaussian
 
 
 def rgb(property_2d, norm="dynamic", coordinates=None):
@@ -124,12 +125,12 @@ def rgb(property_2d, norm="dynamic", coordinates=None):
         assert norm.shape == (2, 2), "scale must be of shape (2, 2)"
 
     for i in range(2):
-        assert np.nanmin(property_2d[..., i]) >= norm[i, 0], (
-            "property_2d values exceed norm, please select a feasible normalization range"
-        )
-        assert np.nanmin(property_2d[..., i]) <= norm[i, 1], (
-            "property_2d values exceed norm, please select a feasible normalization range"
-        )
+        assert (
+            np.nanmin(property_2d[..., i]) >= norm[i, 0]
+        ), "property_2d values exceed norm, please select a feasible normalization range"
+        assert (
+            np.nanmin(property_2d[..., i]) <= norm[i, 1]
+        ), "property_2d values exceed norm, please select a feasible normalization range"
 
     x, y = color.normalize(property_2d, norm)
     rgb_map = color.rgb(x, y)
@@ -402,17 +403,17 @@ def _check_data(data, coordinates):
     elif len(coordinates) == 2:
         assert len(data.shape) == 4, "2D scan data array must be of shape=(a, b, n, m)"
     elif len(coordinates) == 3:
-        assert len(data.shape) == 5, (
-            "3D scan data array must be of shape=(a, b, n, m, o)"
-        )
+        assert (
+            len(data.shape) == 5
+        ), "3D scan data array must be of shape=(a, b, n, m, o)"
     else:
         raise ValueError("The coordinate array must have 1, 2 or 3 motors")
     for c in coordinates:
         if not isinstance(c, np.ndarray):
             raise ValueError("Coordinate array must be a numpy array")
-    assert np.allclose(list(c.shape), list(data.shape)[2:]), (
-        "coordinate array do not match data shape"
-    )
+    assert np.allclose(
+        list(c.shape), list(data.shape)[2:]
+    ), "coordinate array do not match data shape"
 
 
 @numba.guvectorize(
@@ -744,9 +745,9 @@ def gaussian_mixture(data, k=8, coordinates=None):
 
     assert k > 0, "k must be larger than 0"
     assert data.dtype == np.uint16, "data must be of type uint16"
-    assert (len(data.shape) == 4) or (len(data.shape) == 3), (
-        "data array must be 3D or 4D"
-    )
+    assert (len(data.shape) == 4) or (
+        len(data.shape) == 3
+    ), "data array must be 3D or 4D"
 
     if coordinates is not None:
         if len(coordinates) == 1:
@@ -755,9 +756,9 @@ def gaussian_mixture(data, k=8, coordinates=None):
             # requires some reshaping to interface with the peaksearcher
             # numba functions.
             assert len(coordinates.shape) == 2, "coordinate array shape not reckognized"
-            assert len(coordinates[0]) == data.shape[2], (
-                "1d scan shape is a mismatch with the data array"
-            )
+            assert (
+                len(coordinates[0]) == data.shape[2]
+            ), "1d scan shape is a mismatch with the data array"
             _coordinates = np.zeros((2, coordinates.shape[1], 1))
             _coordinates[0] = coordinates.T
             _coordinates[1] = 1
@@ -771,18 +772,18 @@ def gaussian_mixture(data, k=8, coordinates=None):
         elif len(coordinates) == 2:
             assert len(coordinates[0].shape) == 2, "2D scan coordinates must be 2D"
             assert len(coordinates[1].shape) == 2, "2D scan coordinates must be 2D"
-            assert coordinates[0].shape[0] == data.shape[2], (
-                "2D scan coordinates must match data shape"
-            )
-            assert coordinates[0].shape[1] == data.shape[3], (
-                "2D scan coordinates must match data shape"
-            )
-            assert coordinates[1].shape[0] == data.shape[2], (
-                "2D scan coordinates must match data shape"
-            )
-            assert coordinates[1].shape[1] == data.shape[3], (
-                "2D scan coordinates must match data shape"
-            )
+            assert (
+                coordinates[0].shape[0] == data.shape[2]
+            ), "2D scan coordinates must match data shape"
+            assert (
+                coordinates[0].shape[1] == data.shape[3]
+            ), "2D scan coordinates must match data shape"
+            assert (
+                coordinates[1].shape[0] == data.shape[2]
+            ), "2D scan coordinates must match data shape"
+            assert (
+                coordinates[1].shape[1] == data.shape[3]
+            ), "2D scan coordinates must match data shape"
             props = peaksearcher._gaussian_mixture(data, k, coordinates)
         else:
             raise NotImplementedError("coordinates must be a tuple of length 1 or 2")
@@ -799,6 +800,71 @@ def gaussian_mixture(data, k=8, coordinates=None):
             props = peaksearcher._gaussian_mixture(data, k, coordinates=None)
 
     return props
+
+
+def fit_gaussian(data, coordinates, weight_power=1.0, stat_mean=None, stat_cov=None):
+    """Fit a 2D Gaussian per pixel using statistical moments as initialization.
+
+    This refines the mean and covariance of each pixel's motor-space distribution
+    by fitting the 2D Gaussian defined in `darling._gaussian` starting from the
+    statistical mean and covariance. If not provided, the statistical moments
+    are computed first.
+
+    Args:
+        data (numpy.ndarray): Array of shape (a, b, m, n) with uint16 intensities.
+        coordinates (tuple[numpy.ndarray, numpy.ndarray]): (X, Y) grids of shape (m, n).
+        weight_power (float): Weighting exponent for residuals during fitting.
+        stat_mean (numpy.ndarray, optional): Initial mean map of shape (a, b, 2).
+        stat_cov (numpy.ndarray, optional): Initial covariance map of shape (a, b, 2, 2).
+
+    Returns:
+        tuple[numpy.ndarray, numpy.ndarray, numpy.ndarray]:
+            - fitted_mean: (a, b, 2)
+            - fitted_covariance: (a, b, 2, 2)
+            - rmse: (a, b)
+    """
+
+    _check_data(data, coordinates)
+    assert (
+        len(coordinates) == 2
+    ), "fit_gaussian_moments currently supports 2D scans only"
+
+    a, b, m, n = data.shape
+
+    # Work on float32 copies of the coordinate grids (do not mutate tuple)
+    x = coordinates[0].astype(np.float32)
+    y = coordinates[1].astype(np.float32)
+
+    if stat_mean is None:
+        stat_mean = mean(data, coordinates)
+    if stat_cov is None:
+        stat_cov = covariance(data, coordinates, first_moments=stat_mean)
+
+    fitted_mean = np.zeros((a, b, 2), dtype=np.float32)
+    rmse = np.zeros((a, b), dtype=np.float32)
+
+    dum = np.arange(2).astype(np.float32)
+
+    _gaussian.moments_2d_gaussian(
+        data,
+        x,
+        y,
+        dum,
+        stat_mean,
+        stat_cov,
+        weight_power,
+        fitted_mean,
+        rmse,
+    )
+
+    points = np.array([x.flatten(), y.flatten()], dtype=np.float32)
+
+    fitted_covariance = np.zeros((a, b, 2, 2), dtype=np.float32)
+    _gaussian.covariance_2d_gaussian(
+        data, fitted_mean, points, dum, stat_cov, weight_power, fitted_covariance
+    )
+
+    return fitted_mean, fitted_covariance, rmse
 
 
 if __name__ == "__main__":
