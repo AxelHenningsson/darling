@@ -126,31 +126,47 @@ def adam_update(
 
     return param, m, v
 
+
 @numba.jit(nopython=True)
 def gaussian_pred_map(x, y, p):
     out = np.empty_like(x, dtype=np.float32)
-    ax, x0, y0, sx, sy, r = p[0], p[1], p[2], max(p[3],1e-10), max(p[4],1e-10), p[5]
-    inv = 1.0 / (2.0 * (1.0 - r*r))
+    ax, x0, y0, sx, sy, r = p[0], p[1], p[2], max(p[3], 1e-10), max(p[4], 1e-10), p[5]
+    inv = 1.0 / (2.0 * (1.0 - r * r))
     for i in range(x.shape[0]):
         for j in range(x.shape[1]):
-            dx = x[i,j]-x0; dy = y[i,j]-y0
-            z = (dx/sx)*(dx/sx) + (dy/sy)*(dy/sy) - 2.0*r*dx*dy/(sx*sy)
-            out[i,j] = ax * np.exp(-z * inv)
+            dx = x[i, j] - x0
+            dy = y[i, j] - y0
+            z = (
+                (dx / sx) * (dx / sx)
+                + (dy / sy) * (dy / sy)
+                - 2.0 * r * dx * dy / (sx * sy)
+            )
+            out[i, j] = ax * np.exp(-z * inv)
     return out
+
 
 @numba.jit(nopython=True)
 def residual_map(data, x, y, params):
     pred = gaussian_pred_map(x, y, params)
-    return pred - data.astype(np.float32)  
+    return pred - data.astype(np.float32)
+
 
 @numba.jit(nopython=True)
 def nrmse(data, res):
     denom = max(np.max(data.astype(np.float32)), 1e-12)
-    return np.sqrt(np.mean(res*res)) / denom
+    return np.sqrt(np.mean(res * res)) / denom
+
 
 @numba.jit(nopython=True)
 def fit_gaussian_2d(
-    data_flat, x_flat, y_flat, stat_mean, stat_cov, weight_power, max_iter=5000, tolerance=1e-3
+    data_flat,
+    x_flat,
+    y_flat,
+    stat_mean,
+    stat_cov,
+    weight_power,
+    max_iter=5000,
+    tolerance=1e-3,
 ):
     """Fit a 2D Gaussian using Adam optimization with adaptive learning rates.
 
@@ -328,6 +344,7 @@ def fit_gaussian_2d(
     params[0] *= scale
     return params
 
+
 @numba.guvectorize(
     [
         (
@@ -386,54 +403,73 @@ def moments_2d_gaussian(data, x, y, dum, stat_mean, stat_cov, weight_power, res,
     [
         (
             numba.uint16[:, :],
-            numba.float32[:],
             numba.float32[:, :],
+            numba.float32[:, :],
+            numba.float32[:],
             numba.float32[:],
             numba.float32[:, :],
             numba.float32,
+            numba.float32[:],
+            numba.float32[:],
             numba.float32[:, :],
         )
     ],
-    "(n,m),(p),(k,q),(p),(p,p),()->(p,p)",
+    "(m,n),(m,n),(m,n),(p),(p),(p,p),()->(p),(),(p,p)",
     nopython=True,
     target="parallel",
 )
-def covariance_2d_gaussian(data, first_moments, points, dum, stat_cov, weight_power, res):
-    """Compute covariance by fitting a 2D Gaussian using statistical initialization.
+def fit_2d_gaussian(
+    data, x, y, dum, stat_mean, stat_cov, weight_power, res_mean, rmse, res_cov
+):
+    """Fit a 2D Gaussian once and return both mean and covariance.
 
-    This function uses the Gaussian fitting procedure to refine the statistical
-    covariance estimates for better precision, especially in noisy data.
+    This function fits a 2D Gaussian to the data using statistical initialization,
+    then extracts both the mean (x0, y0) and covariance matrix from the fitted
+    parameters in a single pass.
 
     Args:
-        data (numpy.ndarray): Intensity data, shape (n, m)
-        first_moments (numpy.ndarray): Mean vector [x0, y0]
-        points (numpy.ndarray): Coordinate points, shape (k, q)
+        data (numpy.ndarray): Intensity data, shape (m, n)
+        x (numpy.ndarray): X-coordinate grid, shape (m, n)
+        y (numpy.ndarray): Y-coordinate grid, shape (m, n)
         dum (numpy.ndarray): Dummy array for numba shapes
+        stat_mean (numpy.ndarray): Statistical mean vector [x0, y0]
         stat_cov (numpy.ndarray): Statistical covariance matrix
         weight_power (float): Weight power for the weight function
-        res (numpy.ndarray): Output array for results
+        res_mean (numpy.ndarray): Output array for mean [x0, y0]
+        rmse (numpy.ndarray): Output array for RMSE
+        res_cov (numpy.ndarray): Output array for covariance matrix
 
     Returns:
-        numpy.ndarray: Refined covariance matrix [[Ïƒ_xx, Ïƒ_xy], [Ïƒ_xy, Ïƒ_yy]]
+        None: Results are written to res_mean, rmse, and res_cov
     """
     if np.sum(data) < 1e-10:
-        res[0, 0] = 0.0
-        res[1, 1] = 0.0
-        res[0, 1] = res[1, 0] = 0.0
+        res_mean[0] = 0.0
+        res_mean[1] = 0.0
+        rmse[0] = 0.0
+        res_cov[0, 0] = 0.0
+        res_cov[1, 1] = 0.0
+        res_cov[0, 1] = res_cov[1, 0] = 0.0
         return
 
     params = fit_gaussian_2d(
-        data.flatten(), points[0], points[1], first_moments, stat_cov, weight_power
+        data.flatten(), x.flatten(), y.flatten(), stat_mean, stat_cov, weight_power
     )
 
+    # Extract mean
+    res_mean[0] = params[1]  # x0
+    res_mean[1] = params[2]  # y0
+
+    # Extract covariance from sigma_x, sigma_y, and rho
     sigma_x = max(params[3], 1e-10)
     sigma_y = max(params[4], 1e-10)
     rho = params[5]
 
-    res[0, 0] = sigma_x**2
-    res[1, 1] = sigma_y**2
-    res[0, 1] = res[1, 0] = rho * sigma_x * sigma_y
+    res_cov[0, 0] = sigma_x**2
+    res_cov[1, 1] = sigma_y**2
+    res_cov[0, 1] = res_cov[1, 0] = rho * sigma_x * sigma_y
 
-
+    # Compute RMSE
+    rmap = residual_map(data, x, y, params)
+    rmse[0] = nrmse(data, rmap)
 
 

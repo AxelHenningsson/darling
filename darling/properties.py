@@ -841,11 +841,13 @@ def fit_gaussian(data, coordinates, weight_power=1.0, stat_mean=None, stat_cov=N
         stat_cov = covariance(data, coordinates, first_moments=stat_mean)
 
     fitted_mean = np.zeros((a, b, 2), dtype=np.float32)
+    fitted_covariance = np.zeros((a, b, 2, 2), dtype=np.float32)
     rmse = np.zeros((a, b), dtype=np.float32)
 
     dum = np.arange(2).astype(np.float32)
 
-    _gaussian.moments_2d_gaussian(
+    # Fit Gaussian once and extract both mean and covariance
+    _gaussian.fit_2d_gaussian(
         data,
         x,
         y,
@@ -855,13 +857,7 @@ def fit_gaussian(data, coordinates, weight_power=1.0, stat_mean=None, stat_cov=N
         weight_power,
         fitted_mean,
         rmse,
-    )
-
-    points = np.array([x.flatten(), y.flatten()], dtype=np.float32)
-
-    fitted_covariance = np.zeros((a, b, 2, 2), dtype=np.float32)
-    _gaussian.covariance_2d_gaussian(
-        data, fitted_mean, points, dum, stat_cov, weight_power, fitted_covariance
+        fitted_covariance,
     )
 
     return fitted_mean, fitted_covariance, rmse
