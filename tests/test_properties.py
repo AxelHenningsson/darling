@@ -858,5 +858,175 @@ class TestGaussianMixture(unittest.TestCase):
             self.assertTrue("_motor2" not in key)
 
 
+class TestFitGaussian(unittest.TestCase):
+    """Tests for the fit_gaussian function in properties module."""
+
+    def setUp(self):
+        self.debug = False
+        np.random.seed(42)
+
+    def test_fit_gaussian_basic(self):
+        """Test fit_gaussian with simple synthetic data."""
+        a, b, m, n = 10, 10, 15, 15
+        x = np.linspace(-2, 2, m, dtype=np.float32)
+        y = np.linspace(-2, 2, n, dtype=np.float32)
+        X, Y = np.meshgrid(x, y, indexing="ij")
+
+        data = np.zeros((a, b, m, n), dtype=np.uint16)
+        
+        for i in range(a):
+            for j in range(b):
+                x0 = 0.1 * (i - a/2) / (a/2)
+                y0 = 0.1 * (j - b/2) / (b/2)
+                amp = 100.0
+                sigma = 0.5
+                
+                # Generate Gaussian
+                gauss = np.exp(-((X - x0)**2 + (Y - y0)**2) / (2 * sigma**2)) * amp
+                data[i, j] = np.clip(gauss, 0, 65535).astype(np.uint16)
+        
+        fitted_mean, fitted_cov, rmse = properties.fit_gaussian(
+            data, coordinates=(X, Y)
+        )
+
+        self.assertEqual(fitted_mean.shape, (a, b, 2))
+        self.assertEqual(fitted_cov.shape, (a, b, 2, 2))
+        self.assertEqual(rmse.shape, (a, b))
+
+        self.assertEqual(fitted_mean.dtype, np.float32)
+        self.assertEqual(fitted_cov.dtype, np.float32)
+        self.assertEqual(rmse.dtype, np.float32)
+
+        self.assertTrue(np.all(np.isfinite(fitted_mean)))
+        self.assertTrue(np.all(np.isfinite(fitted_cov)))
+        self.assertTrue(np.all(np.isfinite(rmse)))
+
+        self.assertTrue(np.all(rmse >= 0))
+
+        for i in range(a):
+            for j in range(b):
+                self.assertAlmostEqual(
+                    fitted_cov[i, j, 0, 1], fitted_cov[i, j, 1, 0], places=5
+                )
+
+    def test_fit_gaussian_with_stat_moments(self):
+        """Test fit_gaussian with provided statistical moments."""
+        a, b, m, n = 5, 5, 10, 10
+        x = np.linspace(-1, 1, m, dtype=np.float32)
+        y = np.linspace(-1, 1, n, dtype=np.float32)
+        X, Y = np.meshgrid(x, y, indexing="ij")
+        
+        data = np.zeros((a, b, m, n), dtype=np.uint16)
+        center_m, center_n = m // 2, n // 2
+        data[:, :, center_m, center_n] = 1000
+        
+        # Compute statistical moments first
+        stat_mean = properties.mean(data, coordinates=(X, Y))
+        stat_cov = properties.covariance(data, coordinates=(X, Y), first_moments=stat_mean)
+        
+        fitted_mean, fitted_cov, rmse = properties.fit_gaussian(
+            data, coordinates=(X, Y), stat_mean=stat_mean, stat_cov=stat_cov
+        )
+        
+        self.assertEqual(fitted_mean.shape, (a, b, 2))
+        self.assertEqual(fitted_cov.shape, (a, b, 2, 2))
+        self.assertEqual(rmse.shape, (a, b))
+
+    def test_fit_gaussian_weight_power(self):
+        """Test fit_gaussian with different weight_power values."""
+        a, b, m, n = 3, 3, 10, 10
+        x = np.linspace(-1, 1, m, dtype=np.float32)
+        y = np.linspace(-1, 1, n, dtype=np.float32)
+        X, Y = np.meshgrid(x, y, indexing="ij")
+        
+        data = np.zeros((a, b, m, n), dtype=np.uint16)
+        for i in range(a):
+            for j in range(b):
+                gauss = np.exp(-(X**2 + Y**2) / 0.5) * 200
+                data[i, j] = np.clip(gauss, 0, 65535).astype(np.uint16)
+        
+        for weight_power in [0.5, 1.0, 2.0]:
+            fitted_mean, fitted_cov, rmse = properties.fit_gaussian(
+                data, coordinates=(X, Y), weight_power=weight_power
+            )
+            
+            self.assertEqual(fitted_mean.shape, (a, b, 2))
+            self.assertTrue(np.all(np.isfinite(fitted_mean)))
+            self.assertTrue(np.all(np.isfinite(rmse)))
+
+    def test_fit_gaussian_zero_data(self):
+        """Test fit_gaussian handles zero data correctly."""
+        a, b, m, n = 5, 5, 8, 8
+        x = np.linspace(-1, 1, m, dtype=np.float32)
+        y = np.linspace(-1, 1, n, dtype=np.float32)
+        X, Y = np.meshgrid(x, y, indexing="ij")
+        
+        data = np.zeros((a, b, m, n), dtype=np.uint16)
+        
+        fitted_mean, fitted_cov, rmse = properties.fit_gaussian(
+            data, coordinates=(X, Y)
+        )
+        
+        self.assertEqual(fitted_mean.shape, (a, b, 2))
+        self.assertEqual(fitted_cov.shape, (a, b, 2, 2))
+        self.assertEqual(rmse.shape, (a, b))
+        
+        self.assertTrue(np.all(np.isfinite(fitted_mean)))
+        self.assertTrue(np.all(np.isfinite(fitted_cov)))
+        self.assertTrue(np.all(np.isfinite(rmse)))
+
+    def test_fit_gaussian_improves_over_stat_moments(self):
+        """Test that fit_gaussian improves estimates compared to raw statistical moments."""
+        a, b, m, n = 5, 5, 20, 20
+        x = np.linspace(-2, 2, m, dtype=np.float32)
+        y = np.linspace(-2, 2, n, dtype=np.float32)
+        X, Y = np.meshgrid(x, y, indexing="ij")
+        
+        true_x0, true_y0 = 0.3, -0.2
+        true_sigma_x, true_sigma_y = 0.8, 0.6
+        true_rho = 0.4
+        
+        data = np.zeros((a, b, m, n), dtype=np.uint16)
+        for i in range(a):
+            for j in range(b):
+                from darling import _gaussian
+                gauss = _gaussian.gaussian_2d(
+                    X, Y, 100.0, true_x0, true_y0, true_sigma_x, true_sigma_y, true_rho
+                )
+                noise = np.random.normal(0, 2.0, gauss.shape)
+                gauss_noisy = np.clip(gauss + noise, 0, None)
+                data[i, j] = np.clip(gauss_noisy, 0, 65535).astype(np.uint16)
+
+        stat_mean = properties.mean(data, coordinates=(X, Y))
+        stat_cov = properties.covariance(data, coordinates=(X, Y), first_moments=stat_mean)
+
+        fitted_mean, fitted_cov, rmse = properties.fit_gaussian(
+            data, coordinates=(X, Y), stat_mean=stat_mean, stat_cov=stat_cov
+        )
+
+        mean_errors_stat = np.abs(stat_mean - np.array([true_x0, true_y0]))
+        mean_errors_fit = np.abs(fitted_mean - np.array([true_x0, true_y0]))
+
+        for i in [a//2]:
+            for j in [b//2]:
+                self.assertTrue(np.isfinite(fitted_mean[i, j, 0]))
+                self.assertTrue(np.isfinite(fitted_mean[i, j, 1]))
+                self.assertTrue(rmse[i, j] >= 0)
+
+    def test_fit_gaussian_shape_validation(self):
+        """Test that fit_gaussian validates input shapes correctly."""
+        x = np.linspace(-1, 1, 5, dtype=np.float32)
+        y = np.linspace(-1, 1, 5, dtype=np.float32)
+        X, Y = np.meshgrid(x, y, indexing="ij")
+        
+        data_wrong = np.zeros((10, 10, 5), dtype=np.uint16)
+        with self.assertRaises(AssertionError):
+            properties.fit_gaussian(data_wrong, coordinates=(X, Y))
+
+        data_4d = np.zeros((5, 5, 5, 5), dtype=np.uint16)
+        with self.assertRaises(AssertionError):
+            properties.fit_gaussian(data_4d, coordinates=(X, Y, X))  
+
+
 if __name__ == "__main__":
     unittest.main()

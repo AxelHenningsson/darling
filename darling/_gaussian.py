@@ -199,7 +199,11 @@ def fit_gaussian_2d(
     data_norm = data_flat / scale
     params[0] /= scale
 
-    base_rates = np.array([0.01, 0.006, 0.006, 0.03, 0.03, 0.005])
+    # Per-parameter base learning rates for Adam.
+    # Order corresponds to params = [A, x0, y0, sigma_x, sigma_y, rho].
+    # These are starting step sizes; we adapt them each iteration based on
+    # error trend and simple heuristics to stabilize/focus the optimization.
+    base_rates = np.array([0.01, 0.006, 0.006, 0.03, 0.03, 0.01])
 
     m = np.zeros_like(params)
     v = np.zeros_like(params)
@@ -298,6 +302,7 @@ def fit_gaussian_2d(
             else:
                 error_trend = -1.0
 
+            # Begin with the base rates and adapt per-iteration
             alphas = base_rates.copy()
 
             if t < 50:
@@ -316,6 +321,7 @@ def fit_gaussian_2d(
                 + abs(params[4] - best_params[4]) / best_params[4]
             )
             if shape_error > 0.1:
+                # Speed up updates to the shape parameters when their drift is large
                 alphas[3:5] *= 1.2
 
             for i in range(len(params)):
