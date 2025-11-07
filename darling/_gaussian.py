@@ -47,8 +47,8 @@ def gaussian_2d(x, y, amplitude, x0, y0, sigma_x, sigma_y, rho):
     dx = x - x0
     dy = y - y0
 
-    sigma_x = max(sigma_x, 1e-10)
-    sigma_y = max(sigma_y, 1e-10)
+    #sigma_x = max(sigma_x, 1e-10) #absolute value of the sigmas 
+    #sigma_y = max(sigma_y, 1e-10)
 
     z = (
         (dx / sigma_x) ** 2
@@ -82,7 +82,7 @@ def params_from_moments(data_flat, stat_mean, stat_cov):
 
     x0, y0 = stat_mean[0], stat_mean[1]
 
-    sigma_x = np.sqrt(max(stat_cov[0, 0], 1e-10))
+    sigma_x = np.sqrt(max(stat_cov[0, 0], 1e-10)) #again 
     sigma_y = np.sqrt(max(stat_cov[1, 1], 1e-10))
 
     denom = sigma_x * sigma_y

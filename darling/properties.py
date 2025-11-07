@@ -810,6 +810,9 @@ def fit_gaussian(data, coordinates, weight_power=1.0, stat_mean=None, stat_cov=N
     statistical mean and covariance. If not provided, the statistical moments
     are computed first.
 
+    This function is in development and not yet ready for production. It can be used to fit 2D Gaussians to data, 
+    but the results are not yet fully tested and further changes are likely to be made.
+
     Args:
         data (numpy.ndarray): Array of shape (a, b, m, n) with uint16 intensities.
         coordinates (tuple[numpy.ndarray, numpy.ndarray]): (X, Y) grids of shape (m, n).
