@@ -2,6 +2,9 @@
 
 This module provides functions for fitting 2D Gaussian distributions to data using
 moment-based initialization and Adam optimization.
+
+This module is in development and not yet ready for production. It can be used to fit 2D Gaussians to data, 
+but the results are not yet fully tested and further changes are likely to be made.
 """
 
 import numba
@@ -67,7 +70,7 @@ def params_from_moments(data_flat, stat_mean, stat_cov):
     Args:
         data_flat (numpy.ndarray): Flattened intensity data
         stat_mean (numpy.ndarray): Statistical mean vector [x0, y0]
-        stat_cov (numpy.ndarray): Statistical covariance matrix [[Ïƒ_xx, Ïƒ_xy], [Ïƒ_xy, Ïƒ_yy]]
+        stat_cov (numpy.ndarray): Statistical covariance matrix [[σ_xx, σ_xy], [σ_xy, σ_yy]
 
     Returns:
         numpy.ndarray: Initial parameter estimates [amplitude, x0, y0, sigma_x, sigma_y, rho]
