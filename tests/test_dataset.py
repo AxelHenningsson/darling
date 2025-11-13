@@ -29,6 +29,43 @@ class TestDataSet(unittest.TestCase):
         for reader in self.readers:
             dset = darling.DataSet(reader)
 
+    def test_read_from_constructor_with_roi(self):
+        path_to_data, _, _ = darling.assets.energy_mu_scan()
+        dset = darling.DataSet(path_to_data, scan_id="1.1", roi=(2, 19, 0, 10))
+        print(dset.data.shape, dset.motors.shape)
+        self.assertEqual(dset.data.shape[0], 17)
+        self.assertEqual(dset.data.shape[1], 10)
+        self.assertEqual(dset.motors.shape[0], 2)
+        self.assertEqual(dset.motors.shape[1], 31)
+        self.assertEqual(dset.motors.shape[2], 20)
+
+    def test_read_overloaded_motor_from_constructor_with_suffix(self):
+        path_to_data, _, _ = darling.assets.energy_mosa_scan()
+        dset = darling.DataSet(
+            path_to_data, suffix=".1", scan_motor="instrument/positioners/ccmth"
+        )
+        self.assertEqual(dset.data.shape[0], 5)
+        self.assertEqual(dset.data.shape[1], 5)
+        self.assertEqual(dset.motors.ndim, 4)
+        self.assertEqual(dset.motors.shape[0], 3)
+        self.assertEqual(dset.motors.shape[1], 12)
+        self.assertEqual(dset.motors.shape[2], 6)
+        self.assertEqual(dset.motors.shape[3], 15)
+
+    def test_read_overloaded_motor_from_constructor_with_scan_id_list(self):
+        path_to_data, _, _ = darling.assets.energy_mosa_scan()
+        scan_id = ["15.1", "16.1", "17.1"]
+        dset = darling.DataSet(
+            path_to_data, scan_id=scan_id, scan_motor="instrument/positioners/ccmth"
+        )
+        self.assertEqual(dset.data.shape[0], 5)
+        self.assertEqual(dset.data.shape[1], 5)
+        self.assertEqual(dset.motors.ndim, 4)
+        self.assertEqual(dset.motors.shape[0], 3)
+        self.assertEqual(dset.motors.shape[1], 12)
+        self.assertEqual(dset.motors.shape[2], 6)
+        self.assertEqual(dset.motors.shape[3], len(scan_id))
+
     def test_load_scan(self):
         for i, reader in enumerate(self.readers):
             dset = darling.DataSet(reader)

@@ -33,6 +33,17 @@ class TestAssets(unittest.TestCase):
         self.assertTrue(len(data.shape) == 4)
         self.assertTrue(coordinates.dtype == np.float32)
 
+    def test_energy_mosa_scan(self):
+        path, data, coordinates = darling.assets.energy_mosa_scan()
+
+        self.assertEqual(coordinates.shape[0], 3)
+        self.assertEqual(coordinates.shape[1], data.shape[2])
+        self.assertEqual(coordinates.shape[2], data.shape[3])
+        self.assertEqual(coordinates.shape[3], data.shape[4])
+        self.assertTrue(isinstance(path, str))
+        self.assertTrue(data.dtype == np.uint16)
+        self.assertTrue(len(data.shape) == 5)
+
     def test_rocking_scan(self):
         path, data, coordinates = darling.assets.rocking_scan()
 

@@ -13,6 +13,16 @@ class DataSet(object):
     Args:
         data_source (:obj: `string` or `darling.reader.Reader`): A string to the absolute h5 file path
             location of the data, or a reader object implementing the darling.reader.Reader() interface.
+        scan_id (:obj:`str` or :obj:`list` or :obj:`str`): scan id or scan ids to load. Defaults to None,
+            in which case no data is loaded on instantiation. In this case use load_scan() to load data.
+        suffix (:obj:`str`): A regular suffix pattern to match scan ids in the data source. For
+            example, ".1" will find all top level keys in the h5 file that end with ".1", such as "1.1", "2.1", etc.
+            Defaults to None, in which case no data is loaded on instantiation. (Use load_scan() to load data.)
+        scan_motor (:obj:`str`): The path in the h5 file to the motor that is changing with the scan_id.
+            Only relevant when multiple scan_ids are loaded. Defaults to None.
+        roi (:obj:`tuple` of :obj:`int`): (row_min, row_max, column_min, column_max),
+            The roi refers to the detector dimensions. I.e for each frame only the part that corresponds to
+            frame[roi[0]:roi[1], roi[2]:roi[3]] is loaded. Defaults to None, in which case all data is loaded.
 
     Attributes:
         reader (:obj: `darling.reader.Reader`): A file reader implementing, at least, the functionallity
@@ -22,10 +32,30 @@ class DataSet(object):
         motors (:obj: `numpy.ndarray`): The motor grids of shape (k, m,n,(o)) where k is the number of
             motors and m,n,(o) are the motor dimensions.
         h5file (:obj: `string`): The absolute path to the h5 file in which all data resides.
+        roi (:obj:`tuple` of :obj:`int`): (row_min, row_max, column_min, column_max),
+            The roi refers to the detector dimensions. I.e for each frame only the part that corresponds to
+            frame[roi[0]:roi[1], roi[2]:roi[3]] is loaded. Defaults to None, in which case all data is loaded.
 
     """
 
-    def __init__(self, data_source, scan_id=None):
+    def __init__(
+        self,
+        data_source,
+        scan_id=None,
+        suffix=None,
+        scan_motor=None,
+        roi=None,
+    ):
+        if scan_id is None and suffix is None and roi is not None:
+            raise ValueError(
+                f"Cannot load data in the given roi, {roi}, without a scan_id, but scan_id is {scan_id}"
+            )
+
+        if suffix is not None and scan_id is not None:
+            raise ValueError(
+                f"Cannot use both suffix and scan_id, but suffix is {suffix} and scan_id is {scan_id}"
+            )
+
         if isinstance(data_source, darling.reader.Reader):
             self.reader = data_source
             self.h5file = self.reader.abs_path_to_h5_file
@@ -37,11 +67,26 @@ class DataSet(object):
                 "reader should be a darling.reader.Reader or a string to the h5 file."
             )
 
+        if suffix is not None:
+            scan_id = self._get_scan_ids(suffix)
+
         self.data = None
         self.motors = None
 
         if scan_id is not None:
-            self.load_scan(scan_id, roi=None)
+            self.load_scan(scan_id, scan_motor=scan_motor, roi=roi)
+
+    def _get_scan_ids(self, suffix):
+        with h5py.File(self.h5file) as h5file:
+            scan_ids = [k for k in h5file.keys() if k.endswith(suffix)]
+        if len(scan_ids) == 0:
+            raise ValueError(
+                f"No scan ids found with suffix {suffix} in file {self.h5file}."
+            )
+        elif len(scan_ids) == 1:
+            return scan_ids[0]
+        else:
+            return scan_ids
 
     @property
     def dtype(self):
@@ -199,6 +244,8 @@ class DataSet(object):
 
             self.motors = motors
             self.data = data
+
+            self.roi = roi
 
     def subtract(self, background, dtype=np.uint16):
         """Subtract a fixed integer value from the data block.

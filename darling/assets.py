@@ -173,6 +173,33 @@ def energy_mu_scan():
     return data_path, dset.data, dset.motors
 
 
+def energy_mosa_scan():
+    """Load a (tiny) part of a 3D strain-mosaicity scan collected at the ESRF ID03.
+
+    This is the central detector ROI for a Al1050 crystal.
+
+    The scan is performed with the ccmth motor (i.e the monochromator) and the
+    mu and chi motors (i.e the base cradle/rocking cradle and rolling top stage).
+
+    Returns:
+        data_path (:obj:`str`): Absolute path to h5 file.
+        data (:obj:`numpy array`): Array of shape (a, b, m, n) with intensity data.
+        ``data[:,:,i,j]`` is a noisy detector image (uint16) for ccmth and mu at index ``i, j``.
+        coordinates (:obj:`numpy array`): Array of shape (2, m, n) containing angle coordinates.
+    """
+    data_path = _get_asset_abspath(
+        "example_data",
+        "energy_mosa_scan_id03",
+        "energy_mosa_id03.h5",
+    )
+    dset = darling.DataSet(
+        data_path,
+        suffix=".1",
+        scan_motor="instrument/positioners/ccmth",
+    )
+    return data_path, dset.data, dset.motors
+
+
 def gaussian_blobs(N=32, m=9):
     """Phantom 2d scan of gaussian blobs with shifting means and covariance.
 
