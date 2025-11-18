@@ -2,7 +2,7 @@ import h5py
 import numpy as np
 
 import darling
-
+from tqdm import tqdm
 
 class DataSet(object):
     """A DFXM data-set.
@@ -35,6 +35,7 @@ class DataSet(object):
         roi (:obj:`tuple` of :obj:`int`): (row_min, row_max, column_min, column_max),
             The roi refers to the detector dimensions. I.e for each frame only the part that corresponds to
             frame[roi[0]:roi[1], roi[2]:roi[3]] is loaded. Defaults to None, in which case all data is loaded.
+        verbose (:obj: ``bool): Prints progress on loading. Defaults to False.
 
     """
 
@@ -45,6 +46,7 @@ class DataSet(object):
         suffix=None,
         scan_motor=None,
         roi=None,
+        verbose=True
     ):
         if scan_id is None and suffix is None and roi is not None:
             raise ValueError(
@@ -74,7 +76,7 @@ class DataSet(object):
         self.motors = None
 
         if scan_id is not None:
-            self.load_scan(scan_id, scan_motor=scan_motor, roi=roi)
+            self.load_scan(scan_id, scan_motor=scan_motor, roi=roi, verbose=verbose)
 
     def _get_scan_ids(self, suffix):
         with h5py.File(self.h5file) as h5file:
@@ -167,7 +169,7 @@ class DataSet(object):
         else:
             return self.reader.sensors
 
-    def load_scan(self, scan_id, scan_motor=None, roi=None):
+    def load_scan(self, scan_id, scan_motor=None, roi=None, verbose=True):
         """Load a scan into RAM.
 
         Args:
@@ -177,6 +179,7 @@ class DataSet(object):
             roi (:obj:`tuple` of :obj:`int`): row_min row_max and column_min and column_max,
                 defaults to None, in which case all data is loaded. The roi refers to the detector
                 dimensions.
+            verbose (:obj: ``bool): Prints progress on loading. Defaults to False.
 
         """
         if not (isinstance(scan_id, list) or isinstance(scan_id, str)):
@@ -235,7 +238,8 @@ class DataSet(object):
                 (*reference_data_block.data.shape, number_of_scans), np.uint16
             )
             data[..., 0] = reference_data_block[...]
-            for i, sid in enumerate(scan_id[1:]):
+
+            for i, sid in enumerate(tqdm(scan_id[1:], disable=not verbose)):
                 data_block, _ = self.reader(sid, roi)
                 data[..., i + 1] = data_block[...]
 

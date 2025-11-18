@@ -29,6 +29,7 @@ dependencies = [
   "h5py",
   "numba",
   "meshio",
+  "tqdm",
 ]
 keywords = ["x-ray", "microscopy", "dfxm", "crystallography", "materials-science"]
 classifiers = [
