@@ -84,7 +84,7 @@ def domains(scan_id="1.1"):
     data_path = _get_asset_abspath("example_data", "domains", "2D_domains.h5")
     reader = darling.reader.MosaScan(data_path)
     dset = darling.DataSet(reader)
-    dset.load_scan(scan_id)
+    dset.load_scan(scan_id, verbose=False)
     return data_path, dset.data, dset.motors
 
 
@@ -100,7 +100,7 @@ def rocking_scan():
     data_path = _get_asset_abspath("example_data", "rocking_scan_id03", "rocking.h5")
     reader = darling.reader.RockingScan(data_path)
     dset = darling.DataSet(reader)
-    dset.load_scan(scan_id="1.1")
+    dset.load_scan(scan_id="1.1", verbose=False)
     return data_path, dset.data, dset.motors
 
 
@@ -122,7 +122,7 @@ def motor_drift(scan_id="1.1"):
     data_path = _get_asset_abspath("example_data", "motor_drift", "motor_drift.h5")
     reader = darling.reader.MosaScan(data_path)
     dset = darling.DataSet(reader)
-    dset.load_scan(scan_id)
+    dset.load_scan(scan_id, verbose=False)
     return data_path, dset.data, dset.motors
 
 
@@ -144,7 +144,7 @@ def mosaicity_scan(scan_id="1.1"):
     data_path = _get_asset_abspath("example_data", "mosa_scan_id03", "mosa_scan.h5")
     reader = darling.reader.MosaScan(data_path)
     dset = darling.DataSet(reader)
-    dset.load_scan(scan_id)
+    dset.load_scan(scan_id, verbose=False)
     return data_path, dset.data, dset.motors
 
 
@@ -169,7 +169,7 @@ def energy_mu_scan():
         "ccmth_mu_scan_id03",
         "BiFeO3_energy_rocking_scan_closed_slits.h5",
     )
-    dset = darling.DataSet(data_path, scan_id="1.1")
+    dset = darling.DataSet(data_path, scan_id="1.1", verbose=False)
     return data_path, dset.data, dset.motors
 
 
@@ -195,7 +195,8 @@ def energy_mosa_scan():
     dset = darling.DataSet(
         data_path,
         suffix=".1",
-        scan_motor="instrument/positioners/ccmth",
+        scan_motor="instrument/positioners/ccmth", 
+        verbose=False,
     )
     return data_path, dset.data, dset.motors
 
