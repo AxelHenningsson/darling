@@ -52,6 +52,15 @@ class TestDataSet(unittest.TestCase):
         self.assertEqual(dset.motors.shape[2], 6)
         self.assertEqual(dset.motors.shape[3], 15)
 
+    def test_suffix_sorting(self):
+        path_to_data, _, _ = darling.assets.energy_mosa_scan()
+        dset = darling.DataSet(
+            path_to_data, suffix=".1", scan_motor="instrument/positioners/ccmth"
+        )
+        dx = dset.motors[-1][0, 0, :][1] - dset.motors[-1][0, 0, :][0]
+        self.assertGreater(dx, 0)
+        np.testing.assert_allclose(np.diff(dset.motors[-1][0, 0, :]), dx)
+
     def test_read_overloaded_motor_from_constructor_with_scan_id_list(self):
         path_to_data, _, _ = darling.assets.energy_mosa_scan()
         scan_id = ["15.1", "16.1", "17.1"]

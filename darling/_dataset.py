@@ -86,6 +86,10 @@ class DataSet(object):
         elif len(scan_ids) == 1:
             return scan_ids[0]
         else:
+            try:
+                scan_ids.sort(key=float)
+            except ValueError:
+                scan_ids.sort()
             return scan_ids
 
     @property
