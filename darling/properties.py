@@ -138,14 +138,16 @@ def rgb(property_2d, norm="dynamic", coordinates=None):
     return rgb_map, colorkey, colorgrid
 
 
-def kam(property_2d, size=(3, 3)):
-    """Compute the KAM (Kernel Average Misorientation) map of a 2D property map.
+def kam(vector_field, ndim=None, size=3):
+
+    #vector_field lets do ndim and than size
+    """Compute the KAM (Kernel Average Misorientation) map on a data input for 2D or 3D data with C input channels.
 
     KAM is computed by sliding a kernel across the image and for each voxel computing
     the average misorientation between the central voxel and the surrounding voxels.
     Here the misorientation is defined as the L2 euclidean distance between the
     (potentially vectorial) property map and the central voxel such that scalars formed
-    as for instance np.linalg.norm( property_2d[i + 1, j] - property_2d[i, j] ) are
+    as for instance np.linalg.norm( data[i + 1, j] - data[i, j] ) are
     computed and averaged over the kernel.
 
     NOTE: This is a projected KAM in the sense that the rotation the full rotation
@@ -165,13 +167,13 @@ def kam(property_2d, size=(3, 3)):
         phi = np.linspace(-1, 1, 64)
         chi = np.linspace(-1, 1, 128)
         coord = np.meshgrid(phi, chi, indexing="ij")
-        property_2d = np.random.rand(len(phi), len(chi), 2)
-        property_2d[property_2d > 0.9] = 1
-        property_2d -= 0.5
-        property_2d = gaussian_filter(property_2d, sigma=2)
+        data = np.random.rand(len(phi), len(chi), 2)
+        data[data > 0.9] = 1
+        data -= 0.5
+        data = gaussian_filter(data, sigma=2)
 
         # compute the KAM map
-        kam = darling.properties.kam(property_2d, size=(3, 3))
+        kam = darling.properties.kam(data, ndim=2, size=3)
 
         plt.style.use("dark_background")
         fig, ax = plt.subplots(1, 1, figsize=(7, 7))
@@ -183,26 +185,70 @@ def kam(property_2d, size=(3, 3)):
     .. image:: ../../docs/source/images/kam.png
 
     Args:
-        property_2d (:obj:`numpy array`): The property map to compute the KAM from,
-            shape=(a, b, m) or (a, b). This is assumed to be the angular coordinates of
-            diffraction such that np.linalg.norm( property_2d[i,j]) gives the mismatch
-            in degrees between the reference diffraction vector and the local mean
-            diffraction vector.
-        size (:obj:`tuple`): The size of the kernel to use for the KAM computation.
-            Defaults to (3, 3).
+        vector_field (:obj:`numpy.ndarray`): Input data array used for KAM computation,
+            with shape (Y, X), (Y, X, C), (Z, Y, X, C), or (Z, Y, X). Each element is assumed
+            to represent a vector-valued diffraction property.
+        ndim (:obj:`int`): Needs to be specified, dimensionality of the data, must be 2 or 3.
+        size (:obj:`int` or :obj:`tuple` or :obj:`numpy.ndarray`, optional): Kernel size used for neighborhood evaluation.
+            Defaults to 3 . For 2D input use (ky, kx); for 3D input use (kz, ky, kx).
 
     Returns:
-        :obj:`numpy array` : The KAM map of shape=(a, b). (same units as input.)
+        :obj:`numpy.ndarray`: KAM map of the same spatial shape as the input (without
+        the vector channel), in the same units as the input.
     """
-    km, kn = size
-    assert km > 1 and kn > 1, "size must be larger than 1"
-    assert km % 2 == 1 and kn % 2 == 1, "size must be odd"
-    kam_map = np.zeros((property_2d.shape[0], property_2d.shape[1], (km * kn) - 1))
-    counts_map = np.zeros((property_2d.shape[0], property_2d.shape[1]), dtype=int)
-    if property_2d.ndim == 2:
-        _kam(property_2d[..., None], km, kn, kam_map, counts_map)
+
+    if ndim is None:
+        raise ValueError("ndim must be specified")
+    if ndim not in [2, 3]:
+        raise ValueError("ndim must be 2 or 3")
+
+    # --- fit the size of the kernel to the input and ndim ---
+    if isinstance(size, int):
+        size = np.array([size] * ndim, dtype=int)
+    elif isinstance(size, (tuple, np.ndarray)):
+        size = np.array(size, dtype=int)
+        if size.size != ndim:
+            raise ValueError(
+                f"size length {size.size} does not match ndim={ndim}."
+            )
     else:
-        _kam(property_2d, km, kn, kam_map, counts_map)
+        raise TypeError("size must be int, tuple, or numpy.ndarray if the size is defined for each axis")
+
+    # --- fit the vector_field to the ndim if needed ---
+    if ndim == 2:
+        if vector_field.ndim == 2:
+            vector_field = vector_field[..., None]
+        elif vector_field.ndim   == 3:
+            pass
+        else:
+            raise ValueError("For a 2D kernel, property must be 2D or 3D")
+    elif ndim == 3:
+        if vector_field.ndim == 3:
+            vector_field = vector_field[..., None]
+        elif vector_field.ndim == 4:
+            pass
+        else:
+            raise ValueError("For a 3D kernel, property must be 3D or 4D")
+    else:
+        raise ValueError("Kernel size must be 2D 3D")
+
+
+    assert all(s % 2 == 1 for s in size), "size must be odd"
+    assert all(s > 1 for s in size), "size must be larger than 1"
+
+    # --- compute the shape of the kam map ---
+    shape = vector_field.shape[:-1] + (np.prod(size) - 1,)
+    kam_map = np.zeros(shape)
+    counts_map = np.zeros(shape[:-1], dtype=int)
+
+    if ndim == 2:
+        _kam3D(vector_field[None,...], 1, size[0], size[1], kam_map[None,...], counts_map[None,...])
+    elif ndim == 3:
+        _kam3D(vector_field, size[0], size[1], size[2], kam_map, counts_map)
+
+    else:
+        raise ValueError("Kernel size must be 2D or 3D")
+
     counts_map[counts_map == 0] = 1
     return np.sum(kam_map, axis=-1) / counts_map
 
@@ -630,33 +676,53 @@ def _second_moments3D(data, first_moments, points, dum, res):
         res[...] = cov
 
 
-@numba.jit(nopython=True, cache=True, parallel=True)
-def _kam(property_2d, km, kn, kam_map, counts_map):
-    """Fills the KAM and count maps in place.
+@numba.jit(nopython=True, parallel=True, cache=True)
+def _kam3D(vector_field, kz, ky, kx, kam_map, counts_map):
+    """
+    Fills the KAM and count maps in place.
 
     Args:
-        property_2d (:obj:`numpy.ndarray`): The shape=(a,b,m) map to
-            be used for the KAM computation.
-        km (:obj:`int`): kernel size in rows
-        kn (:obj:`int`): kernel size in columns
-        kam_map (:obj:`numpy.ndarray`): empty array to store the KAM
-            values of shape=(a,b, (km*kn)-1)
-        counts_map (:obj:`numpy.ndarray`): empty array to store the counts
-            of shape=(a,b)
+        data (:obj:`numpy.ndarray`): The input map used for the KAM computation,
+            shape=(Z, Y, X, C), where Z is the slice dimension and C the number
+            of vector components.
+        kz (:obj:`int`): Kernel size along the slices (Z-axis).
+        ky (:obj:`int`): Kernel size along the rows (Y-axis).
+        kx (:obj:`int`): Kernel size along the columns (X-axis).
+        kam_map (:obj:`numpy.ndarray`): Empty array to store the KAM values,
+            shape=(Z, Y, X, (kz*ky*kx)-1).
+        counts_map (:obj:`numpy.ndarray`): Empty array to store the valid
+            neighbor counts, shape=(Z, Y, X).
+
+    Notes:
+        This function computes the Kernel Average Misorientation (KAM) for
+        each voxel by evaluating the Euclidean distance between the local
+        vector `c` and its valid neighbors `n` within the defined kernel.
+        The results are stored directly in the provided `kam_map` and
+        `counts_map` arrays.
+
+        Technically we choose to prange over the x dimension, as it it is the largest and gives biggest performance boot.
     """
-    for i in numba.prange(km // 2, property_2d.shape[0] - (km // 2)):
-        for j in range(kn // 2, property_2d.shape[1] - (kn // 2)):
-            if ~np.isnan(property_2d[i, j, 0]):
-                c = property_2d[i, j]
-                for ii in range(-(km // 2), (km // 2) + 1):
-                    for jj in range(-(kn // 2), (kn // 2) + 1):
-                        if ii == 0 and jj == 0:
-                            continue
-                        else:
-                            n = property_2d[i + ii, j + jj]
-                            if ~np.isnan(n[0]):
-                                kam_map[i, j, counts_map[i, j]] = np.linalg.norm(n - c)
-                                counts_map[i, j] += 1
+    Z, Y, X, C = vector_field.shape
+
+    for x in numba.prange(kx // 2, X - kx // 2):
+        for y in range(ky // 2, Y - ky // 2):
+            for z in range(kz // 2, Z - kz // 2):
+                c = vector_field[z, y, x]
+                if not np.isnan(c[0]):
+                    count = 0
+                    for dz in range(-(kz // 2), kz // 2 + 1):
+                        for dy in range(-(ky // 2), ky // 2 + 1):
+                            for dx in range(-(kx // 2), kx // 2 + 1):
+                                if dx == 0 and dy == 0 and dz == 0:
+                                    continue
+                                n = vector_field[z + dz, y + dy, x + dx]
+                                if not np.isnan(n[0]):
+                                    dist = 0.0
+                                    for d in range(C):
+                                        dist += (n[d] - c[d]) ** 2
+                                    kam_map[z, y, x, count] = np.sqrt(dist)
+                                    count += 1
+                    counts_map[z, y, x] = count
 
 
 def gaussian_mixture(data, k=8, coordinates=None):
