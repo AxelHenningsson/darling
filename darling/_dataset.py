@@ -218,6 +218,10 @@ class DataSet(object):
                 for i, sid in enumerate(scan_id):
                     scan_motor_values[i] = h5file[sid][scan_motor][()]
 
+            # addition by fefra
+            scan_id = [scan_id[idx] for idx in np.argsort(scan_motor_values)]
+            # end addition
+            
             reference_data_block, reference_motors = self.reader(scan_id[0], roi)
 
             if reference_motors.ndim == 2:
