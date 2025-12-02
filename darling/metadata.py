@@ -37,6 +37,7 @@ class ID03(object):
                 "d2scan": [6, 6],
                 "fscan2d": [3, 7],
                 "loopscan": [0],
+                "amesh": [3, 7], # added by fefra
             },
             "motor_names": {
                 "ascan": [0],
@@ -44,6 +45,7 @@ class ID03(object):
                 "a2scan": [0],  # [0, 3] I think these are actually 1D scans
                 "d2scan": [0, 3],
                 "fscan2d": [0, 4],
+                "amesh": [0, 4], #added by fefra
             },
         }
 
@@ -55,6 +57,7 @@ class ID03(object):
             "d2scan": [False, False],
             "fscan2d": [False, True],
             "loopscan": [None],
+            "amesh": [False, False], # added by fefra
         }
 
         # These are the expected h5 mappings between the scan command motor names and the
@@ -104,6 +107,7 @@ class ID03(object):
             self.motor_map["ux"]: "instrument/positioners/samx",
             self.motor_map["uy"]: "instrument/positioners/samy",
             self.motor_map["uz"]: "instrument/positioners/samz",
+            self.motor_map["omega"]: "instrument/omega/data",
         }
 
         # these are names of additional sensors that run independently of motors.
@@ -191,7 +195,7 @@ class ID03(object):
         command = scan_params["scan_command"].split(" ")[0]
         params = np.array(scan_params["scan_command"].split(" ")[1:])
         scan_shape = params[self.scan_arg_pos["motor_steps"][command]].astype(int)
-        if command in ["a2scan", "ascan"]:
+        if command in ["a2scan", "ascan", "amesh"]: #added by fefra
             for i in range(len(scan_shape)):
                 scan_shape[i] += 1
         return scan_shape
