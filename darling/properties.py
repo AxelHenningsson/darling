@@ -37,6 +37,7 @@ import numpy as np
 
 import darling._color as color
 import darling.peaksearcher as peaksearcher
+from darling._gaussian_fit import fit_gaussian_with_linear_background_1D
 
 
 def rgb(property_2d, norm="dynamic", coordinates=None):
@@ -657,6 +658,52 @@ def _kam(property_2d, km, kn, kam_map, counts_map):
                             if ~np.isnan(n[0]):
                                 kam_map[i, j, counts_map[i, j]] = np.linalg.norm(n - c)
                                 counts_map[i, j] += 1
+
+
+def fit_1d_gaussian(
+    data,
+    coordinates,
+    number_of_gauss_newton_iterations=7,
+    mask=None,
+):
+    """Fit analytical gaussian + linear background for each pixel in a 2D image.
+
+    The input volume is assumed to have shape (ny, nx, m), where the
+    last axis corresponds to the 1D curves to be fitted with
+    a Gaussian + linear background. For each data[i, j, :] the function fits
+        f(x) = A * exp(-(x - mu)**2 / (2 * sigma**2)) + k * x + m
+    and stores the five fitted parameters: [A, mu, sigma, k, m, success].
+
+    Args:
+        data (:obj:`numpy.ndarray`): 3D array of shape (ny, nx, m). Arbitrary dtypes are supported.
+        coordinates (:obj:`tuple` of :obj:`numpy array`): Tuple of len=1, len=2 or len=3
+            containing numpy nd arrays specifying the coordinates in each dimension
+            respectively. I.e, as an example, these could be the phi and chi angular
+            cooridnates as a meshgrid.
+        number_of_gauss_newton_iterations (:obj:`int`): Number of Gauss-Newton iterations to use for the fit. Defaults to 7.
+        mask (:obj:`numpy.ndarray`): 2D array of shape (ny, nx) with dtype bool. Defaults to None. If provided, only the pixels where mask is True will be fitted.
+    Returns:
+        :obj:`numpy.ndarray`: Output array of shape (ny, nx, 5) of dtype float64 with
+            parameters [A, mu, sigma, k, m, success] for each (i, j).
+            Here A is the amplitude, mu is the mean, sigma is the standard deviation
+            of the Gaussian, k is the background slope, m is the background intercept,
+            and success is 0 if the fit failed, 1 if it succeeded.
+    """
+    if len(coordinates) != 1:
+        raise ValueError(
+            f"coordinates must be a 1d tuple but got {len(coordinates)} dimensions"
+        )
+    if data.ndim != 3:
+        raise ValueError(
+            f"data must be a 3d numpy array but got {data.ndim} dimensions"
+        )
+
+    return fit_gaussian_with_linear_background_1D(
+        data,
+        coordinates[0],
+        number_of_gauss_newton_iterations,
+        mask,
+    )
 
 
 def gaussian_mixture(data, k=8, coordinates=None):
