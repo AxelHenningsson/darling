@@ -1,49 +1,7 @@
 import numba
 import numpy as np
-from numba import prange
 
-
-@numba.njit(cache=True)
-def func_grad(A, sigma, mu, k, m, x):
-    """Evaluate Gaussian with linear background and its gradient.
-
-    The function is defined as
-        f(x) = A * exp(-(x - mu)**2 / (2 * sigma**2)) + k * x + m
-
-    The gradient is taken with respect to the parameters
-        [A, sigma, mu, k, m]
-    in that order.
-
-    Args:
-        A (:obj:`float`): Amplitude of the Gaussian peak.
-        sigma (:obj:`float`): Standard deviation of the Gaussian peak.
-        mu (:obj:`float`): Mean position of the Gaussian peak.
-        k (:obj:`float`): Slope of the linear background.
-        m (:obj:`float`): Intercept of the linear background.
-        x (:obj:`float`): Position at which to evaluate the function.
-
-    Returns:
-        tuple:
-            func (:obj:`float`): Function value f(x).
-            grad (:obj:`numpy.ndarray`): Gradient vector of shape (5,)
-                ordered as [df/dA, df/dsigma, df/dmu, df/dk, df/dm].
-    """
-    res = mu - x
-    res2 = res * res
-    s2 = sigma * sigma
-    s3 = s2 * sigma
-    l1 = np.exp(-0.5 * res2 / s2)
-    func = A * l1 + k * x + m
-    grad = np.array(
-        [
-            l1,
-            A * res2 * l1 / s3,
-            -A * res * l1 / s2,
-            x,
-            1.0,
-        ]
-    )
-    return func, grad
+from darling._analytical_functions import func_and_grad_gaussian_with_linear_background
 
 
 @numba.njit(cache=True)
@@ -111,8 +69,8 @@ def estimate_initial_gaussian_params(data, x, k_bg, m_bg):
     Returns:
         tuple:
             A (:obj:`float`): Initial amplitude estimate.
-            mu (:obj:`float`): Initial mean estimate.
             sigma (:obj:`float`): Initial standard deviation estimate.
+            mu (:obj:`float`): Initial mean estimate.
     """
     n = x.shape[0]
 
@@ -148,153 +106,149 @@ def estimate_initial_gaussian_params(data, x, k_bg, m_bg):
     else:
         A = max_w
 
-    return A, mu, sigma
+    return A, sigma, mu
 
 
 @numba.njit(cache=True)
-def assemble_normal_equations(A, sigma, mu, k_bg, m_bg, x, data):
-    """Assemble the normal equations for Gauss-Newton method for the Gaussian + linear model.
+def assemble_normal_equations(params, x, data, func_and_grad):
+    """Assemble the normal equations for Gauss-Newton method.
 
     The normal equations are given by
         H = sum( J^T J ) (approx. Hessian matrix)
         g = -sum( J^T r ) (approx. gradient vector)
 
     Args:
-        A (:obj:`float`): Current amplitude.
-        sigma (:obj:`float`): Current standard deviation.
-        mu (:obj:`float`): Current mean.
-        k_bg (:obj:`float`): Current background slope.
-        m_bg (:obj:`float`): Current background intercept.
+        params (:obj:`numpy.ndarray`): Array of parameters of shape (n,).
         x (:obj:`numpy.ndarray`): 1D array of positions x_k.
+        data (:obj:`numpy.ndarray`): 1D array of data values y_k.
+        func_and_grad (callable): Function that maps (params, x_k) -> (f_k, grad_k).
 
     Returns:
         tuple:
-            H (:obj:`numpy.ndarray`): Approx. Hessian matrix of shape (5, 5).
-            g (:obj:`numpy.ndarray`): Exact gradient vector of shape (5,).
+            H (:obj:`numpy.ndarray`): Approx. Hessian matrix of shape (n, n).
+            g (:obj:`numpy.ndarray`): Exact gradient vector of shape (n,).
     """
-    H = np.zeros((5, 5))
-    g = np.zeros(5)
+    n = len(params)
+    H = np.zeros((n, n))
+    g = np.zeros(n)
     for i in range(x.shape[0]):
         t = x[i]
         yk = data[i]
-        f, grad = func_grad(A, sigma, mu, k_bg, m_bg, t)
+        f, grad = func_and_grad(params, t)
         r = yk - f
-        for a in range(5):
+        for a in range(n):
             ga = grad[a]
             g[a] += -ga * r
-            for b in range(5):
+            for b in range(n):
                 H[a, b] += ga * grad[b]
     return H, g
 
 
 @numba.njit(cache=True)
-def gauss_newton_iteration(A, sigma, mu, k_bg, m_bg, x, data):
-    """Perform a single Gauss-Newton iteration for a Gaussian + linear model.
-
-    The model is
-        f(x) = A * exp(-(x - mu)**2 / (2 * sigma**2)) + k_bg * x + m_bg
-
-    Using the current parameter values, this function computes the
-    Gauss-Newton step by building the normal equations
-
-        H = sum( J^T J )
-        g = -sum( J^T r )
-
-    where r = y - f and J is the gradient of f with respect to
-    [A, sigma, mu, k_bg, m_bg].
+def gauss_newton_iteration(params, x, data, func_and_grad):
+    """Perform a single Gauss-Newton iteration for a generic model.
 
     Args:
-        A (:obj:`float`): Current amplitude.
-        sigma (:obj:`float`): Current standard deviation.
-        mu (:obj:`float`): Current mean.
-        k_bg (:obj:`float`): Current background slope.
-        m_bg (:obj:`float`): Current background intercept.
+        params (:obj:`numpy.ndarray`): Current parameter vector of shape (n,).
         x (:obj:`numpy.ndarray`): 1D array of positions x_k.
         data (:obj:`numpy.ndarray`): 1D array of data values y_k.
+        func_and_grad (callable): Function that maps (params, x_k) -> (f_k, grad_k).
 
     Returns:
         tuple:
-            A_new (:obj:`float`): Updated amplitude.
-            sigma_new (:obj:`float`): Updated standard deviation.
-            mu_new (:obj:`float`): Updated mean.
-            k_new (:obj:`float`): Updated background slope.
-            m_new (:obj:`float`): Updated background intercept.
+            params_new (:obj:`numpy.ndarray`): Updated parameter vector.
             success (:obj:`bool`): False if the step failed (e.g. singular or ill-conditioned matrix).
     """
-
-    # get Hessian matrix and gradient vector
-    H, g = assemble_normal_equations(A, sigma, mu, k_bg, m_bg, x, data)
-
-    # solve the normal equations
+    H, g = assemble_normal_equations(params, x, data, func_and_grad)
     try:
-        delta = np.linalg.solve(H, -g)
-    except:
-        # Singular or ill-conditioned matrix
-        return A, sigma, mu, k_bg, m_bg, False
-
-    # update the parameters
-    A_new = A + delta[0]
-    sigma_new = sigma + delta[1]
-    mu_new = mu + delta[2]
-    k_new = k_bg + delta[3]
-    m_new = m_bg + delta[4]
-
-    # check if the new standard deviation is zero or negative
-    if sigma_new <= 1e-8:
-        return A, sigma, mu, k_bg, m_bg, False
-
-    return A_new, sigma_new, mu_new, k_new, m_new, True
+        params += np.linalg.solve(H, -g)
+    except Exception:
+        return params, False
+    return params, True
 
 
 @numba.njit(cache=True)
-def gauss_newton_fit_1D(data, x, n_iter):
-    """Fit a Gaussian peak on top of a linear background to a 1D trace.
-
-    The model is
-        f(x) = A * exp(-(x - mu)**2 / (2 * sigma**2)) + k * x + m
-
-    This function:
-        1. Estimates an initial linear trend (k, m).
-        2. Estimates initial Gaussian parameters (A, mu, sigma)
-           on the background-subtracted data.
-        3. Runs a fixed number of Gauss-Newton iterations to refine
-           all five parameters jointly.
+def gauss_newton_fit_1D(data, x, initial_params, n_iter, func_and_grad):
+    """Fit a generic 1D model using Gauss-Newton iterations.
 
     Args:
         data (:obj:`numpy.ndarray`): 1D array of data values y_k.
         x (:obj:`numpy.ndarray`): 1D array of positions x_k.
+        initial_params (sequence): Initial parameter values (tuple, list, or array).
         n_iter (:obj:`int`): Number of Gauss-Newton iterations.
+        func_and_grad (callable): Function that maps (params, x_k) -> (f_k, grad_k).
 
     Returns:
         tuple:
-            A (:obj:`float`): Fitted Gaussian amplitude.
-            mu (:obj:`float`): Fitted Gaussian mean.
-            sigma (:obj:`float`): Fitted Gaussian standard deviation.
-            k_bg (:obj:`float`): Fitted background slope.
-            m_bg (:obj:`float`): Fitted background intercept.
+            params (:obj:`numpy.ndarray`): Fitted parameters.
             success (:obj:`int`): 0 if the fit failed, 1 if it succeeded.
     """
-    k_bg, m_bg = estimate_initial_linear_trend(data, x)
-    A, mu, sigma = estimate_initial_gaussian_params(data, x, k_bg, m_bg)
+    params = np.asarray(initial_params, dtype=np.float64).copy()
+    x = np.asarray(x, dtype=np.float64)
+    data = np.asarray(data, dtype=np.float64)
 
-    if sigma <= 1e-8 or A == 0.0:
-        return 0.0, 0.0, 0.0, k_bg, m_bg, 0
-
-    # Perform the Gauss-Newton iterations to refine the parameters
-    # see also: https://en.wikipedia.org/wiki/Gauss%E2%80%93Newton_algorithm
-    for it in range(n_iter):
-        A, sigma, mu, k_bg, m_bg, success = gauss_newton_iteration(
-            A, sigma, mu, k_bg, m_bg, x, data
-        )
-        # if the fit failed, return the initial parameters and 0 for success
+    for _ in range(n_iter):
+        params, success = gauss_newton_iteration(params, x, data, func_and_grad)
         if not success:
-            return 0.0, 0.0, 0.0, k_bg, m_bg, 0
+            return params, 0.0
 
-    return A, mu, sigma, k_bg, m_bg, 1
+    return params, 1.0
 
 
-@numba.njit(parallel=True, cache=True)
-def fit_gaussian_with_linear_background_1D(data, x, n_iter, mask):
+@numba.njit(parallel=True)
+def fit_callable_model_1D(
+    data,
+    x,
+    initial_guess,
+    func_and_grad,
+    n_iter,
+    mask,
+):
+    """Fit a callable model to 1D data.
+
+    Args:
+        data (:obj:`numpy.ndarray`): 1D array of data values y_k.
+        x (:obj:`numpy.ndarray`): 1D array of positions x_k.
+        initial_guess (:obj:`numpy.ndarray`): Initial parameter values of shape (data.shape[0], data.shape[1], n).
+        func_and_grad (:obj:`callable`): Function that maps (params, x_k) -> (f_k, grad_k). must be decorated with numba.njit
+        n_iter (:obj:`int`): Number of Gauss-Newton iterations.
+        mask (:obj:`numpy.ndarray`): 2D array of shape (ny, nx) with dtype bool.
+            Only the pixels where mask is True will be fitted.
+
+    Returns:
+        :obj:`numpy.ndarray`: Output array of shape (ny, nx, initial_guess.shape[-1] + 1) with
+            the fitted parameters and success flag for each pixel.
+    """
+    ny, nx, m = data.shape
+    out = np.zeros((ny, nx, initial_guess.shape[-1] + 1), dtype=np.float64)
+    x64 = x.astype(np.float64)
+
+    for i in range(ny):
+        for j in numba.prange(nx):
+            if mask is not None and not mask[i, j]:
+                continue
+            else:
+                y64 = data[i, j].astype(np.float64)
+                fitted_params, success = gauss_newton_fit_1D(
+                    y64,
+                    x64,
+                    initial_params=initial_guess[i, j, :],
+                    n_iter=n_iter,
+                    func_and_grad=func_and_grad,
+                )
+                out[i, j, 0 : len(fitted_params)] = fitted_params
+                out[i, j, len(fitted_params)] = success
+
+    return out
+
+
+@numba.njit(parallel=True)
+def fit_gaussian_with_linear_background_1D(
+    data,
+    x,
+    n_iter,
+    mask,
+):
     """Fit a 1D Gaussian + linear background for each pixel in a 2D image.
 
     The input volume is assumed to have shape (ny, nx, m), where the
@@ -310,34 +264,47 @@ def fit_gaussian_with_linear_background_1D(data, x, n_iter, mask):
             containing the data traces.
         x (:obj:`numpy.ndarray`): 1D array of positions of length m.
         n_iter (:obj:`int`): Number of Gauss-Newton iterations per trace.
-        mask (:obj:`numpy.ndarray`): 2D array of shape (ny, nx) with dtype bool. Only the pixels where mask is True will be fitted.
+        mask (:obj:`numpy.ndarray`): 2D array of shape (ny, nx) with dtype bool.
+            Only the pixels where mask is True will be fitted.
+        func_and_grad (callable): Function that maps (params, x_k) -> (f_k, grad_k).
 
     Returns:
         :obj:`numpy.ndarray`: Output array of shape (ny, nx, 6) with
-            parameters [A, mu, sigma, k, m, success] for each (i, j).
-            Here A is the amplitude, mu is the mean, sigma is the standard deviation
-            of the Gaussian, k is the background slope, m is the background intercept,
-            and success is 0 if the fit failed, 1 if it succeeded.
+            parameters [A, sigma, mu, k_bg, m_bg, success] for each (i, j).
+            Here A is the amplitude, sigma is the standard deviation,
+            mu is the mean of the Gaussian, k_bg is the background slope,
+            m_bg is the background intercept, and success is 0 if the fit failed,
+            1 if it succeeded.
     """
     ny, nx, m = data.shape
     out = np.zeros((ny, nx, 6), dtype=np.float64)
     x64 = x.astype(np.float64)
-    for i in prange(ny):
-        for j in range(nx):
+
+    for i in range(ny):
+        for j in numba.prange(nx):
             if mask is not None and not mask[i, j]:
-                pass
+                continue
+
+            y64 = data[i, j].astype(np.float64)
+            k_bg, m_bg = estimate_initial_linear_trend(y64, x64)
+            A, sigma, mu = estimate_initial_gaussian_params(y64, x64, k_bg, m_bg)
+
+            initial_params = np.array([A, sigma, mu, k_bg, m_bg], dtype=np.float64)
+
+            if sigma <= 1e-8 or A == 0.0:
+                out[i, j, 0:5] = initial_params
+                continue
             else:
-                A, mu, sigma, k_bg, m_bg, success = gauss_newton_fit_1D(
-                    data[i, j].astype(np.float64),
+                fitted_params, success = gauss_newton_fit_1D(
+                    y64,
                     x64,
+                    initial_params,
                     n_iter,
+                    func_and_grad=func_and_grad_gaussian_with_linear_background,
                 )
-                out[i, j, 0] = A
-                out[i, j, 1] = mu
-                out[i, j, 2] = sigma
-                out[i, j, 3] = k_bg
-                out[i, j, 4] = m_bg
-                out[i, j, 5] = success
+                out[i, j, 0 : len(fitted_params)] = fitted_params
+                out[i, j, len(fitted_params)] = success
+
     return out
 
 

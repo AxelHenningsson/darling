@@ -2,6 +2,7 @@ import unittest
 
 import numpy as np
 
+from darling._analytical_functions import gaussian_with_linear_background
 from darling.properties import fit_1d_gaussian
 
 
@@ -9,13 +10,6 @@ class TestGaussianFit(unittest.TestCase):
     def setUp(self):
         self.debug = False
         self.rng = np.random.default_rng(42)
-
-    def gaussian_with_linear_bg(self, A, mu, sigma, k, m, x):
-        """Gaussian peak on top of a linear background.
-
-        f(x) = A * exp(-(x - mu)**2 / (2 * sigma**2)) + k * x + m
-        """
-        return A * np.exp(-((x - mu) ** 2) / (2.0 * sigma**2)) + k * x + m
 
     def make_fake_data(self, ny=64, nx=64, m=32):
         """Generate synthetic 3D data with a Gaussian + linear background per pixel.
@@ -45,18 +39,19 @@ class TestGaussianFit(unittest.TestCase):
                 mu = (m // 2) + self.rng.uniform(-2.0, 2.0)
                 sigma = self.rng.uniform(5.3, 8.3)
                 A = self.rng.uniform(800.0, 2000.0)
-                k = self.rng.uniform(2.5, 3.89)
+                k_bg = self.rng.uniform(2.5, 3.89)
                 m_bg = self.rng.uniform(-44.0, 44.0)
 
-                y = self.gaussian_with_linear_bg(A, mu, sigma, k, m_bg, x)
+                params = np.array([A, sigma, mu, k_bg, m_bg], dtype=np.float64)
+                y = gaussian_with_linear_background(params, x)
                 noise = self.rng.normal(0.0, 10 + A / 15.0, size=m)
                 y_noisy = y + noise
 
                 data[i, j, :] = y_noisy.astype(np.float32)
                 true_params[i, j, 0] = A
-                true_params[i, j, 1] = mu
-                true_params[i, j, 2] = sigma
-                true_params[i, j, 3] = k
+                true_params[i, j, 1] = sigma
+                true_params[i, j, 2] = mu
+                true_params[i, j, 3] = k_bg
                 true_params[i, j, 4] = m_bg
 
         return x, data, true_params
@@ -90,12 +85,8 @@ class TestGaussianFit(unittest.TestCase):
             ax.plot(x, data[i, j], label="data")
             ax.plot(
                 x,
-                self.gaussian_with_linear_bg(
-                    params[i, j, 0],
-                    params[i, j, 1],
-                    params[i, j, 2],
-                    params[i, j, 3],
-                    params[i, j, 4],
+                gaussian_with_linear_background(
+                    params[i, j, :-1],
                     x,
                 ),
                 label="fitted",
@@ -115,7 +106,7 @@ class TestGaussianFit(unittest.TestCase):
             plt.style.use("dark_background")
             fig, ax = plt.subplots(1, 5, figsize=(14, 7), sharex=True, sharey=True)
 
-            titles = ["amplitude", "mean", "sigma", "slope", "intercept"]
+            titles = ["amplitude", "sigma", "mean", "slope", "intercept"]
             for i in range(0, 5):
                 if i == 4 or i == 3:
                     residual = np.abs(params[..., i] - true_params[..., i])
@@ -136,13 +127,11 @@ class TestGaussianFit(unittest.TestCase):
         np.testing.assert_allclose(
             params[mask, 0], true_params[mask, 0], atol=50, rtol=0.1
         )
-
         np.testing.assert_allclose(
-            params[mask, 1], true_params[mask, 1], atol=1.0, rtol=0.1
+            params[mask, 1], true_params[mask, 1], atol=0.5, rtol=0.2
         )
-
         np.testing.assert_allclose(
-            params[mask, 2], true_params[mask, 2], atol=0.5, rtol=0.2
+            params[mask, 2], true_params[mask, 2], atol=1.0, rtol=0.1
         )
 
         np.testing.assert_allclose(
@@ -155,6 +144,11 @@ class TestGaussianFit(unittest.TestCase):
             < true_params[mask, 0] / 10.0,
             np.ones_like(mask)[mask],
         )
+
+
+class TestFitCallableModel1D(unittest.TestCase):
+    def setUp(self):
+        pass
 
 
 if __name__ == "__main__":
