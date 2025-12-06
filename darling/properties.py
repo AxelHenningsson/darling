@@ -13,7 +13,7 @@ in theta, phi and chi can be retrieved as:
     theta = np.linspace(-1, 1, 9) # crl scan grid
     phi = np.linspace(-1, 1, 8) # motor rocking scan grid
     chi = np.linspace(-1, 1, 16) # motor rolling scan grid
-    coordinates = np.meshgrid(phi, chi, theta, indexing='ij')
+    coordinates = np.array(np.meshgrid(phi, chi, theta, indexing='ij'))
 
     # create a random data array
     detector_dim = (128, 128) # the number of rows and columns of the detector
@@ -32,10 +32,10 @@ in theta, phi and chi can be retrieved as:
 
 """
 
-import numba
 import numpy as np
 
 import darling._color as color
+import darling._jitkernels as kernels
 import darling.peaksearcher as peaksearcher
 from darling._gaussian_fit import fit_gaussian_with_linear_background_1D
 
@@ -201,9 +201,9 @@ def kam(property_2d, size=(3, 3)):
     kam_map = np.zeros((property_2d.shape[0], property_2d.shape[1], (km * kn) - 1))
     counts_map = np.zeros((property_2d.shape[0], property_2d.shape[1]), dtype=int)
     if property_2d.ndim == 2:
-        _kam(property_2d[..., None], km, kn, kam_map, counts_map)
+        kernels._kam(property_2d[..., None], km, kn, kam_map, counts_map)
     else:
-        _kam(property_2d, km, kn, kam_map, counts_map)
+        kernels._kam(property_2d, km, kn, kam_map, counts_map)
     counts_map[counts_map == 0] = 1
     return np.sum(kam_map, axis=-1) / counts_map
 
@@ -228,7 +228,7 @@ def moments(data, coordinates):
         # create coordinate arrays
         phi = np.linspace(-1, 1, 8)
         chi = np.linspace(-1, 1, 16)
-        coordinates = np.meshgrid(phi, chi, indexing='ij')
+        coordinates = np.array(np.meshgrid(phi, chi, indexing='ij'))
 
         # create a random data array
         detector_dim = (128, 128)
@@ -246,17 +246,20 @@ def moments(data, coordinates):
             calculated are of shape=(m) or shape=(m, n) or shape=(m, n, o) respectively
             and the detector field dimensions are of shape=(a, b). Must be numpy uint16.
             I.e data[i, j, ...] is a distribution for pixel i, j.
-        coordinates (:obj:`tuple` of :obj:`numpy array`): Tuple of len=1, len=2 or len=3
-            containing numpy nd arrays specifying the coordinates in each dimension
+        coordinates (:obj:`numpy array`): numpy nd arrays specifying the coordinates in each dimension
             respectively. I.e, as an example, these could be the phi and chi angular
-            cooridnates as a meshgrid.
+            cooridnates as a meshgrid. Shape=(ndim, m, n, ...). where ndim=1 for a rocking scan,
+            ndim=2 for a mosaicity scan, etc.
 
     Returns:
         :obj:`tuple` of :obj:`numpy array` : The mean map of shape=(a,b,...) and the
             covariance map of shape=(a,b,...).
     """
-    mu = mean(data, coordinates)
-    cov = covariance(data, coordinates, first_moments=mu)
+    _check_data(data, coordinates)
+    first_moments = kernels._first_moments_ND(data, coordinates)
+    second_moments = kernels._second_moments_ND(data, coordinates, first_moments)
+    mu = np.squeeze(first_moments)
+    cov = np.squeeze(second_moments)
     return mu, cov
 
 
@@ -281,7 +284,7 @@ def mean(data, coordinates):
         theta = np.linspace(-1, 1, 7)
         phi = np.linspace(-1, 1, 8)
         chi = np.linspace(-1, 1, 16)
-        coordinates = np.meshgrid(phi, chi, theta, indexing='ij')
+        coordinates = np.array(np.meshgrid(phi, chi, theta, indexing='ij'))
 
         # create a random data array
         detector_dim = (128, 128)
@@ -299,30 +302,17 @@ def mean(data, coordinates):
             calculated are of shape=(m) or shape=(m, n) or shape=(m, n, o) respectively
             and the detector field dimensions are of shape=(a, b). Must be numpy uint16.
             I.e data[i, j, ...] is a distribution for pixel i, j.
-        coordinates (:obj:`tuple` of :obj:`numpy array`): Tuple of len=1, len=2 or len=3
-            containing numpy nd arrays specifying the coordinates in each dimension
+        coordinates (:obj:`numpy array`): numpy nd arrays specifying the coordinates in each dimension
             respectively. I.e, as an example, these could be the phi and chi angular
-            cooridnates as a meshgrid.
+            cooridnates as a meshgrid. Shape=(ndim, m, n, ...). where ndim=1 for a rocking scan,
+            ndim=2 for a mosaicity scan, etc.
 
     Returns:
         :obj:`numpy array` : The mean map of shape=(a,b,k) where k=data.ndim - 2.
     """
     _check_data(data, coordinates)
-    dum = np.arange(len(coordinates)).astype(np.uint8)
-    res = np.zeros((*data.shape[0:2], len(dum)), dtype=np.float32)
-    if len(coordinates) == 1:
-        X = np.array(coordinates).astype(np.float32).squeeze()
-        _first_moments1D(data, X, dum, res)
-        res = res.squeeze()
-    elif len(coordinates) == 2:
-        X, Y = np.array(coordinates).astype(np.float32)
-        _first_moments2D(data, X, Y, dum, res)
-    elif len(coordinates) == 3:
-        X, Y, Z = np.array(coordinates).astype(np.float32)
-        _first_moments3D(data, X, Y, Z, dum, res)
-    else:
-        raise ValueError("Coordinate array must be one of 1, 2 or 3-dimensional.")
-    return res
+    first_moments = kernels._first_moments_ND(data, coordinates)
+    return np.squeeze(first_moments)
 
 
 def covariance(data, coordinates, first_moments=None):
@@ -345,7 +335,7 @@ def covariance(data, coordinates, first_moments=None):
         # create coordinate arrays
         phi = np.linspace(-1, 1, 8)
         chi = np.linspace(-1, 1, 16)
-        coordinates = np.meshgrid(phi, chi, indexing='ij')
+        coordinates = np.array(np.meshgrid(phi, chi, indexing='ij'))
 
         # create a random data array
         detector_dim = (128, 128)
@@ -366,10 +356,10 @@ def covariance(data, coordinates, first_moments=None):
             calculated are of shape=(m) or shape=(m, n) or shape=(m, n, o) respectively
             and the detector field dimensions are of shape=(a, b). Must be numpy uint16.
             I.e data[i, j, ...] is a distribution for pixel i, j.
-        coordinates (:obj:`tuple` of :obj:`numpy array`): Tuple of len=1, len=2 or len=3
-            containing numpy nd arrays specifying the coordinates in each dimension
+        coordinates (:obj:`numpy array`): numpy nd arrays specifying the coordinates in each dimension
             respectively. I.e, as an example, these could be the phi and chi angular
-            cooridnates as a meshgrid.
+            cooridnates as a meshgrid. Shape=(ndim, m, n, ...). where ndim=1 for a rocking scan,
+            ndim=2 for a mosaicity scan, etc.
         first_moments (:obj:`numpy array`): Array of shape=(a, b, ...) of the first
             moments as described in darling.properties.mean(). Defaults to None, in
             which case the first moments are recomputed on the fly.
@@ -378,26 +368,24 @@ def covariance(data, coordinates, first_moments=None):
         :obj:`numpy array` : The covariance map of shape=(a,b,...).
     """
     _check_data(data, coordinates)
-    dim = len(coordinates)
-    dum = np.arange(dim).astype(np.uint8)
-    points = np.array([c.flatten() for c in coordinates]).astype(np.float32)
     if first_moments is None:
         first_moments = mean(data, coordinates)
-    if dim == 1:
-        res = np.zeros((data.shape[0], data.shape[1], dim), dtype=np.float32)
-        _second_moments1D(data, first_moments[..., None], points, dum, res)
-        res = res.squeeze()
-    if dim == 2:
-        res = np.zeros((data.shape[0], data.shape[1], dim, dim), dtype=np.float32)
-        _second_moments2D(data, first_moments, points, dum, res)
-    elif dim == 3:
-        res = np.zeros((data.shape[0], data.shape[1], dim, dim), dtype=np.float32)
-        _second_moments3D(data, first_moments, points, dum, res)
-    return res
+
+    if first_moments.ndim == 2:
+        second_moments = kernels._second_moments_ND(
+            data, coordinates, first_moments[..., None]
+        )
+    else:
+        second_moments = kernels._second_moments_ND(data, coordinates, first_moments)
+    return np.squeeze(second_moments)
 
 
 def _check_data(data, coordinates):
-    assert data.dtype == np.uint16, "data must be of type uint16"
+    if data.shape[0] == 1 or data.shape[1] == 1:
+        raise ValueError(
+            "First two detector row-column dimensions of data array must be greater than 1"
+        )
+
     if len(coordinates) == 1:
         assert len(data.shape) == 3, "1D scan data array must be of shape=(a, b, m)"
     elif len(coordinates) == 2:
@@ -416,250 +404,6 @@ def _check_data(data, coordinates):
     )
 
 
-@numba.guvectorize(
-    [
-        (
-            numba.uint16[:],
-            numba.float32[:],
-            numba.uint8[:],
-            numba.float32[:],
-        )
-    ],
-    "(m),(m),(p)->(p)",
-    nopython=True,
-    target="parallel",
-    cache=True,
-)
-def _first_moments1D(data, x, dum, res):
-    """Compute the sample mean of a 1D map.
-
-    Args:
-        data (:obj:`numpy array`): a 2d data map to proccess.
-        x (:obj:`numpy array`): the first coordinate array
-        dum (:obj:`numpy array`): dummpy variable for numba shapes. (len=2)
-        res (:obj:`numpy array`): array in which to store output.
-    """
-    total_intensity = np.sum(data)
-    if total_intensity == 0:
-        res[...] = 0
-    else:
-        res[...] = np.sum(data * x) / total_intensity
-
-
-@numba.guvectorize(
-    [
-        (
-            numba.uint16[:, :],
-            numba.float32[:, :],
-            numba.float32[:, :],
-            numba.uint8[:],
-            numba.float32[:],
-        )
-    ],
-    "(m,n),(m,n),(m,n),(p)->(p)",
-    nopython=True,
-    target="parallel",
-    cache=True,
-)
-def _first_moments2D(data, x, y, dum, res):
-    """Compute the sample mean of a 2D map.
-
-    Args:
-        data (:obj:`numpy array`): a 2d data map to proccess.
-        x (:obj:`numpy array`): the first coordinate array
-        y (:obj:`numpy array`): the second coordinate array
-        dum (:obj:`numpy array`): dummpy variable for numba shapes. (len=2)
-        res (:obj:`numpy array`): array in which to store output.
-    """
-    total_intensity = np.sum(data)
-    if total_intensity == 0:
-        res[...] = np.zeros((2,))
-    else:
-        com_x = np.sum(data * x) / total_intensity
-        com_y = np.sum(data * y) / total_intensity
-        res[...] = [com_x, com_y]
-
-
-@numba.guvectorize(
-    [
-        (
-            numba.uint16[:, :, :],
-            numba.float32[:, :, :],
-            numba.float32[:, :, :],
-            numba.float32[:, :, :],
-            numba.uint8[:],
-            numba.float32[:],
-        )
-    ],
-    "(m,n,o),(m,n,o),(m,n,o),(m,n,o),(p)->(p)",
-    nopython=True,
-    target="parallel",
-    cache=True,
-)
-def _first_moments3D(data, x, y, z, dum, res):
-    """Compute the sample mean of a 3D map.
-
-    Args:
-        data (:obj:`numpy array`): a 3d data map to proccess.
-        x (:obj:`numpy array`): the first coordinate array.
-        y (:obj:`numpy array`): the second coordinate array.
-        z (:obj:`numpy array`): the third coordinate array.
-        dum (:obj:`numpy array`): dummy variable for numba shapes. (of shape 3)
-        res (:obj:`numpy array`): array in which to store output.
-    """
-    total_intensity = np.sum(data)
-    if total_intensity == 0:
-        res[...] = np.zeros((3,))
-    else:
-        com_x = np.sum(data * x) / total_intensity
-        com_y = np.sum(data * y) / total_intensity
-        com_z = np.sum(data * z) / total_intensity
-        res[...] = [com_x, com_y, com_z]
-
-
-@numba.guvectorize(
-    [
-        (
-            numba.uint16[:],
-            numba.float32[:],
-            numba.float32[:],
-            numba.uint8[:],
-            numba.float32[:],
-        )
-    ],
-    "(m),(p),(m),(p)->(p)",
-    nopython=True,
-    target="parallel",
-    cache=True,
-)
-def _second_moments1D(data, first_moments, points, dum, res):
-    """Compute the sample variance of a 1D map.
-
-    Args:
-        data (:obj:`numpy array`): a 1d data map to proccess.
-        first_moments (:obj:`numpy array`): the first moment of the 1d data map to proccess.
-        points (:obj:`numpy array`): array of the angular coordinates.
-        dum (:obj:`numpy array`): dummuy variable for numba shapes.
-        res (:obj:`numpy array`): array in which to store output.
-    """
-    total_intensity = np.sum(data)
-    if total_intensity == 0:
-        res[...] = 0
-    else:
-        # Equivalent of the numpy.cov function setting the chi_phi intesnity as aweights,
-        # see also https://numpy.org/doc/stable/reference/generated/numpy.cov.html
-        diff = points - first_moments
-        res[...] = np.sum(diff * diff * data) / total_intensity
-
-
-@numba.guvectorize(
-    [
-        (
-            numba.uint16[:, :],
-            numba.float32[:],
-            numba.float32[:, :],
-            numba.uint8[:],
-            numba.float32[:, :],
-        )
-    ],
-    "(n,m),(p),(k,q),(p)->(p,p)",
-    nopython=True,
-    target="parallel",
-    cache=True,
-)
-def _second_moments2D(chi_phi, first_moments, points, dum, res):
-    """Compute the sample covariance of a 2D map.
-
-    Args:
-        chi_phi (:obj:`numpy array`): a 2d data map to proccess.
-        first_moments (:obj:`numpy array`): the first moment of the 2d data map to proccess.
-        points (:obj:`numpy array`): 2,n flattened array of the coordinates.
-        dum (:obj:`numpy array`): dummpy variable for numba shapes.
-        res (:obj:`numpy array`): array in which to store output.
-    """
-    I = np.sum(chi_phi)
-    if I == 0:
-        res[...] = np.zeros((2, 2))
-    else:
-        # Equivalent of the numpy.cov function setting the chi_phi intesnity as aweights,
-        # see also https://numpy.org/doc/stable/reference/generated/numpy.cov.html
-        m = points.copy()
-        m[0] -= first_moments[0]
-        m[1] -= first_moments[1]
-        a = chi_phi.flatten()
-        cov = np.dot(m * a, m.T) / I
-        res[...] = cov
-
-
-@numba.guvectorize(
-    [
-        (
-            numba.uint16[:, :, :],
-            numba.float32[:],
-            numba.float32[:, :],
-            numba.uint8[:],
-            numba.float32[:, :],
-        )
-    ],
-    "(n,m,o),(p),(k,q),(p)->(p,p)",
-    nopython=True,
-    target="parallel",
-    cache=True,
-)
-def _second_moments3D(data, first_moments, points, dum, res):
-    """Compute the sample covariance of a 3D map.
-
-    Args:
-        data (:obj:`numpy array`): a 3d data map to proccess.
-        first_moments (:obj:`numpy array`): the first moment of the 2d data map to proccess.
-        points (:obj:`numpy array`): 2,n flattened array of the coordinates.
-        dum (:obj:`numpy array`): dummy variable for numba shapes. (of shape 3)
-        res (:obj:`numpy array`): array in which to store output.
-    """
-    I = np.sum(data)
-    if I == 0:
-        res[...] = np.zeros((3, 3))
-    else:
-        # Equivalent of the numpy.cov function setting the chi_phi intesnity as aweights,
-        # see also https://numpy.org/doc/stable/reference/generated/numpy.cov.html
-        m = points.copy()
-        m[0] -= first_moments[0]
-        m[1] -= first_moments[1]
-        m[2] -= first_moments[2]
-        a = data.flatten()
-        cov = np.dot(m * a, m.T) / I
-        res[...] = cov
-
-
-@numba.jit(nopython=True, cache=True, parallel=True)
-def _kam(property_2d, km, kn, kam_map, counts_map):
-    """Fills the KAM and count maps in place.
-
-    Args:
-        property_2d (:obj:`numpy.ndarray`): The shape=(a,b,m) map to
-            be used for the KAM computation.
-        km (:obj:`int`): kernel size in rows
-        kn (:obj:`int`): kernel size in columns
-        kam_map (:obj:`numpy.ndarray`): empty array to store the KAM
-            values of shape=(a,b, (km*kn)-1)
-        counts_map (:obj:`numpy.ndarray`): empty array to store the counts
-            of shape=(a,b)
-    """
-    for i in numba.prange(km // 2, property_2d.shape[0] - (km // 2)):
-        for j in range(kn // 2, property_2d.shape[1] - (kn // 2)):
-            if ~np.isnan(property_2d[i, j, 0]):
-                c = property_2d[i, j]
-                for ii in range(-(km // 2), (km // 2) + 1):
-                    for jj in range(-(kn // 2), (kn // 2) + 1):
-                        if ii == 0 and jj == 0:
-                            continue
-                        else:
-                            n = property_2d[i + ii, j + jj]
-                            if ~np.isnan(n[0]):
-                                kam_map[i, j, counts_map[i, j]] = np.linalg.norm(n - c)
-                                counts_map[i, j] += 1
-
-
 def fit_1d_gaussian(
     data,
     coordinates,
@@ -671,15 +415,17 @@ def fit_1d_gaussian(
     The input volume is assumed to have shape (ny, nx, m), where the
     last axis corresponds to the 1D curves to be fitted with
     a Gaussian + linear background. For each data[i, j, :] the function fits
-        f(x) = A * exp(-(x - mu)**2 / (2 * sigma**2)) + k * x + m
+
+    f(x) = A * exp(-(x - mu)**2 / (2 * sigma**2)) + k * x + m
+
     and stores the five fitted parameters: [A, mu, sigma, k, m, success].
 
     Args:
         data (:obj:`numpy.ndarray`): 3D array of shape (ny, nx, m). Arbitrary dtypes are supported.
-        coordinates (:obj:`tuple` of :obj:`numpy array`): Tuple of len=1, len=2 or len=3
-            containing numpy nd arrays specifying the coordinates in each dimension
+        coordinates (:obj:`numpy array`): numpy nd arrays specifying the coordinates in each dimension
             respectively. I.e, as an example, these could be the phi and chi angular
-            cooridnates as a meshgrid.
+            cooridnates as a meshgrid. Shape=(ndim, m, n, ...). where ndim=1 for a rocking scan,
+            ndim=2 for a mosaicity scan, etc.
         number_of_gauss_newton_iterations (:obj:`int`): Number of Gauss-Newton iterations to use for the fit. Defaults to 7.
         mask (:obj:`numpy.ndarray`): 2D array of shape (ny, nx) with dtype bool. Defaults to None. If provided, only the pixels where mask is True will be fitted.
     Returns:

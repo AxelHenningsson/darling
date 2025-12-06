@@ -380,7 +380,7 @@ in theta, phi and chi can be retrieved as:</p>
 <span class="n">theta</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">9</span><span class="p">)</span> <span class="c1"># crl scan grid</span>
 <span class="n">phi</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">8</span><span class="p">)</span> <span class="c1"># motor rocking scan grid</span>
 <span class="n">chi</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">16</span><span class="p">)</span> <span class="c1"># motor rolling scan grid</span>
-<span class="n">coordinates</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">meshgrid</span><span class="p">(</span><span class="n">phi</span><span class="p">,</span> <span class="n">chi</span><span class="p">,</span> <span class="n">theta</span><span class="p">,</span> <span class="n">indexing</span><span class="o">=</span><span class="s1">&#39;ij&#39;</span><span class="p">)</span>
+<span class="n">coordinates</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">meshgrid</span><span class="p">(</span><span class="n">phi</span><span class="p">,</span> <span class="n">chi</span><span class="p">,</span> <span class="n">theta</span><span class="p">,</span> <span class="n">indexing</span><span class="o">=</span><span class="s1">&#39;ij&#39;</span><span class="p">))</span>
 
 <span class="c1"># create a random data array</span>
 <span class="n">detector_dim</span> <span class="o">=</span> <span class="p">(</span><span class="mi">128</span><span class="p">,</span> <span class="mi">128</span><span class="p">)</span> <span class="c1"># the number of rows and columns of the detector</span>
@@ -547,7 +547,7 @@ is therefore either 3d, 4d or 5d.</p>
 <span class="c1"># create coordinate arrays</span>
 <span class="n">phi</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">8</span><span class="p">)</span>
 <span class="n">chi</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">16</span><span class="p">)</span>
-<span class="n">coordinates</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">meshgrid</span><span class="p">(</span><span class="n">phi</span><span class="p">,</span> <span class="n">chi</span><span class="p">,</span> <span class="n">indexing</span><span class="o">=</span><span class="s1">&#39;ij&#39;</span><span class="p">)</span>
+<span class="n">coordinates</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">meshgrid</span><span class="p">(</span><span class="n">phi</span><span class="p">,</span> <span class="n">chi</span><span class="p">,</span> <span class="n">indexing</span><span class="o">=</span><span class="s1">&#39;ij&#39;</span><span class="p">))</span>
 
 <span class="c1"># create a random data array</span>
 <span class="n">detector_dim</span> <span class="o">=</span> <span class="p">(</span><span class="mi">128</span><span class="p">,</span> <span class="mi">128</span><span class="p">)</span>
@@ -567,10 +567,10 @@ or shape=(a, b, m, n, o) where the maps over which the mean will be
 calculated are of shape=(m) or shape=(m, n) or shape=(m, n, o) respectively
 and the detector field dimensions are of shape=(a, b). Must be numpy uint16.
 I.e data[i, j, …] is a distribution for pixel i, j.</p></li>
-<li><p><strong>coordinates</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">tuple</span></code> of <code class="xref py py-obj docutils literal notranslate"><span class="pre">numpy</span> <span class="pre">array</span></code>) – Tuple of len=1, len=2 or len=3
-containing numpy nd arrays specifying the coordinates in each dimension
+<li><p><strong>coordinates</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">numpy</span> <span class="pre">array</span></code>) – numpy nd arrays specifying the coordinates in each dimension
 respectively. I.e, as an example, these could be the phi and chi angular
-cooridnates as a meshgrid.</p></li>
+cooridnates as a meshgrid. Shape=(ndim, m, n, …). where ndim=1 for a rocking scan,
+ndim=2 for a mosaicity scan, etc.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -605,7 +605,7 @@ is therefore either 3d, 4d or 5d.</p>
 <span class="n">theta</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">7</span><span class="p">)</span>
 <span class="n">phi</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">8</span><span class="p">)</span>
 <span class="n">chi</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">16</span><span class="p">)</span>
-<span class="n">coordinates</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">meshgrid</span><span class="p">(</span><span class="n">phi</span><span class="p">,</span> <span class="n">chi</span><span class="p">,</span> <span class="n">theta</span><span class="p">,</span> <span class="n">indexing</span><span class="o">=</span><span class="s1">&#39;ij&#39;</span><span class="p">)</span>
+<span class="n">coordinates</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">meshgrid</span><span class="p">(</span><span class="n">phi</span><span class="p">,</span> <span class="n">chi</span><span class="p">,</span> <span class="n">theta</span><span class="p">,</span> <span class="n">indexing</span><span class="o">=</span><span class="s1">&#39;ij&#39;</span><span class="p">))</span>
 
 <span class="c1"># create a random data array</span>
 <span class="n">detector_dim</span> <span class="o">=</span> <span class="p">(</span><span class="mi">128</span><span class="p">,</span> <span class="mi">128</span><span class="p">)</span>
@@ -625,10 +625,10 @@ or shape=(a, b, m, n, o) where the maps over which the mean will be
 calculated are of shape=(m) or shape=(m, n) or shape=(m, n, o) respectively
 and the detector field dimensions are of shape=(a, b). Must be numpy uint16.
 I.e data[i, j, …] is a distribution for pixel i, j.</p></li>
-<li><p><strong>coordinates</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">tuple</span></code> of <code class="xref py py-obj docutils literal notranslate"><span class="pre">numpy</span> <span class="pre">array</span></code>) – Tuple of len=1, len=2 or len=3
-containing numpy nd arrays specifying the coordinates in each dimension
+<li><p><strong>coordinates</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">numpy</span> <span class="pre">array</span></code>) – numpy nd arrays specifying the coordinates in each dimension
 respectively. I.e, as an example, these could be the phi and chi angular
-cooridnates as a meshgrid.</p></li>
+cooridnates as a meshgrid. Shape=(ndim, m, n, …). where ndim=1 for a rocking scan,
+ndim=2 for a mosaicity scan, etc.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -658,7 +658,7 @@ is therefore either 3d, 4d or 5d.</p>
 <span class="c1"># create coordinate arrays</span>
 <span class="n">phi</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">8</span><span class="p">)</span>
 <span class="n">chi</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">16</span><span class="p">)</span>
-<span class="n">coordinates</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">meshgrid</span><span class="p">(</span><span class="n">phi</span><span class="p">,</span> <span class="n">chi</span><span class="p">,</span> <span class="n">indexing</span><span class="o">=</span><span class="s1">&#39;ij&#39;</span><span class="p">)</span>
+<span class="n">coordinates</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">meshgrid</span><span class="p">(</span><span class="n">phi</span><span class="p">,</span> <span class="n">chi</span><span class="p">,</span> <span class="n">indexing</span><span class="o">=</span><span class="s1">&#39;ij&#39;</span><span class="p">))</span>
 
 <span class="c1"># create a random data array</span>
 <span class="n">detector_dim</span> <span class="o">=</span> <span class="p">(</span><span class="mi">128</span><span class="p">,</span> <span class="mi">128</span><span class="p">)</span>
@@ -681,10 +681,10 @@ or shape=(a, b, m, n, o) where the maps over which the mean will be
 calculated are of shape=(m) or shape=(m, n) or shape=(m, n, o) respectively
 and the detector field dimensions are of shape=(a, b). Must be numpy uint16.
 I.e data[i, j, …] is a distribution for pixel i, j.</p></li>
-<li><p><strong>coordinates</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">tuple</span></code> of <code class="xref py py-obj docutils literal notranslate"><span class="pre">numpy</span> <span class="pre">array</span></code>) – Tuple of len=1, len=2 or len=3
-containing numpy nd arrays specifying the coordinates in each dimension
+<li><p><strong>coordinates</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">numpy</span> <span class="pre">array</span></code>) – numpy nd arrays specifying the coordinates in each dimension
 respectively. I.e, as an example, these could be the phi and chi angular
-cooridnates as a meshgrid.</p></li>
+cooridnates as a meshgrid. Shape=(ndim, m, n, …). where ndim=1 for a rocking scan,
+ndim=2 for a mosaicity scan, etc.</p></li>
 <li><p><strong>first_moments</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">numpy</span> <span class="pre">array</span></code>) – Array of shape=(a, b, …) of the first
 moments as described in darling.properties.mean(). Defaults to None, in
 which case the first moments are recomputed on the fly.</p></li>
@@ -695,6 +695,43 @@ which case the first moments are recomputed on the fly.</p></li>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">numpy</span> <span class="pre">array</span></code></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="darling.properties.fit_1d_gaussian">
+<span class="sig-prename descclassname"><span class="pre">darling.properties.</span></span><span class="sig-name descname"><span class="pre">fit_1d_gaussian</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">coordinates</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">number_of_gauss_newton_iterations</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">7</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mask</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/AxelHenningsson/darling/tree/main/darling/properties.py/"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darling.properties.fit_1d_gaussian" title="Link to this definition">#</a></dt>
+<dd><p>Fit analytical gaussian + linear background for each pixel in a 2D image.</p>
+<p>The input volume is assumed to have shape (ny, nx, m), where the
+last axis corresponds to the 1D curves to be fitted with
+a Gaussian + linear background. For each data[i, j, :] the function fits</p>
+<p>f(x) = A * exp(-(x - mu)**2 / (2 * sigma**2)) + k * x + m</p>
+<p>and stores the five fitted parameters: [A, mu, sigma, k, m, success].</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>data</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">numpy.ndarray</span></code>) – 3D array of shape (ny, nx, m). Arbitrary dtypes are supported.</p></li>
+<li><p><strong>coordinates</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">numpy</span> <span class="pre">array</span></code>) – numpy nd arrays specifying the coordinates in each dimension
+respectively. I.e, as an example, these could be the phi and chi angular
+cooridnates as a meshgrid. Shape=(ndim, m, n, …). where ndim=1 for a rocking scan,
+ndim=2 for a mosaicity scan, etc.</p></li>
+<li><p><strong>number_of_gauss_newton_iterations</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">int</span></code>) – Number of Gauss-Newton iterations to use for the fit. Defaults to 7.</p></li>
+<li><p><strong>mask</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">numpy.ndarray</span></code>) – 2D array of shape (ny, nx) with dtype bool. Defaults to None. If provided, only the pixels where mask is True will be fitted.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><dl class="simple">
+<dt>Output array of shape (ny, nx, 5) of dtype float64 with</dt><dd><p>parameters [A, mu, sigma, k, m, success] for each (i, j).
+Here A is the amplitude, mu is the mean, sigma is the standard deviation
+of the Gaussian, k is the background slope, m is the background intercept,
+and success is 0 if the fit failed, 1 if it succeeded.</p>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">numpy.ndarray</span></code></p>
 </dd>
 </dl>
 </dd></dl>
@@ -1359,15 +1396,27 @@ The domain with the highest sum_intensity will be kept.</p></li>
 <span id="dataset"></span><h2>DataSet<a class="headerlink" href="#module-darling._dataset" title="Link to this heading">#</a></h2>
 <dl class="py class">
 <dt class="sig sig-object py" id="darling._dataset.DataSet">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">darling._dataset.</span></span><span class="sig-name descname"><span class="pre">DataSet</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data_source</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">scan_id</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/AxelHenningsson/darling/tree/main/darling/_dataset.py/"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darling._dataset.DataSet" title="Link to this definition">#</a></dt>
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">darling._dataset.</span></span><span class="sig-name descname"><span class="pre">DataSet</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data_source</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">scan_id</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">suffix</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">scan_motor</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">roi</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/AxelHenningsson/darling/tree/main/darling/_dataset.py/"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darling._dataset.DataSet" title="Link to this definition">#</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
 <p>A DFXM data-set.</p>
 <p>This is the master data class of darling. Given a data source the DataSet class will read data from
 arbitrary layers, process, threshold, compute moments, visualize results, and compile 3D feature maps.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>(</strong> (<em>data_source</em>) – obj: <cite>string</cite> or <cite>darling.reader.Reader</cite>): A string to the absolute h5 file path
-location of the data, or a reader object implementing the darling.reader.Reader() interface.</p>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>(</strong> (<em>data_source</em>) – obj: <cite>string</cite> or <cite>darling.reader.Reader</cite>): A string to the absolute h5 file path
+location of the data, or a reader object implementing the darling.reader.Reader() interface.</p></li>
+<li><p><strong>scan_id</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">str</span></code> or <code class="xref py py-obj docutils literal notranslate"><span class="pre">list</span></code> or <code class="xref py py-obj docutils literal notranslate"><span class="pre">str</span></code>) – scan id or scan ids to load. Defaults to None,
+in which case no data is loaded on instantiation. In this case use load_scan() to load data.</p></li>
+<li><p><strong>suffix</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">str</span></code>) – A regular suffix pattern to match scan ids in the data source. For
+example, “.1” will find all top level keys in the h5 file that end with “.1”, such as “1.1”, “2.1”, etc.
+Defaults to None, in which case no data is loaded on instantiation. (Use load_scan() to load data.)</p></li>
+<li><p><strong>scan_motor</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">str</span></code>) – The path in the h5 file to the motor that is changing with the scan_id.
+Only relevant when multiple scan_ids are loaded. Defaults to None.</p></li>
+<li><p><strong>roi</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">tuple</span></code> of <code class="xref py py-obj docutils literal notranslate"><span class="pre">int</span></code>) – (row_min, row_max, column_min, column_max),
+The roi refers to the detector dimensions. I.e for each frame only the part that corresponds to
+frame[roi[0]:roi[1], roi[2]:roi[3]] is loaded. Defaults to None, in which case all data is loaded.</p></li>
+</ul>
 </dd>
 </dl>
 <dl class="py attribute">
@@ -1395,6 +1444,25 @@ motors and m,n,(o) are the motor dimensions.</p>
 <dt class="sig sig-object py">
 <span class="sig-name descname"><span class="pre">h5file</span> <span class="pre">(</span></span></dt>
 <dd><p>obj: <cite>string</cite>): The absolute path to the h5 file in which all data resides.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="darling._dataset.DataSet.roi">
+<span class="sig-name descname"><span class="pre">roi</span></span><a class="reference external" href="https://github.com/AxelHenningsson/darling/tree/main/darling/_dataset.py/"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darling._dataset.DataSet.roi" title="Link to this definition">#</a></dt>
+<dd><p>(row_min, row_max, column_min, column_max),
+The roi refers to the detector dimensions. I.e for each frame only the part that corresponds to
+frame[roi[0]:roi[1], roi[2]:roi[3]] is loaded. Defaults to None, in which case all data is loaded.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">tuple</span></code> of <code class="xref py py-obj docutils literal notranslate"><span class="pre">int</span></code></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">verbose</span> <span class="pre">(</span></span></dt>
+<dd><p>obj: <a href="#id1"><span class="problematic" id="id2">``</span></a>bool): Prints progress on loading. Defaults to False.</p>
 </dd></dl>
 
 <dl class="py property">
@@ -1472,7 +1540,7 @@ motors and m,n,(o) are the motor dimensions.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="darling._dataset.DataSet.load_scan">
-<span class="sig-name descname"><span class="pre">load_scan</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">scan_id</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">scan_motor</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">roi</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/AxelHenningsson/darling/tree/main/darling/_dataset.py/"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darling._dataset.DataSet.load_scan" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">load_scan</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">scan_id</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">scan_motor</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">roi</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/AxelHenningsson/darling/tree/main/darling/_dataset.py/"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darling._dataset.DataSet.load_scan" title="Link to this definition">#</a></dt>
 <dd><p>Load a scan into RAM.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -1483,6 +1551,7 @@ Defaults to None. Must be set when scan_id is not a single string.</p></li>
 <li><p><strong>roi</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">tuple</span></code> of <code class="xref py py-obj docutils literal notranslate"><span class="pre">int</span></code>) – row_min row_max and column_min and column_max,
 defaults to None, in which case all data is loaded. The roi refers to the detector
 dimensions.</p></li>
+<li><p><strong>(</strong> (<em>verbose</em>) – obj: <a href="#id3"><span class="problematic" id="id4">``</span></a>bool): Prints progress on loading. Defaults to False.</p></li>
 </ul>
 </dd>
 </dl>
@@ -1870,6 +1939,26 @@ coordinates (<code class="xref py py-obj docutils literal notranslate"><span cla
 </dd></dl>
 
 <dl class="py function">
+<dt class="sig sig-object py" id="darling.assets.energy_mosa_scan">
+<span class="sig-prename descclassname"><span class="pre">darling.assets.</span></span><span class="sig-name descname"><span class="pre">energy_mosa_scan</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/AxelHenningsson/darling/tree/main/darling/assets.py/"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darling.assets.energy_mosa_scan" title="Link to this definition">#</a></dt>
+<dd><p>Load a (tiny) part of a 3D strain-mosaicity scan collected at the ESRF ID03.</p>
+<p>This is the central detector ROI for a Al1050 crystal.</p>
+<p>The scan is performed with the ccmth motor (i.e the monochromator) and the
+mu and chi motors (i.e the base cradle/rocking cradle and rolling top stage).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Absolute path to h5 file.
+data (<code class="xref py py-obj docutils literal notranslate"><span class="pre">numpy</span> <span class="pre">array</span></code>): Array of shape (a, b, m, n) with intensity data.
+<code class="docutils literal notranslate"><span class="pre">data[:,:,i,j]</span></code> is a noisy detector image (uint16) for ccmth and mu at index <code class="docutils literal notranslate"><span class="pre">i,</span> <span class="pre">j</span></code>.
+coordinates (<code class="xref py py-obj docutils literal notranslate"><span class="pre">numpy</span> <span class="pre">array</span></code>): Array of shape (2, m, n) containing angle coordinates.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>data_path (<code class="xref py py-obj docutils literal notranslate"><span class="pre">str</span></code>)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
 <dt class="sig sig-object py" id="darling.assets.gaussian_blobs">
 <span class="sig-prename descclassname"><span class="pre">darling.assets.</span></span><span class="sig-name descname"><span class="pre">gaussian_blobs</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">N</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">32</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">m</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">9</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/AxelHenningsson/darling/tree/main/darling/assets.py/"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darling.assets.gaussian_blobs" title="Link to this definition">#</a></dt>
 <dd><p>Phantom 2d scan of gaussian blobs with shifting means and covariance.</p>
@@ -2021,6 +2110,7 @@ such that the entire detector is copied as is.</p></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#darling.properties.moments"><code class="docutils literal notranslate"><span class="pre">moments()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#darling.properties.mean"><code class="docutils literal notranslate"><span class="pre">mean()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#darling.properties.covariance"><code class="docutils literal notranslate"><span class="pre">covariance()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#darling.properties.fit_1d_gaussian"><code class="docutils literal notranslate"><span class="pre">fit_1d_gaussian()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#darling.properties.gaussian_mixture"><code class="docutils literal notranslate"><span class="pre">gaussian_mixture()</span></code></a></li>
 </ul>
 </li>
@@ -2048,6 +2138,7 @@ such that the entire detector is copied as is.</p></li>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-darling._dataset">DataSet</a><ul class="nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#darling._dataset.DataSet"><code class="docutils literal notranslate"><span class="pre">DataSet</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darling._dataset.DataSet.roi"><code class="docutils literal notranslate"><span class="pre">DataSet.roi</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darling._dataset.DataSet.dtype"><code class="docutils literal notranslate"><span class="pre">DataSet.dtype</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darling._dataset.DataSet.info"><code class="docutils literal notranslate"><span class="pre">DataSet.info()</span></code></a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darling._dataset.DataSet.scan_params"><code class="docutils literal notranslate"><span class="pre">DataSet.scan_params</span></code></a></li>
@@ -2086,6 +2177,7 @@ such that the entire detector is copied as is.</p></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#darling.assets.motor_drift"><code class="docutils literal notranslate"><span class="pre">motor_drift()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#darling.assets.mosaicity_scan"><code class="docutils literal notranslate"><span class="pre">mosaicity_scan()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#darling.assets.energy_mu_scan"><code class="docutils literal notranslate"><span class="pre">energy_mu_scan()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#darling.assets.energy_mosa_scan"><code class="docutils literal notranslate"><span class="pre">energy_mosa_scan()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#darling.assets.gaussian_blobs"><code class="docutils literal notranslate"><span class="pre">gaussian_blobs()</span></code></a></li>
 </ul>
 </li>

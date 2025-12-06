@@ -37,21 +37,24 @@ class TestMoments(unittest.TestCase):
         # Check that error is within the x,y resolution
         resolution = x[1] - x[0]
         relative_error = (true_mean - mu) / resolution
-        np.testing.assert_array_less(
-            np.abs(relative_error), np.ones_like(relative_error)
-        )
+
+        print(mu.shape)
 
         if self.debug:
             plt.style.use("dark_background")
             fig, ax = plt.subplots(1, 3, figsize=(6, 8))
-            im = ax[0].imshow(mu)
+            im = ax[0].imshow(mu[:, :])
             fig.colorbar(im, ax=ax[0], fraction=0.046, pad=0.04)
-            im = ax[1].imshow(true_mean)
+            im = ax[1].imshow(true_mean[:, :])
             fig.colorbar(im, ax=ax[1], fraction=0.046, pad=0.04)
-            im = ax[2].imshow(relative_error, cmap="jet")
+            im = ax[2].imshow(relative_error[:, :], cmap="jet")
             fig.colorbar(im, ax=ax[2], fraction=0.046, pad=0.04)
             plt.tight_layout()
             plt.show()
+
+        np.testing.assert_array_less(
+            np.abs(relative_error), np.ones_like(relative_error)
+        )
 
     def test_mean_2D(self):
         # Test that a series of displaced gaussians gives back the input mean
@@ -149,6 +152,47 @@ class TestMoments(unittest.TestCase):
                 fig.colorbar(im, ax=ax[2, i], fraction=0.046, pad=0.04)
             plt.tight_layout()
             plt.show()
+
+    def test_mean_3d_arbitrary_dtypes(self):
+        x = y = z = np.linspace(-1, 1, 9, dtype=np.float32)
+
+        sigma = x[2] - x[0]
+        X, Y, Z = np.meshgrid(x, y, z, indexing="ij")
+        N = 32
+        M = 37
+        data = np.zeros((N, M, len(x), len(y), len(z)))
+        true_mean = []
+        for i in range(data.shape[0]):
+            for j in range(data.shape[1]):
+                x0, y0, z0 = (
+                    sigma * i / N,
+                    sigma * j / N - 0.5 * sigma * i / N,
+                    sigma * np.sqrt(i * j) / N,
+                )
+                data[i, j] = (
+                    np.exp(
+                        -((X - x0) ** 2 + (Y - y0) ** 2 + (Z - z0) ** 2)
+                        / (2 * sigma**2)
+                    )
+                    * 65535
+                )
+                true_mean.append([x0, y0, z0])
+        true_mean = np.array(true_mean).reshape(N, M, 3)
+        data = data.round().astype(np.uint16)
+
+        for dtype_data in [np.float64, np.float32, np.uint16, np.int32]:
+            for dtype_coords in [np.float64, np.float32]:
+                mu = properties.mean(
+                    data.astype(dtype_data),
+                    coordinates=np.array([X, Y, Z]).astype(dtype_coords),
+                )
+
+                resolution = x[1] - x[0]
+                relative_error = (true_mean - mu) / resolution
+
+                np.testing.assert_array_less(
+                    np.abs(relative_error), np.ones_like(relative_error)
+                )
 
     def test_mean_2d_noisy(self):
         # Simply assert that the mean function runs on real noisy data from id03.
@@ -332,6 +376,63 @@ class TestMoments(unittest.TestCase):
                 fig.colorbar(im, ax=ax[2, i], fraction=0.046, pad=0.04)
             plt.tight_layout()
             plt.show()
+
+    def test_covariance_3d_arbitrary_dtypes(self):
+        x = y = z = np.linspace(-1, 1, 9, dtype=np.float32)
+        sigma0 = (x[1] - x[0]) / 3.0
+        X, Y, Z = np.meshgrid(x, y, z, indexing="ij")
+        N = 32
+        data = np.zeros((N, N, len(x), len(y), len(z)))
+        true_variance = []
+        S = np.eye(3)
+        for i in range(data.shape[0]):
+            for j in range(data.shape[1]):
+                x0, y0, z0 = (
+                    sigma0 * i / N,
+                    sigma0 * j / N - 0.5 * sigma0 * i / N,
+                    sigma0 * np.sqrt(i * j) / N,
+                )
+                S[0, 0] = sigma0 + 0.5 * sigma0 * i / N
+                S[1, 1] = sigma0 + 0.5 * sigma0 * j / N - 0.25 * sigma0 * i / N
+                S[2, 2] = sigma0 + 0.5 * sigma0 * np.sqrt(i * j) / N
+
+                Si = 1.0 / np.diag(S)
+                data[i, j] = (
+                    np.exp(
+                        -0.5
+                        * (
+                            Si[0] * (X - x0) ** 2
+                            + Si[1] * (Y - y0) ** 2
+                            + Si[2] * (Z - z0) ** 2
+                        )
+                    )
+                    * 65535
+                )
+                true_variance.append(S.copy())
+        true_variance = np.array(true_variance).reshape(N, N, 3, 3)
+        data = data.round().astype(np.uint16)
+
+        for dtype_data in [np.float64, np.float32, np.uint16, np.int32]:
+            for dtype_coords in [np.float64, np.float32]:
+                cov = properties.covariance(
+                    data.astype(dtype_data),
+                    coordinates=np.array([X, Y, Z]).astype(dtype_coords),
+                )
+
+                for i in range(cov.shape[2]):
+                    np.testing.assert_allclose(
+                        np.sqrt(true_variance[..., i, i]),
+                        np.sqrt(cov[..., i, i]),
+                        atol=sigma0 * 1e-3,
+                        rtol=0.01,
+                    )
+
+                for i in range(cov.shape[2]):
+                    for j in range(cov.shape[3]):
+                        if i != j:
+                            np.testing.assert_allclose(
+                                cov[..., i, j], 0, atol=sigma0 * 1e-3
+                            )
 
     def test_covariance_noisy(self):
         # Simply assert that the covariance function runs on real noisy data from id03.
