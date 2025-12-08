@@ -14,6 +14,22 @@ import numpy as np
 import darling
 
 
+def _ascontiguousarrays(data, motors):
+    """Convert data and motors to contiguous arrays.
+
+    Args:
+        data (:obj:`numpy.ndarray`): The data array of shape (a,b,m,n) or (a,b,m,n,o) etc...
+        motors (:obj:`numpy.ndarray`): The motor array of shape (k,m,n) or (k,m,n,o) etc...
+
+    Returns:
+        :obj:`numpy.ndarray`: The data array in contiguous format.
+        :obj:`numpy.ndarray`: The motor array in contiguous format.
+    """
+    data = np.ascontiguousarray(data)
+    motors = np.ascontiguousarray(motors)
+    return data, motors
+
+
 class Reader(object):
     """Parent class for readers.
 
@@ -142,7 +158,7 @@ class MosaScan(Reader):
         motors[0, :] = motors[0, :].flatten()[frame_indices].reshape(m, n)
         motors[1, :] = motors[1, :].flatten()[frame_indices].reshape(m, n)
 
-        return data, motors
+        return _ascontiguousarrays(data, motors)
 
 
 class Darks(MosaScan):
@@ -192,7 +208,7 @@ class Darks(MosaScan):
             data = data.swapaxes(0, -2)
             data = data.swapaxes(1, -1)
 
-        return data, motors
+        return _ascontiguousarrays(data, motors)
 
 
 class RockingScan(MosaScan):
@@ -260,7 +276,7 @@ class RockingScan(MosaScan):
         data = data[..., frame_indices]
         motors[0, :] = motors[0, frame_indices]
 
-        return data, motors
+        return _ascontiguousarrays(data, motors)
 
 
 if __name__ == "__main__":
