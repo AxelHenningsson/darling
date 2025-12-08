@@ -41,10 +41,6 @@ from darling._gaussian_fit import fit_gaussian_with_linear_background_1D
 def rgb(property_2d, norm="dynamic", coordinates=None):
     """Compute a m, n, 3 rgb array from a 2d property map, e.g from a first moment map.
 
-    NOTE: Only normalization ranges that covers the full range of the property_2d are
-    accepted here. Consider marking values outside range by np.nan before calling in
-    case such normalization is needed.
-
     .. code-block:: python
 
         import matplotlib.pyplot as plt
@@ -103,7 +99,10 @@ def rgb(property_2d, norm="dynamic", coordinates=None):
             the colorkey of shape (m, n, 3) and the grid of the colorkey
             of shape=(m, n).
     """
-    if norm == "full":
+
+    _property_2d = property_2d.copy()
+
+    if isinstance(norm, str) and norm == "full":
         norm = np.zeros((2, 2))
 
         # handles rounding errors in property map.
@@ -115,22 +114,32 @@ def rgb(property_2d, norm="dynamic", coordinates=None):
         norm[0] = np.min(coordinates[0]) - pad_0, np.max(coordinates[0]) + pad_0
         norm[1] = np.min(coordinates[1]) - pad_1, np.max(coordinates[1]) + pad_1
 
-    elif norm == "dynamic":
+    elif isinstance(norm, str) and norm == "dynamic":
         norm = np.zeros((2, 2))
-        norm[0] = np.nanmin(property_2d[..., 0]), np.nanmax(property_2d[..., 0])
-        norm[1] = np.nanmin(property_2d[..., 1]), np.nanmax(property_2d[..., 1])
+        norm[0] = np.nanmin(_property_2d[..., 0]), np.nanmax(_property_2d[..., 0])
+        norm[1] = np.nanmin(_property_2d[..., 1]), np.nanmax(_property_2d[..., 1])
+
+    elif isinstance(norm, np.ndarray) and norm.shape == (2, 2):
+        if norm[0, 0] > norm[0, 1] or norm[1, 0] > norm[1, 1]:
+            raise ValueError("norm[i,0] must be less than norm[i,1] for i=0,1")
+        _property_2d[..., 0][_property_2d[..., 0] <= norm[0, 0]] = np.nan
+        _property_2d[..., 0][_property_2d[..., 0] >= norm[0, 1]] = np.nan
+        _property_2d[..., 1][_property_2d[..., 1] <= norm[1, 0]] = np.nan
+        _property_2d[..., 1][_property_2d[..., 1] >= norm[1, 1]] = np.nan
     else:
-        assert norm.shape == (2, 2), "scale must be of shape (2, 2)"
+        raise ValueError(
+            "norm must be a string ('full' or 'dynamic') or a numpy array of shape (2, 2)"
+        )
 
     for i in range(2):
-        assert np.nanmin(property_2d[..., i]) >= norm[i, 0], (
+        assert np.nanmin(_property_2d[..., i]) >= norm[i, 0], (
             "property_2d values exceed norm, please select a feasible normalization range"
         )
-        assert np.nanmin(property_2d[..., i]) <= norm[i, 1], (
+        assert np.nanmin(_property_2d[..., i]) <= norm[i, 1], (
             "property_2d values exceed norm, please select a feasible normalization range"
         )
 
-    x, y = color.normalize(property_2d, norm)
+    x, y = color.normalize(_property_2d, norm)
     rgb_map = color.rgb(x, y)
     colorkey, colorgrid = color.colorkey(norm)
 

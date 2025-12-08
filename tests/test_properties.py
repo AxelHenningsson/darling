@@ -7,6 +7,55 @@ import darling
 from darling import assets, properties
 
 
+class TestRGB(unittest.TestCase):
+    def setUp(self):
+        self.debug = False
+        _, self.data, self.coordinates = assets.domains()
+
+    def test_rgb_full(self):
+        mu = properties.mean(self.data, self.coordinates)
+        rgb_map, colorkey, colorgrid = properties.rgb(
+            mu, norm="full", coordinates=self.coordinates
+        )
+        self.assertEqual(rgb_map.shape[0], mu.shape[0])
+        self.assertEqual(rgb_map.shape[1], mu.shape[1])
+        self.assertEqual(rgb_map.shape[2], 3)
+
+        X, Y = colorgrid
+
+        self.assertEqual(colorkey.shape[0], X.shape[0])
+        self.assertEqual(colorkey.shape[1], X.shape[1])
+
+    def test_rgb_dynamic(self):
+        mu = properties.mean(self.data, self.coordinates)
+        rgb_map, colorkey, colorgrid = properties.rgb(
+            mu, norm="dynamic", coordinates=None
+        )
+        self.assertEqual(rgb_map.shape[0], mu.shape[0])
+        self.assertEqual(rgb_map.shape[1], mu.shape[1])
+        self.assertEqual(rgb_map.shape[2], 3)
+
+        X, Y = colorgrid
+
+        self.assertEqual(colorkey.shape[0], X.shape[0])
+        self.assertEqual(colorkey.shape[1], X.shape[1])
+
+    def test_rgb_norm(self):
+        mu = properties.mean(self.data, self.coordinates)
+        print(mu[..., 0].max(), mu[..., 0].min())
+        print(mu[..., 1].max(), mu[..., 1].min())
+        norm = np.array([[-0.39293402, 1.1919645], [7.192096, 8.859955]])
+        rgb_map, colorkey, colorgrid = properties.rgb(mu, norm=norm, coordinates=None)
+        self.assertEqual(rgb_map.shape[0], mu.shape[0])
+        self.assertEqual(rgb_map.shape[1], mu.shape[1])
+        self.assertEqual(rgb_map.shape[2], 3)
+
+        X, Y = colorgrid
+
+        self.assertEqual(colorkey.shape[0], X.shape[0])
+        self.assertEqual(colorkey.shape[1], X.shape[1])
+
+
 class TestMoments(unittest.TestCase):
     # Tests for the darling.properties module.
 
