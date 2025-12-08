@@ -19,8 +19,6 @@ in theta, phi and chi can be retrieved as:
     detector_dim = (128, 128) # the number of rows and columns of the detector
     data = 64000 * np.random.rand(*detector_dim, len(phi), len(chi), len(theta))
 
-    data = data.astype(np.uint16) # the collected intensity data for the entire scan
-
     # compute the first and second moments such that
     # mean[i,j] is the shape=(3,) array of mean coorindates for pixel i,j.
     # covariance[i,j] is the shape=(3,3) covariance matrix of pixel i,j.
@@ -216,7 +214,7 @@ def moments(data, coordinates):
     is therefore either 3d, 4d or 5d.
 
     NOTE: Computation is done in parallel using shared memory with numba just
-        in time compiling. For this reason the data array must be of type numpy uint16.
+        in time compiling.
 
     Example in a DFXM mosaicity-scan setting using random arrays:
 
@@ -244,7 +242,7 @@ def moments(data, coordinates):
         data (:obj:`numpy array`): Array of shape=(a, b, m) or shape=(a, b, m, n)
             or shape=(a, b, m, n, o) where the maps over which the mean will be
             calculated are of shape=(m) or shape=(m, n) or shape=(m, n, o) respectively
-            and the detector field dimensions are of shape=(a, b). Must be numpy uint16.
+            and the detector field dimensions are of shape=(a, b).
             I.e data[i, j, ...] is a distribution for pixel i, j.
         coordinates (:obj:`numpy array`): numpy nd arrays specifying the coordinates in each dimension
             respectively. I.e, as an example, these could be the phi and chi angular
@@ -271,7 +269,7 @@ def mean(data, coordinates):
     is therefore either 3d, 4d or 5d.
 
     NOTE: Computation is done in parallel using shared memory with numba just
-        in time compiling. For this reason the data array must be of type numpy uint16.
+        in time compiling.
 
     Example in a DFXM energy-mosaicity-scan setting using random arrays:
 
@@ -300,7 +298,7 @@ def mean(data, coordinates):
         data (:obj:`numpy array`): Array of shape=(a, b, m) or shape=(a, b, m, n)
             or shape=(a, b, m, n, o) where the maps over which the mean will be
             calculated are of shape=(m) or shape=(m, n) or shape=(m, n, o) respectively
-            and the detector field dimensions are of shape=(a, b). Must be numpy uint16.
+            and the detector field dimensions are of shape=(a, b).
             I.e data[i, j, ...] is a distribution for pixel i, j.
         coordinates (:obj:`numpy array`): numpy nd arrays specifying the coordinates in each dimension
             respectively. I.e, as an example, these could be the phi and chi angular
@@ -323,7 +321,7 @@ def covariance(data, coordinates, first_moments=None):
     is therefore either 3d, 4d or 5d.
 
     NOTE: Computation is done in parallel using shared memory with numba just
-        in time compiling. For this reason the data array must be of type numpy uint16.
+        in time compiling.
 
     Example in a DFXM energy-mosaicity-scan setting using random arrays:
 
@@ -354,7 +352,7 @@ def covariance(data, coordinates, first_moments=None):
         data (:obj:`numpy array`): Array of shape=(a, b, m) or shape=(a, b, m, n)
             or shape=(a, b, m, n, o) where the maps over which the mean will be
             calculated are of shape=(m) or shape=(m, n) or shape=(m, n, o) respectively
-            and the detector field dimensions are of shape=(a, b). Must be numpy uint16.
+            and the detector field dimensions are of shape=(a, b).
             I.e data[i, j, ...] is a distribution for pixel i, j.
         coordinates (:obj:`numpy array`): numpy nd arrays specifying the coordinates in each dimension
             respectively. I.e, as an example, these could be the phi and chi angular
@@ -536,7 +534,12 @@ def gaussian_mixture(data, k=8, coordinates=None):
     """
 
     assert k > 0, "k must be larger than 0"
-    assert data.dtype == np.uint16, "data must be of type uint16"
+    assert (
+        data.dtype == np.uint16
+        or data.dtype == np.float32
+        or data.dtype == np.float64
+        or data.dtype == np.int32
+    ), "data must be of type uint16, float32, float64 or int32"
     assert (len(data.shape) == 4) or (len(data.shape) == 3), (
         "data array must be 3D or 4D"
     )

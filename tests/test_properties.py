@@ -748,6 +748,21 @@ class TestGaussianMixture(unittest.TestCase):
             plt.tight_layout()
             plt.show()
 
+    def test_gaussian_mixture_different_dtypes(self):
+        for dtype in [np.uint16, np.float32, np.float64, np.int32]:
+            features = properties.gaussian_mixture(
+                self.data.astype(dtype),
+                k=16,
+                coordinates=self.coordinates,
+            )
+
+            for key in features:
+                self.assertEqual(features[key].shape[0], self.data.shape[0])
+                self.assertEqual(features[key].shape[1], self.data.shape[1])
+                self.assertEqual(features[key].shape[2], 16)
+                self.assertTrue(np.all(np.isfinite(features[key])))
+                self.assertTrue(np.all(np.isreal(features[key])))
+
     def test_gaussian_mixture(self):
         data = np.zeros((29, 32, 4, 7), dtype=np.uint16)
         x = np.linspace(-0.81, 1.00465, 4, dtype=np.float32)
