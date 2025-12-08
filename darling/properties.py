@@ -139,8 +139,9 @@ def rgb(property_2d, norm="dynamic", coordinates=None):
             "property_2d values exceed norm, please select a feasible normalization range"
         )
 
-    x, y = color.normalize(_property_2d, norm)
-    rgb_map = color.rgb(x, y)
+    mask = ~np.isnan(_property_2d[..., 0]) & ~np.isnan(_property_2d[..., 1])
+    x, y = color.normalize(_property_2d, norm, mask)
+    rgb_map = color.rgb(x, y, mask)
     colorkey, colorgrid = color.colorkey(norm)
 
     return rgb_map, colorkey, colorgrid

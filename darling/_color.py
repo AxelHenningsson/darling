@@ -8,7 +8,7 @@ import numpy as np
 from matplotlib.colors import hsv_to_rgb
 
 
-def normalize(property_2d, norm):
+def normalize(property_2d, norm, mask):
     """Normalize a property map to a given range.
 
     Args:
@@ -17,32 +17,36 @@ def normalize(property_2d, norm):
         norm (:obj:`numpy array` or :obj:`str`): array of shape=(2, 2), norm[i,0] is min
             value for property_2d[:,:,i] and norm[i,1] is max value for property_2d[:,:,i]
             the property_2d values will thus be normalised into this range.
-
+        mask (:obj:`numpy array`): a mask of shape=(a, b) indicating which values are not nan
     Returns:
         :obj:`numpy array`: a normalized property map of shape=(a, b, 2)
     """
-    norm_property_2d = np.zeros((2, property_2d.shape[0], property_2d.shape[1]))
+    norm_property_2d = np.full(
+        (2, property_2d.shape[0], property_2d.shape[1]), fill_value=np.nan
+    )
 
     for i in range(2):
         # move "leftmost-bottommost" datapoint to the origin, 0
-        norm_property_2d[i] = property_2d[..., i] - norm[i, 0]
+        norm_property_2d[i][mask] = property_2d[..., i][mask] - norm[i, 0]
 
         # stretch all data to the [0, 1] box
-        norm_property_2d[i] = norm_property_2d[i] / (norm[i, 1] - norm[i, 0])
+        norm_property_2d[i][mask] = norm_property_2d[i][mask] / (
+            norm[i, 1] - norm[i, 0]
+        )
 
         # center the data around the origin, 0
-        norm_property_2d[i] = norm_property_2d[i] - 0.5
+        norm_property_2d[i][mask] = norm_property_2d[i][mask] - 0.5
 
         # stretch the data to a [-1, 1] box
-        norm_property_2d[i] = 2 * norm_property_2d[i]
+        norm_property_2d[i][mask] = 2 * norm_property_2d[i][mask]
 
         # stretch the data to fit inside a unit circle
-        norm_property_2d[i] = norm_property_2d[i] / (np.sqrt(2) + 1e-8)
+        norm_property_2d[i][mask] = norm_property_2d[i][mask] / (np.sqrt(2) + 1e-8)
 
     return norm_property_2d
 
 
-def rgb(x, y):
+def rgb(x, y, mask=None):
     """Map 2D data to RGB color space by converting to HSV.
 
     The 2d points are assumed to lie on the top of the hsv color
@@ -53,27 +57,41 @@ def rgb(x, y):
     Args:
         x (:obj:`numpy array`): x-values cound by the unit circle, shape=(a,b)
         y (:obj:`numpy array`): y-values cound by the unit circle, shape=(a,b)
+        mask (:obj:`numpy array`): a mask of shape=(a, b) indicating which values are not nan. Defaults to None.
+            If None, all values are considered.
 
     Returns:
         :obj:`numpy array`: rgb values of shape (a, b, 3)
     """
     # angle of the point in the plane parameterised by 0,1
-    angles = (np.arctan2(-y, -x) + 2 * np.pi) % (2 * np.pi) / (2 * np.pi)
+
+    if mask is None:
+        mask = np.ones(x.shape, dtype=bool)
+
+    angles = np.full(x.shape, fill_value=np.nan)
+    angles[mask] = (
+        (np.arctan2(-y[mask], -x[mask]) + 2 * np.pi) % (2 * np.pi) / (2 * np.pi)
+    )
 
     # radius of the point in the plane
-    radius = np.sqrt(x**2 + y**2)
+    radius = np.full(x.shape, fill_value=np.nan)
+    radius[mask] = np.sqrt(x[mask] ** 2 + y[mask] ** 2)
 
     hsv = np.stack(
         (
             angles,  # HUE (the actual color)
             radius,  # SATURATION (how saturated the color is)
-            np.ones(angles.shape),  # VALUE. (white to black)
+            np.ones(x.shape),  # VALUE. (white to black)
         ),
         axis=2,
     )
-    hsv[np.isnan(x), :] = 0
+    hsv[~mask, :] = 0
 
-    return hsv_to_rgb(hsv)
+    rgb = hsv_to_rgb(hsv)
+
+    rgb[~mask, :] = 0
+
+    return rgb
 
 
 def colorkey(norm, resolution=512):
@@ -94,7 +112,7 @@ def colorkey(norm, resolution=512):
             X.shape=Y.shape=colorkey.shape=(resolution, resolution).
     """
     ang_grid = np.linspace(-1, 1, resolution) / (np.sqrt(2) + 1e-8)
-    ang1, ang2 = np.meshgrid(ang_grid, ang_grid, indexing='ij')
+    ang1, ang2 = np.meshgrid(ang_grid, ang_grid, indexing="ij")
     colorkey = rgb(ang1, ang2)
     x = np.linspace(norm[0, 0], norm[0, 1], colorkey.shape[0])
     y = np.linspace(norm[1, 0], norm[1, 1], colorkey.shape[1])
