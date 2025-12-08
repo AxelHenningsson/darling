@@ -859,11 +859,6 @@ class TestGaussianMixture(unittest.TestCase):
             self.assertTrue("_motor2" not in key)
 
 
-import unittest
-import numpy as np
-from darling import properties, assets
-
-
 class TestKAM(unittest.TestCase):
     def setUp(self):
         _, self.data, self.coordinates = assets.domains()
