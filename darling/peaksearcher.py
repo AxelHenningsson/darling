@@ -393,12 +393,10 @@ def _extract_features(labeled_array, data, nlabels, num_props, k):
 
 @numba.guvectorize(
     [
-        (
-            numba.uint16[:, :],
-            numba.uint8[:],
-            numba.uint8[:],
-            numba.float32[:, :],
-        )
+        (numba.int32[:, :], numba.uint8[:], numba.uint8[:], numba.float32[:, :]),
+        (numba.float32[:, :], numba.uint8[:], numba.uint8[:], numba.float32[:, :]),
+        (numba.float64[:, :], numba.uint8[:], numba.uint8[:], numba.float32[:, :]),
+        (numba.uint16[:, :], numba.uint8[:], numba.uint8[:], numba.float32[:, :]),
     ],
     "(m,n),(p),(k)->(p,k)",
     nopython=True,
