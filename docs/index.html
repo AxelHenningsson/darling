@@ -386,8 +386,6 @@ in theta, phi and chi can be retrieved as:</p>
 <span class="n">detector_dim</span> <span class="o">=</span> <span class="p">(</span><span class="mi">128</span><span class="p">,</span> <span class="mi">128</span><span class="p">)</span> <span class="c1"># the number of rows and columns of the detector</span>
 <span class="n">data</span> <span class="o">=</span> <span class="mi">64000</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">rand</span><span class="p">(</span><span class="o">*</span><span class="n">detector_dim</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">phi</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">chi</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">theta</span><span class="p">))</span>
 
-<span class="n">data</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">uint16</span><span class="p">)</span> <span class="c1"># the collected intensity data for the entire scan</span>
-
 <span class="c1"># compute the first and second moments such that</span>
 <span class="c1"># mean[i,j] is the shape=(3,) array of mean coorindates for pixel i,j.</span>
 <span class="c1"># covariance[i,j] is the shape=(3,3) covariance matrix of pixel i,j.</span>
@@ -401,9 +399,6 @@ in theta, phi and chi can be retrieved as:</p>
 <dt class="sig sig-object py" id="darling.properties.rgb">
 <span class="sig-prename descclassname"><span class="pre">darling.properties.</span></span><span class="sig-name descname"><span class="pre">rgb</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">property_2d</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">norm</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'dynamic'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">coordinates</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/AxelHenningsson/darling/tree/main/darling/properties.py/"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darling.properties.rgb" title="Link to this definition">#</a></dt>
 <dd><p>Compute a m, n, 3 rgb array from a 2d property map, e.g from a first moment map.</p>
-<p>NOTE: Only normalization ranges that covers the full range of the property_2d are
-accepted here. Consider marking values outside range by np.nan before calling in
-case such normalization is needed.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
 <span class="kn">import</span> <span class="nn">darling</span>
@@ -537,7 +532,7 @@ Defaults to (3, 3).</p></li>
 These could be mu, phi and chi, or phi and energy, etc. The total data array
 is therefore either 3d, 4d or 5d.</p>
 <dl class="simple">
-<dt>NOTE: Computation is done in parallel using shared memory with numba just</dt><dd><p>in time compiling. For this reason the data array must be of type numpy uint16.</p>
+<dt>NOTE: Computation is done in parallel using shared memory with numba just</dt><dd><p>in time compiling.</p>
 </dd>
 </dl>
 <p>Example in a DFXM mosaicity-scan setting using random arrays:</p>
@@ -565,7 +560,7 @@ is therefore either 3d, 4d or 5d.</p>
 <li><p><strong>data</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">numpy</span> <span class="pre">array</span></code>) – Array of shape=(a, b, m) or shape=(a, b, m, n)
 or shape=(a, b, m, n, o) where the maps over which the mean will be
 calculated are of shape=(m) or shape=(m, n) or shape=(m, n, o) respectively
-and the detector field dimensions are of shape=(a, b). Must be numpy uint16.
+and the detector field dimensions are of shape=(a, b).
 I.e data[i, j, …] is a distribution for pixel i, j.</p></li>
 <li><p><strong>coordinates</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">numpy</span> <span class="pre">array</span></code>) – numpy nd arrays specifying the coordinates in each dimension
 respectively. I.e, as an example, these could be the phi and chi angular
@@ -594,7 +589,7 @@ ndim=2 for a mosaicity scan, etc.</p></li>
 These could be mu, phi and chi, or phi and energy, etc. The total data array
 is therefore either 3d, 4d or 5d.</p>
 <dl class="simple">
-<dt>NOTE: Computation is done in parallel using shared memory with numba just</dt><dd><p>in time compiling. For this reason the data array must be of type numpy uint16.</p>
+<dt>NOTE: Computation is done in parallel using shared memory with numba just</dt><dd><p>in time compiling.</p>
 </dd>
 </dl>
 <p>Example in a DFXM energy-mosaicity-scan setting using random arrays:</p>
@@ -623,7 +618,7 @@ is therefore either 3d, 4d or 5d.</p>
 <li><p><strong>data</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">numpy</span> <span class="pre">array</span></code>) – Array of shape=(a, b, m) or shape=(a, b, m, n)
 or shape=(a, b, m, n, o) where the maps over which the mean will be
 calculated are of shape=(m) or shape=(m, n) or shape=(m, n, o) respectively
-and the detector field dimensions are of shape=(a, b). Must be numpy uint16.
+and the detector field dimensions are of shape=(a, b).
 I.e data[i, j, …] is a distribution for pixel i, j.</p></li>
 <li><p><strong>coordinates</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">numpy</span> <span class="pre">array</span></code>) – numpy nd arrays specifying the coordinates in each dimension
 respectively. I.e, as an example, these could be the phi and chi angular
@@ -648,7 +643,7 @@ ndim=2 for a mosaicity scan, etc.</p></li>
 These could be mu, phi and chi, or phi and energy, etc. The total data array
 is therefore either 3d, 4d or 5d.</p>
 <dl class="simple">
-<dt>NOTE: Computation is done in parallel using shared memory with numba just</dt><dd><p>in time compiling. For this reason the data array must be of type numpy uint16.</p>
+<dt>NOTE: Computation is done in parallel using shared memory with numba just</dt><dd><p>in time compiling.</p>
 </dd>
 </dl>
 <p>Example in a DFXM energy-mosaicity-scan setting using random arrays:</p>
@@ -679,7 +674,7 @@ is therefore either 3d, 4d or 5d.</p>
 <li><p><strong>data</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">numpy</span> <span class="pre">array</span></code>) – Array of shape=(a, b, m) or shape=(a, b, m, n)
 or shape=(a, b, m, n, o) where the maps over which the mean will be
 calculated are of shape=(m) or shape=(m, n) or shape=(m, n, o) respectively
-and the detector field dimensions are of shape=(a, b). Must be numpy uint16.
+and the detector field dimensions are of shape=(a, b).
 I.e data[i, j, …] is a distribution for pixel i, j.</p></li>
 <li><p><strong>coordinates</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">numpy</span> <span class="pre">array</span></code>) – numpy nd arrays specifying the coordinates in each dimension
 respectively. I.e, as an example, these could be the phi and chi angular
@@ -827,6 +822,111 @@ position of the i-th strongest peak etc.</p>
 </section>
 <section id="module-darling.transforms">
 <span id="transforms"></span><h2>transforms<a class="headerlink" href="#module-darling.transforms" title="Link to this heading">#</a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="darling.transforms.get_lattice_spacing">
+<span class="sig-prename descclassname"><span class="pre">darling.transforms.</span></span><span class="sig-name descname"><span class="pre">get_lattice_spacing</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">unit_cell</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hkl</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/AxelHenningsson/darling/tree/main/darling/transforms.py/"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darling.transforms.get_lattice_spacing" title="Link to this definition">#</a></dt>
+<dd><p>Get the lattice spacing for a given unit cell and hkl.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="darling.transforms.ccmth_to_strain">
+<span class="sig-prename descclassname"><span class="pre">darling.transforms.</span></span><span class="sig-name descname"><span class="pre">ccmth_to_strain</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ccmth</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">unit_cell</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hkl</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reference_bragg_angle</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/AxelHenningsson/darling/tree/main/darling/transforms.py/"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darling.transforms.ccmth_to_strain" title="Link to this definition">#</a></dt>
+<dd><p>Convert monochromator position (ccmth) to strain given a reference unit cell parameter.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>ccmth</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">numpy</span> <span class="pre">array</span></code> or <code class="xref py py-obj docutils literal notranslate"><span class="pre">float</span></code>) – The ccmth in degrees. shape=(n,) or float.</p></li>
+<li><p><strong>unit_cell</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">numpy</span> <span class="pre">array</span></code>) – The unit cell parameters. shape=(6,) these are in Angstroms and degrees, ordered as [a,b,c,alpha,beta,gamma].</p></li>
+<li><p><strong>hkl</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">numpy</span> <span class="pre">array</span></code>) – The hkl indices. shape=(3,) these are integers.</p></li>
+<li><p><strong>reference_bragg_angle</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">float</span></code>) – The reference Bragg angle in degrees. This is the Bragg angle for the reference unit cell and the reference hkl.</p></li>
+<li><p><strong>cell.</strong> (<em>i.e it is the angle at which diffraction will be observed for a strain free unit</em>)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The strain. shape=(n,) or float.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">numpy</span> <span class="pre">array</span></code> or <code class="xref py py-obj docutils literal notranslate"><span class="pre">float</span></code></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="darling.transforms.ccmth_to_wavelength">
+<span class="sig-prename descclassname"><span class="pre">darling.transforms.</span></span><span class="sig-name descname"><span class="pre">ccmth_to_wavelength</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ccmth</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/AxelHenningsson/darling/tree/main/darling/transforms.py/"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darling.transforms.ccmth_to_wavelength" title="Link to this definition">#</a></dt>
+<dd><p>Convert monochromator position (ccmth) to wavelength.</p>
+<p>NOTE: we use d_Si_111 = 3.1384245 as the calibrated value for the Si(111) reflection, which
+is the monochromator material at ID03 ESRF.</p>
+<p>This was derived from a 3DXRD measurement assuming no offsets in ccmth using a calibration
+crystal that was known to be strain-free.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>ccmth</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">numpy</span> <span class="pre">array</span></code> or <code class="xref py py-obj docutils literal notranslate"><span class="pre">float</span></code>) – The ccmth in degrees. shape=(n,) or float.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The wavelength in Angstroms. shape=(n,) or float.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">numpy</span> <span class="pre">array</span></code> or <code class="xref py py-obj docutils literal notranslate"><span class="pre">float</span></code></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="darling.transforms.ccmth_to_energy">
+<span class="sig-prename descclassname"><span class="pre">darling.transforms.</span></span><span class="sig-name descname"><span class="pre">ccmth_to_energy</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ccmth</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/AxelHenningsson/darling/tree/main/darling/transforms.py/"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darling.transforms.ccmth_to_energy" title="Link to this definition">#</a></dt>
+<dd><p>Convert monochromator position (ccmth) to energy.</p>
+<p>NOTE: we use d_Si_111 = 3.1384245 as the calibrated value for the Si(111) reflection, which
+is the monochromator material at ID03 ESRF.</p>
+<p>This was derived from a 3DXRD measurement assuming no offsets in ccmth using a calibration
+crystal that was known to be strain-free.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>ccmth</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">numpy</span> <span class="pre">array</span></code> or <code class="xref py py-obj docutils literal notranslate"><span class="pre">float</span></code>) – The ccmth in degrees. shape=(n,) or float.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The energy in keV. shape=(n,) or float.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">numpy</span> <span class="pre">array</span></code> or <code class="xref py py-obj docutils literal notranslate"><span class="pre">float</span></code></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="darling.transforms.wavelength_to_energy">
+<span class="sig-prename descclassname"><span class="pre">darling.transforms.</span></span><span class="sig-name descname"><span class="pre">wavelength_to_energy</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">wavelength</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/AxelHenningsson/darling/tree/main/darling/transforms.py/"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darling.transforms.wavelength_to_energy" title="Link to this definition">#</a></dt>
+<dd><p>Convert wavelength to energy.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>wavelength</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">float</span></code>) – The wavelength in Angstroms.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The energy in keV.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">float</span></code></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="darling.transforms.energy_to_wavelength">
+<span class="sig-prename descclassname"><span class="pre">darling.transforms.</span></span><span class="sig-name descname"><span class="pre">energy_to_wavelength</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">energy</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/AxelHenningsson/darling/tree/main/darling/transforms.py/"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darling.transforms.energy_to_wavelength" title="Link to this definition">#</a></dt>
+<dd><p>Convert energy to wavelength.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>energy</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">float</span></code>) – The energy in keV.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The wavelength in Angstroms.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">float</span></code></p>
+</dd>
+</dl>
+</dd></dl>
+
 <dl class="py function">
 <dt class="sig sig-object py" id="darling.transforms.reciprocal_basis">
 <span class="sig-prename descclassname"><span class="pre">darling.transforms.</span></span><span class="sig-name descname"><span class="pre">reciprocal_basis</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">lattice_parameters</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">degrees</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/AxelHenningsson/darling/tree/main/darling/transforms.py/"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darling.transforms.reciprocal_basis" title="Link to this definition">#</a></dt>
@@ -2115,6 +2215,12 @@ such that the entire detector is copied as is.</p></li>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-darling.transforms">transforms</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#darling.transforms.get_lattice_spacing"><code class="docutils literal notranslate"><span class="pre">get_lattice_spacing()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#darling.transforms.ccmth_to_strain"><code class="docutils literal notranslate"><span class="pre">ccmth_to_strain()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#darling.transforms.ccmth_to_wavelength"><code class="docutils literal notranslate"><span class="pre">ccmth_to_wavelength()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#darling.transforms.ccmth_to_energy"><code class="docutils literal notranslate"><span class="pre">ccmth_to_energy()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#darling.transforms.wavelength_to_energy"><code class="docutils literal notranslate"><span class="pre">wavelength_to_energy()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#darling.transforms.energy_to_wavelength"><code class="docutils literal notranslate"><span class="pre">energy_to_wavelength()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#darling.transforms.reciprocal_basis"><code class="docutils literal notranslate"><span class="pre">reciprocal_basis()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#darling.transforms.diffraction_vectors"><code class="docutils literal notranslate"><span class="pre">diffraction_vectors()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#darling.transforms.align_vector_bundle"><code class="docutils literal notranslate"><span class="pre">align_vector_bundle()</span></code></a></li>

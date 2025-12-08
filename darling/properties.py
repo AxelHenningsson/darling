@@ -389,27 +389,20 @@ def covariance(data, coordinates, first_moments=None):
 
 
 def _check_data(data, coordinates):
+    if not isinstance(coordinates, np.ndarray):
+        raise ValueError(
+            f"coordinates must be a numpy array but got coordinates oftype {type(coordinates)}"
+        )
+
+    if not coordinates.shape[1:] == data.shape[2:]:
+        raise ValueError(
+            f"trailing dimensions of coordinates shape {coordinates.shape[1:]} do not match trailing dimensions of data shape {data.shape[2:]}"
+        )
+
     if data.shape[0] == 1 or data.shape[1] == 1:
         raise ValueError(
             "First two detector row-column dimensions of data array must be greater than 1"
         )
-
-    if len(coordinates) == 1:
-        assert len(data.shape) == 3, "1D scan data array must be of shape=(a, b, m)"
-    elif len(coordinates) == 2:
-        assert len(data.shape) == 4, "2D scan data array must be of shape=(a, b, n, m)"
-    elif len(coordinates) == 3:
-        assert len(data.shape) == 5, (
-            "3D scan data array must be of shape=(a, b, n, m, o)"
-        )
-    else:
-        raise ValueError("The coordinate array must have 1, 2 or 3 motors")
-    for c in coordinates:
-        if not isinstance(c, np.ndarray):
-            raise ValueError("Coordinate array must be a numpy array")
-    assert np.allclose(list(c.shape), list(data.shape)[2:]), (
-        "coordinate array do not match data shape"
-    )
 
 
 def fit_1d_gaussian(
