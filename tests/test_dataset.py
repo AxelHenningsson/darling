@@ -1,8 +1,53 @@
+import os
 import unittest
 
 import numpy as np
 
 import darling
+
+
+class Testio(unittest.TestCase):
+    # Tests for the darling.io module.
+
+    def setUp(self):
+        self.path_to_data, _, _ = darling.assets.energy_mu_scan()
+        self.dset = darling.DataSet(self.path_to_data, scan_id="1.1")
+        here = os.path.dirname(os.path.abspath(__file__))
+        self.filename = os.path.join(here, "test.dar5")
+
+    def tearDown(self):  # cleanup
+        if os.path.exists(self.filename):
+            os.remove(self.filename)
+
+    def test_save_and_load_dar5(self):
+        self.dset.save(self.filename)
+        self.assertTrue(os.path.exists(self.filename))
+        self.assertTrue(self.filename.endswith(".dar5"))
+        self.assertTrue(os.path.exists(self.filename))
+
+        dset = darling.DataSet(self.filename)
+        self.assertEqual(dset.data.shape, self.dset.data.shape)
+        self.assertEqual(dset.motors.shape, self.dset.motors.shape)
+
+        np.testing.assert_allclose(dset.data, self.dset.data)
+        np.testing.assert_allclose(dset.motors, self.dset.motors)
+
+        pico4 = dset.reader.fetch(key="1.2/instrument/pico4/data")
+        np.testing.assert_allclose(pico4, self.dset.reader.sensors["pico4"])
+
+        self.assertEqual(dset.h5file, self.dset.h5file)
+
+        for key in self.dset.reader.scan_params:
+            print(key)
+            t1 = type(dset.reader.scan_params[key])
+            t2 = type(self.dset.reader.scan_params[key])
+            self.assertEqual(t1, t2)
+
+        for key in self.dset.reader.sensors:
+            print(key)
+            t1 = type(dset.reader.sensors[key])
+            t2 = type(self.dset.reader.sensors[key])
+            self.assertEqual(t1, t2)
 
 
 class TestDataSet(unittest.TestCase):
@@ -144,5 +189,7 @@ class TestDataSet(unittest.TestCase):
         self.assertEqual(pico4.size, 1117)
 
 
+if __name__ == "__main__":
+    unittest.main()
 if __name__ == "__main__":
     unittest.main()

@@ -1,8 +1,13 @@
+import datetime
+import json
+import os
+
 import h5py
 import numpy as np
+from tqdm import tqdm
 
 import darling
-from tqdm import tqdm
+
 
 class DataSet(object):
     """A DFXM data-set.
@@ -46,8 +51,12 @@ class DataSet(object):
         suffix=None,
         scan_motor=None,
         roi=None,
-        verbose=True
+        verbose=True,
     ):
+        if isinstance(data_source, str) and data_source.endswith(".dar5"):
+            self._load_dar5(data_source)
+            return
+
         if scan_id is None and suffix is None and roi is not None:
             raise ValueError(
                 f"Cannot load data in the given roi, {roi}, without a scan_id, but scan_id is {scan_id}"
@@ -74,6 +83,7 @@ class DataSet(object):
 
         self.data = None
         self.motors = None
+        self.roi = None
 
         if scan_id is not None:
             self.load_scan(scan_id, scan_motor=scan_motor, roi=roi, verbose=verbose)
@@ -221,7 +231,7 @@ class DataSet(object):
             # addition by fefra
             scan_id = [scan_id[idx] for idx in np.argsort(scan_motor_values)]
             # end addition
-            
+
             reference_data_block, reference_motors = self.reader(scan_id[0], roi)
 
             if reference_motors.ndim == 2:
@@ -292,6 +302,76 @@ class DataSet(object):
             self.data.clip(bg, None, out=self.data)
 
         self.data -= bg
+
+    def _to_jsonable(self, obj):
+        if isinstance(obj, dict):
+            return {k: self._to_jsonable(v) for k, v in obj.items()}
+        if isinstance(obj, (list, tuple)):
+            return [self._to_jsonable(v) for v in obj]
+        if isinstance(obj, (np.ndarray, np.number)):
+            return np.asarray(obj).tolist()
+        return obj
+
+    def save(self, filename):
+        if self.data is None:
+            raise ValueError("No data to save.")
+
+        if not filename.endswith(".dar5"):
+            filename += ".dar5"
+
+        if os.path.exists(filename):
+            raise FileExistsError(f"File {filename} already exists.")
+
+        with h5py.File(filename, "w") as f:
+            f.create_dataset("data", data=self.data)
+            if self.motors is not None:
+                f.create_dataset("motors", data=self.motors)
+            if self.roi is not None:
+                f.create_dataset("roi", data=np.array(self.roi, dtype=int))
+            f.create_dataset("h5file", data=np.string_(self.h5file))
+
+            f.attrs["darling-version"] = np.string_(darling.__version__)
+            f.attrs["date-saved"] = np.string_(datetime.datetime.now().isoformat())
+            scan_params_json = json.dumps(self._to_jsonable(self.reader.scan_params))
+            sensors_json = json.dumps(self._to_jsonable(self.reader.sensors))
+
+            f.attrs["scan_params"] = scan_params_json
+            f.attrs["sensors"] = sensors_json
+
+    def _load_dar5(self, filename):
+        if not os.path.exists(filename):
+            raise FileNotFoundError(f"File {filename} does not exist.")
+
+        with h5py.File(filename, "r") as f:
+            if "darling-version" not in f.attrs:
+                raise ValueError(
+                    "This is not a darling data set, no darling-version tag found."
+                )
+            file_version = f.attrs["darling-version"].decode()
+            if file_version != darling.__version__:
+                raise Warning(
+                    f"File {filename} was saved with darling version {file_version} "
+                    f"but the current darling version is {darling.__version__}"
+                )
+
+            self.h5file = f["h5file"][()].decode()
+            self.data = f["data"][()]
+
+            self.motors = f["motors"][()] if "motors" in f else None
+            self.roi = tuple(f["roi"][()]) if "roi" in f else None
+
+            self.reader = darling.reader.Reader(self.h5file)
+            self.reader.scan_params = json.loads(f.attrs["scan_params"])
+            self.reader.sensors = json.loads(f.attrs["sensors"])
+
+            if isinstance(self.reader.scan_params["scan_shape"], list):
+                self.reader.scan_params["scan_shape"] = np.array(
+                    self.reader.scan_params["scan_shape"]
+                )
+
+            for key in self.reader.sensors:
+                if isinstance(self.reader.sensors[key], list):
+                    self.reader.sensors[key] = np.array(self.reader.sensors[key])
 
 
 if __name__ == "__main__":
