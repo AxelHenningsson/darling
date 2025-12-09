@@ -38,13 +38,11 @@ class Testio(unittest.TestCase):
         self.assertEqual(dset.h5file, self.dset.h5file)
 
         for key in self.dset.reader.scan_params:
-            print(key)
             t1 = type(dset.reader.scan_params[key])
             t2 = type(self.dset.reader.scan_params[key])
             self.assertEqual(t1, t2)
 
         for key in self.dset.reader.sensors:
-            print(key)
             t1 = type(dset.reader.sensors[key])
             t2 = type(self.dset.reader.sensors[key])
             self.assertEqual(t1, t2)
@@ -77,7 +75,6 @@ class TestDataSet(unittest.TestCase):
     def test_read_from_constructor_with_roi(self):
         path_to_data, _, _ = darling.assets.energy_mu_scan()
         dset = darling.DataSet(path_to_data, scan_id="1.1", roi=(2, 19, 0, 10))
-        print(dset.data.shape, dset.motors.shape)
         self.assertEqual(dset.data.shape[0], 17)
         self.assertEqual(dset.data.shape[1], 10)
         self.assertEqual(dset.motors.shape[0], 2)
@@ -87,7 +84,10 @@ class TestDataSet(unittest.TestCase):
     def test_read_overloaded_motor_from_constructor_with_suffix(self):
         path_to_data, _, _ = darling.assets.energy_mosa_scan()
         dset = darling.DataSet(
-            path_to_data, suffix=".1", scan_motor="instrument/positioners/ccmth"
+            path_to_data,
+            suffix=".1",
+            scan_motor="instrument/positioners/ccmth",
+            verbose=False,
         )
         self.assertEqual(dset.data.shape[0], 5)
         self.assertEqual(dset.data.shape[1], 5)
@@ -100,7 +100,10 @@ class TestDataSet(unittest.TestCase):
     def test_suffix_sorting(self):
         path_to_data, _, _ = darling.assets.energy_mosa_scan()
         dset = darling.DataSet(
-            path_to_data, suffix=".1", scan_motor="instrument/positioners/ccmth"
+            path_to_data,
+            suffix=".1",
+            scan_motor="instrument/positioners/ccmth",
+            verbose=False,
         )
         dx = dset.motors[-1][0, 0, :][1] - dset.motors[-1][0, 0, :][0]
         self.assertGreater(dx, 0)
@@ -110,7 +113,10 @@ class TestDataSet(unittest.TestCase):
         path_to_data, _, _ = darling.assets.energy_mosa_scan()
         scan_id = ["15.1", "16.1", "17.1"]
         dset = darling.DataSet(
-            path_to_data, scan_id=scan_id, scan_motor="instrument/positioners/ccmth"
+            path_to_data,
+            scan_id=scan_id,
+            scan_motor="instrument/positioners/ccmth",
+            verbose=False,
         )
         self.assertEqual(dset.data.shape[0], 5)
         self.assertEqual(dset.data.shape[1], 5)

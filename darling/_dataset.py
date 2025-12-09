@@ -328,10 +328,11 @@ class DataSet(object):
                 f.create_dataset("motors", data=self.motors)
             if self.roi is not None:
                 f.create_dataset("roi", data=np.array(self.roi, dtype=int))
-            f.create_dataset("h5file", data=np.string_(self.h5file))
 
-            f.attrs["darling-version"] = np.string_(darling.__version__)
-            f.attrs["date-saved"] = np.string_(datetime.datetime.now().isoformat())
+            f.create_dataset("h5file", data=self.h5file)
+            f.attrs["darling-version"] = darling.__version__
+            f.attrs["date-saved"] = datetime.datetime.now().isoformat()
+
             scan_params_json = json.dumps(self._to_jsonable(self.reader.scan_params))
             sensors_json = json.dumps(self._to_jsonable(self.reader.sensors))
 
@@ -343,18 +344,21 @@ class DataSet(object):
             raise FileNotFoundError(f"File {filename} does not exist.")
 
         with h5py.File(filename, "r") as f:
-            if "darling-version" not in f.attrs:
-                raise ValueError(
-                    "This is not a darling data set, no darling-version tag found."
-                )
-            file_version = f.attrs["darling-version"].decode()
+            file_version = f.attrs["darling-version"]
+            if isinstance(file_version, bytes):
+                file_version = file_version.decode()
+
             if file_version != darling.__version__:
                 raise Warning(
                     f"File {filename} was saved with darling version {file_version} "
                     f"but the current darling version is {darling.__version__}"
                 )
 
-            self.h5file = f["h5file"][()].decode()
+            h5file = f["h5file"][()]
+            if isinstance(h5file, bytes):
+                h5file = h5file.decode()
+            self.h5file = h5file
+
             self.data = f["data"][()]
 
             self.motors = f["motors"][()] if "motors" in f else None
