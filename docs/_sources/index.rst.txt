@@ -6,6 +6,38 @@
 
 
 ======================================
+DataSet
+======================================
+
+.. automodule:: darling._dataset
+    :members:
+    :show-inheritance:
+
+======================================
+reader
+======================================
+
+.. automodule:: darling.reader
+    :members:
+    :show-inheritance:
+
+======================================
+assets
+======================================
+
+.. automodule:: darling.assets
+    :members:
+    :show-inheritance:
+
+======================================
+filters
+======================================
+
+.. automodule:: darling.filters
+    :members:
+    :show-inheritance:
+
+======================================
 properties
 ======================================
 
@@ -34,30 +66,6 @@ peaksearcher
 ======================================
 
 .. automodule:: darling.peaksearcher
-    :members:
-    :show-inheritance:
-
-======================================
-DataSet
-======================================
-
-.. automodule:: darling._dataset
-    :members:
-    :show-inheritance:
-
-======================================
-reader
-======================================
-
-.. automodule:: darling.reader
-    :members:
-    :show-inheritance:
-
-======================================
-assets
-======================================
-
-.. automodule:: darling.assets
     :members:
     :show-inheritance:
 

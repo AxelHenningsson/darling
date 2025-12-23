@@ -367,6 +367,796 @@ python<span class="w"> </span>-m<span class="w"> </span>ipykernel<span class="w"
 <section id="documentation">
 <h1>Documentation<a class="headerlink" href="#documentation" title="Link to this heading">#</a></h1>
 <p>Darling hosts documentation at <a class="reference external" href="https://axelhenningsson.github.io/darling/">https://axelhenningsson.github.io/darling/</a></p>
+<section id="module-darling._dataset">
+<span id="dataset"></span><h2>DataSet<a class="headerlink" href="#module-darling._dataset" title="Link to this heading">#</a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="darling._dataset.DataSet">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">darling._dataset.</span></span><span class="sig-name descname"><span class="pre">DataSet</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data_source</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">scan_id</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">suffix</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">scan_motor</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">roi</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/AxelHenningsson/darling/tree/main/darling/_dataset.py/"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darling._dataset.DataSet" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>A DFXM data-set.</p>
+<p>This is the master data class of darling. Given a data source the DataSet class will read data from
+arbitrary layers, process, threshold, compute moments, visualize results, and compile 3D feature maps.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>(</strong> (<em>data_source</em>) – obj: <cite>string</cite> or <cite>darling.reader.Reader</cite>): A string to the absolute h5 file path
+location of the data, or a reader object implementing the darling.reader.Reader() interface.</p></li>
+<li><p><strong>scan_id</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">str</span></code> or <code class="xref py py-obj docutils literal notranslate"><span class="pre">list</span></code> or <code class="xref py py-obj docutils literal notranslate"><span class="pre">str</span></code>) – scan id or scan ids to load. Defaults to None,
+in which case no data is loaded on instantiation. In this case use load_scan() to load data.</p></li>
+<li><p><strong>suffix</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">str</span></code>) – A regular suffix pattern to match scan ids in the data source. For
+example, “.1” will find all top level keys in the h5 file that end with “.1”, such as “1.1”, “2.1”, etc.
+Defaults to None, in which case no data is loaded on instantiation. (Use load_scan() to load data.)</p></li>
+<li><p><strong>scan_motor</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">str</span></code>) – The path in the h5 file to the motor that is changing with the scan_id.
+Only relevant when multiple scan_ids are loaded. Defaults to None.</p></li>
+<li><p><strong>roi</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">tuple</span></code> of <code class="xref py py-obj docutils literal notranslate"><span class="pre">int</span></code>) – (row_min, row_max, column_min, column_max),
+The roi refers to the detector dimensions. I.e for each frame only the part that corresponds to
+frame[roi[0]:roi[1], roi[2]:roi[3]] is loaded. Defaults to None, in which case all data is loaded.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">reader</span> <span class="pre">(</span></span></dt>
+<dd><p>obj: <cite>darling.reader.Reader</cite>): A file reader implementing, at least, the functionallity
+specified in darling.reader.Reader().</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">data</span> <span class="pre">(</span></span></dt>
+<dd><p>obj: <cite>numpy.ndarray</cite>): The data array of shape (a,b,m,n,(o)) where a,b are the detector
+dimensions and m,n,(o) are the motor dimensions.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">motors</span> <span class="pre">(</span></span></dt>
+<dd><p>obj: <cite>numpy.ndarray</cite>): The motor grids of shape (k, m,n,(o)) where k is the number of
+motors and m,n,(o) are the motor dimensions.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">h5file</span> <span class="pre">(</span></span></dt>
+<dd><p>obj: <cite>string</cite>): The absolute path to the h5 file in which all data resides.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="darling._dataset.DataSet.roi">
+<span class="sig-name descname"><span class="pre">roi</span></span><a class="reference external" href="https://github.com/AxelHenningsson/darling/tree/main/darling/_dataset.py/"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darling._dataset.DataSet.roi" title="Link to this definition">#</a></dt>
+<dd><p>(row_min, row_max, column_min, column_max),
+The roi refers to the detector dimensions. I.e for each frame only the part that corresponds to
+frame[roi[0]:roi[1], roi[2]:roi[3]] is loaded. Defaults to None, in which case all data is loaded.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">tuple</span></code> of <code class="xref py py-obj docutils literal notranslate"><span class="pre">int</span></code></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">verbose</span> <span class="pre">(</span></span></dt>
+<dd><p>obj: <cite>bool</cite>): Prints progress on loading. Defaults to False.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="darling._dataset.DataSet.dtype">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">dtype</span></span><a class="reference external" href="https://github.com/AxelHenningsson/darling/tree/main/darling/_dataset.py/"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darling._dataset.DataSet.dtype" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="darling._dataset.DataSet.info">
+<span class="sig-name descname"><span class="pre">info</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/AxelHenningsson/darling/tree/main/darling/_dataset.py/"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darling._dataset.DataSet.info" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="darling._dataset.DataSet.scan_params">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">scan_params</span></span><a class="reference external" href="https://github.com/AxelHenningsson/darling/tree/main/darling/_dataset.py/"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darling._dataset.DataSet.scan_params" title="Link to this definition">#</a></dt>
+<dd><p>The scan parameters for the loaded data in a dictionary.</p>
+<p>Example output:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">out</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s1">&#39;scan_command&#39;</span><span class="p">:</span> <span class="s1">&#39;fscan2d chi -0.5 0.08 26 diffry 7 0.06 37 0.5 0.500417&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;scan_shape&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mi">26</span><span class="p">,</span> <span class="mi">37</span><span class="p">],</span>
+    <span class="s1">&#39;motor_names&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s1">&#39;instrument/chi/value&#39;</span><span class="p">,</span> <span class="s1">&#39;instrument/diffry/data&#39;</span><span class="p">],</span>
+    <span class="s1">&#39;integrated_motors&#39;</span><span class="p">:</span> <span class="p">[</span><span class="kc">False</span><span class="p">,</span> <span class="kc">True</span><span class="p">],</span>
+    <span class="s1">&#39;data_name&#39;</span><span class="p">:</span> <span class="s1">&#39;instrument/pco_ff/image&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;scan_id&#39;</span><span class="p">:</span> <span class="s1">&#39;1.1&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;invariant_motors&#39;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s1">&#39;ccmth&#39;</span><span class="p">:</span> <span class="mf">6.679671220242654</span><span class="p">,</span>
+        <span class="s1">&#39;s8vg&#39;</span><span class="p">:</span> <span class="mf">0.09999999999999998</span><span class="p">,</span>
+        <span class="s1">&#39;s8vo&#39;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span>
+        <span class="s1">&#39;s8ho&#39;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span>
+        <span class="s1">&#39;s8hg&#39;</span><span class="p">:</span> <span class="mf">0.5</span><span class="p">,</span>
+        <span class="s1">&#39;phi&#39;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span>
+        <span class="s1">&#39;mainx&#39;</span><span class="p">:</span> <span class="o">-</span><span class="mf">5000.0</span><span class="p">,</span>
+        <span class="s1">&#39;obx&#39;</span><span class="p">:</span> <span class="mf">263.1299999999999</span><span class="p">,</span>
+        <span class="s1">&#39;oby&#39;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span>
+        <span class="s1">&#39;obz&#39;</span><span class="p">:</span> <span class="mf">85.35999999999876</span><span class="p">,</span>
+        <span class="s1">&#39;obz3&#39;</span><span class="p">:</span> <span class="mf">0.0693999999999999</span><span class="p">,</span>
+        <span class="s1">&#39;obpitch&#39;</span><span class="p">:</span> <span class="mf">17.979400000000002</span><span class="p">,</span>
+        <span class="s1">&#39;obyaw&#39;</span><span class="p">:</span> <span class="o">-</span><span class="mf">0.06589062499999998</span><span class="p">,</span>
+        <span class="s1">&#39;cdx&#39;</span><span class="p">:</span> <span class="o">-</span><span class="mf">11.8</span><span class="p">,</span>
+        <span class="s1">&#39;dcx&#39;</span><span class="p">:</span> <span class="mf">545.0</span><span class="p">,</span>
+        <span class="s1">&#39;dcz&#39;</span><span class="p">:</span> <span class="o">-</span><span class="mf">150.0</span><span class="p">,</span>
+        <span class="s1">&#39;ffz&#39;</span><span class="p">:</span> <span class="mf">1621.611386138614</span><span class="p">,</span>
+        <span class="s1">&#39;ffy&#39;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span>
+        <span class="s1">&#39;ffsel&#39;</span><span class="p">:</span> <span class="o">-</span><span class="mf">60.0</span><span class="p">,</span>
+        <span class="s1">&#39;x_pixel_size&#39;</span><span class="p">:</span> <span class="mf">6.5</span><span class="p">,</span>
+        <span class="s1">&#39;y_pixel_size&#39;</span><span class="p">:</span> <span class="mf">6.5</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>The scan parameters.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">dict</span></code></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="darling._dataset.DataSet.sensors">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">sensors</span></span><a class="reference external" href="https://github.com/AxelHenningsson/darling/tree/main/darling/_dataset.py/"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darling._dataset.DataSet.sensors" title="Link to this definition">#</a></dt>
+<dd><p>The sensor data for the loaded data in a dictionary.</p>
+<p>this contains things like the pico4 current data that monitors the direct beam current.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>The sensor data.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">dict</span></code></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="darling._dataset.DataSet.load_scan">
+<span class="sig-name descname"><span class="pre">load_scan</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">scan_id</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">scan_motor</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">roi</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/AxelHenningsson/darling/tree/main/darling/_dataset.py/"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darling._dataset.DataSet.load_scan" title="Link to this definition">#</a></dt>
+<dd><p>Load a scan into RAM.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>scan_id</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">str</span></code> or <code class="xref py py-obj docutils literal notranslate"><span class="pre">list</span></code> or <code class="xref py py-obj docutils literal notranslate"><span class="pre">str</span></code>) – scan id or scan ids to load.</p></li>
+<li><p><strong>scan_motor</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">str</span></code>) – path in h5file to the motor that is changing with the scan_id.
+Defaults to None. Must be set when scan_id is not a single string.</p></li>
+<li><p><strong>roi</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">tuple</span></code> of <code class="xref py py-obj docutils literal notranslate"><span class="pre">int</span></code>) – row_min row_max and column_min and column_max,
+defaults to None, in which case all data is loaded. The roi refers to the detector
+dimensions.</p></li>
+<li><p><strong>(</strong> (<em>verbose</em>) – obj: <cite>bool</cite>): Prints progress on loading. Defaults to False.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="darling._dataset.DataSet.subtract">
+<span class="sig-name descname"><span class="pre">subtract</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">background</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtype=&lt;class</span> <span class="pre">'numpy.uint16'&gt;</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/AxelHenningsson/darling/tree/main/darling/_dataset.py/"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darling._dataset.DataSet.subtract" title="Link to this definition">#</a></dt>
+<dd><p>Subtract a fixed integer value from the data block.</p>
+<dl class="simple">
+<dt>Warning: If dtype is not np.uint16, data will be cast to dtype, which will create a</dt><dd><p>temporary copy of the data.</p>
+</dd>
+</dl>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>background</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">int</span></code> or <code class="xref py py-obj docutils literal notranslate"><span class="pre">numpy.ndarray</span></code>) – fixed background value or background array to subtract.
+the array will be broadcast to the data block shape. I.e for a shape=(a,b,m,n) data block, the background
+could be of detector dimension shape=(a,b) or shape=(a,b,1,1).</p></li>
+<li><p><strong>dtype</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">numpy.dtype</span></code>) – the data type of the output array. Defaults to np.uint16.
+in which case the data is clipped to the range [0, 2^16-1]. protects against uint16
+sign flips.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="darling._dataset.DataSet.save">
+<span class="sig-name descname"><span class="pre">save</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filename</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/AxelHenningsson/darling/tree/main/darling/_dataset.py/"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darling._dataset.DataSet.save" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="module-darling.reader">
+<span id="reader"></span><h2>reader<a class="headerlink" href="#module-darling.reader" title="Link to this heading">#</a></h2>
+<p>Collection of pre-implemneted h5 readers developed for id03 format.</p>
+<p>NOTE: In general the file reader is strongly dependent on data collection scheme and it is therefore the
+purpose of darling to allow the user to subclass Reader() and implement their own specific data structure.</p>
+<p>Once the reader is implemented in darling format it is possible to interface the DataSet class and use
+all features of darling.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="darling.reader.Reader">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">darling.reader.</span></span><span class="sig-name descname"><span class="pre">Reader</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">abs_path_to_h5_file</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/AxelHenningsson/darling/tree/main/darling/reader.py/"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darling.reader.Reader" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Parent class for readers.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>(</strong> (<em>abs_path_to_h5_file</em>) – obj: <cite>str</cite>): Absolute file path to data.</p>
+</dd>
+</dl>
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">abs_path_to_h5_file</span> <span class="pre">(</span></span></dt>
+<dd><p>obj: <cite>str</cite>): Absolute file path to data.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="darling.reader.Reader.fetch">
+<span class="sig-name descname"><span class="pre">fetch</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/AxelHenningsson/darling/tree/main/darling/reader.py/"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darling.reader.Reader.fetch" title="Link to this definition">#</a></dt>
+<dd><p>Fetch a value from the h5 file.</p>
+<p>This is usefull to fetch excotic motor values or meta-data that has not yet been implemented
+in the standard darling readers.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>key</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">str</span></code>) – The key to fetch from the h5 file. (full h5 path in the h5 file)</p></li>
+<li><p><strong>scan_id</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">str</span></code>) – The scan id to fetch from. Defaults to None, in which case the scan id
+is taken from the reader.scan_params[“scan_id”].</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The value from the h5 file.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">numpy.ndarray</span></code></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="darling.reader.Reader.__call__">
+<span class="sig-name descname"><span class="pre">__call__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">scan_id</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">roi</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/AxelHenningsson/darling/tree/main/darling/reader.py/"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darling.reader.Reader.__call__" title="Link to this definition">#</a></dt>
+<dd><p>Method to read a single 2D scan</p>
+<dl class="simple">
+<dt>NOTE: This method is meant to be purpose implemented to fit the specific data aqusition</dt><dd><p>scheme used.</p>
+</dd>
+</dl>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>scan_id</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">str</span></code>) – scan id to load from, these are internal kayes to diffirentiate
+layers.</p></li>
+<li><p><strong>roi</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">tuple</span></code> of <code class="xref py py-obj docutils literal notranslate"><span class="pre">int</span></code>) – row_min row_max and column_min and column_max,
+defaults to None, in which case all data is loaded. The roi refers to the detector
+dimensions.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>data (<code class="xref py py-obj docutils literal notranslate"><span class="pre">numpy</span> <span class="pre">array</span></code>) of shape=(a,b,m,n) and type np.uint16 and motors
+(<code class="xref py py-obj docutils literal notranslate"><span class="pre">tuple</span></code> of <code class="xref py py-obj docutils literal notranslate"><span class="pre">numpy</span> <span class="pre">array</span></code>) of shape=(m,) and shape=(n,) and type
+np.float32. a,b are detector dimensions while m,n are scan dimensions over
+which teh motor settings vary.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="darling.reader.MosaScan">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">darling.reader.</span></span><span class="sig-name descname"><span class="pre">MosaScan</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">abs_path_to_h5_file</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/AxelHenningsson/darling/tree/main/darling/reader.py/"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darling.reader.MosaScan" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#darling.reader.Reader" title="darling.reader.Reader"><code class="xref py py-class docutils literal notranslate"><span class="pre">Reader</span></code></a></p>
+<p>Load a 2D mosa scan. This is a id03 specific implementation matching a specific beamline mosa scan macro.</p>
+<p>NOTE: This reader was specifically written for data collection at id03. For general purpose reading of data you
+must implement your own reader class. The exact reding of data is strongly dependent on data aqusition scheme and
+data structure implementation.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>str</strong> (<em>abs_path_to_h5_file</em>) – absolute path to the h5 file with the diffraction images.</p>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="darling.reader.MosaScan.__call__">
+<span class="sig-name descname"><span class="pre">__call__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">scan_id</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">roi</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/AxelHenningsson/darling/tree/main/darling/reader.py/"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darling.reader.MosaScan.__call__" title="Link to this definition">#</a></dt>
+<dd><p>Load a scan</p>
+<p>this loads the mosa data array with shape N,N,m,n where N is the detector dimension and
+m,n are the motor dimensions as ordered in the self.motor_names. You may view the implemented darling readers as example templates for implementing
+your own reader.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>scan_id</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">str</span></code>) – scan id to load from, e.g 1.1, 2.1 etc…</p></li>
+<li><p><strong>roi</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">tuple</span></code> of <code class="xref py py-obj docutils literal notranslate"><span class="pre">int</span></code>) – row_min row_max and column_min and column_max,
+defaults to None, in which case all data is loaded</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><dl class="simple">
+<dt>data of shape=(a,b,m,n) and the</dt><dd><p>motor arrays as 2d meshgrids, shape=(k,m,n)
+where k is the number of motors used in the
+scan (typically 1,2 or 3).</p>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>data, motors</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="darling.reader.Darks">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">darling.reader.</span></span><span class="sig-name descname"><span class="pre">Darks</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">abs_path_to_h5_file</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/AxelHenningsson/darling/tree/main/darling/reader.py/"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darling.reader.Darks" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#darling.reader.MosaScan" title="darling.reader.MosaScan"><code class="xref py py-class docutils literal notranslate"><span class="pre">MosaScan</span></code></a></p>
+<p>Load a series of motorless images. This is a id03 specific implementation matching a specific beamline macro.</p>
+<p>Typically used to red dark images collected with a loopscan.</p>
+<p>NOTE: This reader was specifically written for data collection at id03. For general purpose reading of data you
+must implement your own reader class. The exact reding of data is strongly dependent on data aqusition scheme and
+data structure implementation.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>str</strong> (<em>abs_path_to_h5_file</em>) – absolute path to the h5 file with the diffraction images.</p>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="darling.reader.Darks.__call__">
+<span class="sig-name descname"><span class="pre">__call__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">scan_id</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">roi</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/AxelHenningsson/darling/tree/main/darling/reader.py/"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darling.reader.Darks.__call__" title="Link to this definition">#</a></dt>
+<dd><p>Load a scan</p>
+<p>this loads the static scan data array with shape a,b,m where a,b are the detector dimensions and
+m is the number of (motorless) images. You may view the implemented darling readers as example templates
+for implementing your own reader.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>scan_id</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">str</span></code>) – scan id to load from, e.g 1.1, 2.1 etc…</p></li>
+<li><p><strong>roi</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">tuple</span></code> of <code class="xref py py-obj docutils literal notranslate"><span class="pre">int</span></code>) – row_min row_max and column_min and column_max,
+defaults to None, in which case all data is loaded</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>data of shape=(a,b,m) and an empty motor array.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>data, motors</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="darling.reader.RockingScan">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">darling.reader.</span></span><span class="sig-name descname"><span class="pre">RockingScan</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">abs_path_to_h5_file</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/AxelHenningsson/darling/tree/main/darling/reader.py/"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darling.reader.RockingScan" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#darling.reader.MosaScan" title="darling.reader.MosaScan"><code class="xref py py-class docutils literal notranslate"><span class="pre">MosaScan</span></code></a></p>
+<p>Load a 1D rocking scan. This is a id03 specific implementation matching a specific beamline macro.</p>
+<p>A rocking scan is simply a set of 2D detector images collected at different rocking angles of the goniometer.</p>
+<p>NOTE: This reader was specifically written for data collection at id03. For general purpose reading of data you
+must implement your own reader class. The exact reding of data is strongly dependent on data aqusition scheme and
+data structure implementation.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>str</strong> (<em>abs_path_to_h5_file</em>) – absolute path to the h5 file with the diffraction images.</p>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="darling.reader.RockingScan.__call__">
+<span class="sig-name descname"><span class="pre">__call__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">scan_id</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">roi</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/AxelHenningsson/darling/tree/main/darling/reader.py/"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darling.reader.RockingScan.__call__" title="Link to this definition">#</a></dt>
+<dd><p>Load a scan</p>
+<p>this loads the rocking scan data array with shape a,b,m where a,b are the detector dimensions and
+m is the motor dimensions. You may view the implemented darling readers as example templates
+for implementing your own reader.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>scan_id</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">str</span></code>) – scan id to load from, e.g 1.1, 2.1 etc…</p></li>
+<li><p><strong>roi</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">tuple</span></code> of <code class="xref py py-obj docutils literal notranslate"><span class="pre">int</span></code>) – row_min row_max and column_min and column_max,
+defaults to None, in which case all data is loaded</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><dl class="simple">
+<dt>data of shape=(a,b,m) and the</dt><dd><p>motor arrays as an array of shape=(k, n)
+where k is the number of motors used in the
+scan (i.e k=1 for a rocking scan).</p>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>data, motors</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="module-darling.assets">
+<span id="assets"></span><h2>assets<a class="headerlink" href="#module-darling.assets" title="Link to this heading">#</a></h2>
+<p>Module to load example data and phantoms.</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="darling.assets.path">
+<span class="sig-prename descclassname"><span class="pre">darling.assets.</span></span><span class="sig-name descname"><span class="pre">path</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/AxelHenningsson/darling/tree/main/darling/assets.py/"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darling.assets.path" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="darling.assets.mosa_field">
+<span class="sig-prename descclassname"><span class="pre">darling.assets.</span></span><span class="sig-name descname"><span class="pre">mosa_field</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/AxelHenningsson/darling/tree/main/darling/assets.py/"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darling.assets.mosa_field" title="Link to this definition">#</a></dt>
+<dd><p>Load a 2D numpy array of a mosaicity field.</p>
+<p>mosa[…, 0] is the chi angle.
+mosa[…, 1] is the mu angle.</p>
+<p>data originates from the 1 -1 1 reflection of a 5% deformed Al1050 sample.</p>
+<p>ESRF ID03, experiment hc6042.
+dataset : Al_1050_strengthening_strainmosa_stregnthening_pct5_large_range
+Scan number : 5.1.
+Analysis: background subtraction, and a first maxima gaussian fitting.</p>
+<p>mean omega angle was 17.8345 and mean chi angle was 0.60997 the crystal to
+sample grain orientation matrix was measured to be :</p>
+<blockquote>
+<div><p>[0.83550027,  0.33932153, -0.43220389]
+[0.01167249,  0.77541728,  0.63134127]
+[0.54936605, -0.53253069,  0.64390062]</p>
+</div></blockquote>
+<p>from 3DXRD. The sample is in tensile strain with the grain 1-11 aling the
+tensile axis wich is identified as the lab-z axis.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>2D array of shape=(m, n) with mosaicity values.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>mosa (<code class="xref py py-obj docutils literal notranslate"><span class="pre">numpy</span> <span class="pre">array</span></code>)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="darling.assets.domains">
+<span class="sig-prename descclassname"><span class="pre">darling.assets.</span></span><span class="sig-name descname"><span class="pre">domains</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">scan_id</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'1.1'</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/AxelHenningsson/darling/tree/main/darling/assets.py/"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darling.assets.domains" title="Link to this definition">#</a></dt>
+<dd><p>load a (tiny) part of a 2d mosaicity scan collected at the ESRF id03.</p>
+<p>in constrast to mosaicity_scan() this dataset features a domain structure
+partioned into cells.</p>
+<p>NOTE: due to the domain partitioning this dataset has been inlcuded in the darling
+assets for unit testing various domain related feature extarction methods such as
+gaussian fitting.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>scan_id</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">str</span></code>) – one of 1.1 or 2.1, specifying first or second layer scanned in the sample.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>absolute path to h5 file.
+data (<code class="xref py py-obj docutils literal notranslate"><span class="pre">numpy</span> <span class="pre">array</span></code>):  Array of shape=(a, b, m, n) with intensity data.
+<code class="docutils literal notranslate"><span class="pre">data[:,:,i,j]</span></code> is a noisy detector image in type uint16 for phi and
+chi at index i and j respectively.
+coordinates (<code class="xref py py-obj docutils literal notranslate"><span class="pre">numpy</span> <span class="pre">array</span></code>): array of shape=(2,m,n) continaning
+angle coordinates.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>data_path (<code class="xref py py-obj docutils literal notranslate"><span class="pre">str</span></code>)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="darling.assets.rocking_scan">
+<span class="sig-prename descclassname"><span class="pre">darling.assets.</span></span><span class="sig-name descname"><span class="pre">rocking_scan</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/AxelHenningsson/darling/tree/main/darling/assets.py/"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darling.assets.rocking_scan" title="Link to this definition">#</a></dt>
+<dd><p>load a downsampled 1d rocking scan collected at the ESRF id03.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>absolute path to h5 file.
+data (<code class="xref py py-obj docutils literal notranslate"><span class="pre">numpy</span> <span class="pre">array</span></code>):  Array of shape=(a, b, m, n) with intensity data. <code class="docutils literal notranslate"><span class="pre">data[:,:,i,j]</span></code>
+is a noisy detector image in type uint16 for phi and chi at index i and j respectively.
+coordinates (<code class="xref py py-obj docutils literal notranslate"><span class="pre">numpy</span> <span class="pre">array</span></code>): array of shape=(2,m,n) continaning angle coordinates.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>data_path (<code class="xref py py-obj docutils literal notranslate"><span class="pre">str</span></code>)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="darling.assets.motor_drift">
+<span class="sig-prename descclassname"><span class="pre">darling.assets.</span></span><span class="sig-name descname"><span class="pre">motor_drift</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">scan_id</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'1.1'</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/AxelHenningsson/darling/tree/main/darling/assets.py/"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darling.assets.motor_drift" title="Link to this definition">#</a></dt>
+<dd><p>load a (tiny) part of a 2d mosaicity scan collected at the ESRF id03.</p>
+<p>NOTE: This dataset features motor drift and has been inlcuded in the darling
+assets for unit testing.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>scan_id</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">str</span></code>) – one of 1.1 or 2.1, specifying first or second layer scanned in the sample.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>absolute path to h5 file.
+data (<code class="xref py py-obj docutils literal notranslate"><span class="pre">numpy</span> <span class="pre">array</span></code>):  Array of shape=(a, b, m, n) with intensity data. <code class="docutils literal notranslate"><span class="pre">data[:,:,i,j]</span></code> is a
+noisy detector image in type uint16 for phi and chi at index i and j respectively.
+coordinates (<code class="xref py py-obj docutils literal notranslate"><span class="pre">numpy</span> <span class="pre">array</span></code>): array of shape=(2,m,n) continaning angle coordinates.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>data_path (<code class="xref py py-obj docutils literal notranslate"><span class="pre">str</span></code>)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="darling.assets.mosaicity_scan">
+<span class="sig-prename descclassname"><span class="pre">darling.assets.</span></span><span class="sig-name descname"><span class="pre">mosaicity_scan</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">scan_id</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'1.1'</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/AxelHenningsson/darling/tree/main/darling/assets.py/"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darling.assets.mosaicity_scan" title="Link to this definition">#</a></dt>
+<dd><p>Load a (tiny) part of a 2D mosaicity scan collected at the ESRF ID03.</p>
+<p>This is a central detector ROI for a 111 reflection in a 5% deformed Aluminium. Two layers
+are available with scan_id 1.1 and 2.1.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>scan_id</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">str</span></code>) – One of 1.1 or 2.1, specifying first or second layer scanned in the sample.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Absolute path to h5 file.
+data (<code class="xref py py-obj docutils literal notranslate"><span class="pre">numpy</span> <span class="pre">array</span></code>): Array of shape (a, b, m, n) with intensity data.
+<code class="docutils literal notranslate"><span class="pre">data[:,:,i,j]</span></code> is a noisy detector image (uint16) for phi and chi at index <code class="docutils literal notranslate"><span class="pre">i,</span> <span class="pre">j</span></code>.
+coordinates (<code class="xref py py-obj docutils literal notranslate"><span class="pre">numpy</span> <span class="pre">array</span></code>): Array of shape (2, m, n) containing angle coordinates.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>data_path (<code class="xref py py-obj docutils literal notranslate"><span class="pre">str</span></code>)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="darling.assets.energy_mu_scan">
+<span class="sig-prename descclassname"><span class="pre">darling.assets.</span></span><span class="sig-name descname"><span class="pre">energy_mu_scan</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/AxelHenningsson/darling/tree/main/darling/assets.py/"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darling.assets.energy_mu_scan" title="Link to this definition">#</a></dt>
+<dd><p>Load a (tiny) part of a 2D ccmth-mu scan collected at the ESRF ID03.</p>
+<p>This is a central detector ROI for a BiFeO3 energy scan with a small slit inserted in the
+backfocal plane. The scan is performed with the ccmth motor (i.e the monochromator) and the
+mu motor (i.e the base cradle/rocking cradle).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>scan_id</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">str</span></code>) – Must be ‘1.1’. Only one scan is available.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Absolute path to h5 file.
+data (<code class="xref py py-obj docutils literal notranslate"><span class="pre">numpy</span> <span class="pre">array</span></code>): Array of shape (a, b, m, n) with intensity data.
+<code class="docutils literal notranslate"><span class="pre">data[:,:,i,j]</span></code> is a noisy detector image (uint16) for ccmth and mu at index <code class="docutils literal notranslate"><span class="pre">i,</span> <span class="pre">j</span></code>.
+coordinates (<code class="xref py py-obj docutils literal notranslate"><span class="pre">numpy</span> <span class="pre">array</span></code>): Array of shape (2, m, n) containing angle coordinates.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>data_path (<code class="xref py py-obj docutils literal notranslate"><span class="pre">str</span></code>)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="darling.assets.energy_mosa_scan">
+<span class="sig-prename descclassname"><span class="pre">darling.assets.</span></span><span class="sig-name descname"><span class="pre">energy_mosa_scan</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/AxelHenningsson/darling/tree/main/darling/assets.py/"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darling.assets.energy_mosa_scan" title="Link to this definition">#</a></dt>
+<dd><p>Load a (tiny) part of a 3D strain-mosaicity scan collected at the ESRF ID03.</p>
+<p>This is the central detector ROI for a Al1050 crystal.</p>
+<p>The scan is performed with the ccmth motor (i.e the monochromator) and the
+mu and chi motors (i.e the base cradle/rocking cradle and rolling top stage).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Absolute path to h5 file.
+data (<code class="xref py py-obj docutils literal notranslate"><span class="pre">numpy</span> <span class="pre">array</span></code>): Array of shape (a, b, m, n) with intensity data.
+<code class="docutils literal notranslate"><span class="pre">data[:,:,i,j]</span></code> is a noisy detector image (uint16) for ccmth and mu at index <code class="docutils literal notranslate"><span class="pre">i,</span> <span class="pre">j</span></code>.
+coordinates (<code class="xref py py-obj docutils literal notranslate"><span class="pre">numpy</span> <span class="pre">array</span></code>): Array of shape (2, m, n) containing angle coordinates.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>data_path (<code class="xref py py-obj docutils literal notranslate"><span class="pre">str</span></code>)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="darling.assets.gaussian_blobs">
+<span class="sig-prename descclassname"><span class="pre">darling.assets.</span></span><span class="sig-name descname"><span class="pre">gaussian_blobs</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">N</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">32</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">m</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">9</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/AxelHenningsson/darling/tree/main/darling/assets.py/"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darling.assets.gaussian_blobs" title="Link to this definition">#</a></dt>
+<dd><p>Phantom 2d scan of gaussian blobs with shifting means and covariance.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>N</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">int</span></code>) – Desired data array size which is of shape=(N,N,m,m).</p></li>
+<li><p><strong>m</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">int</span></code>) – Desired data array size which is of shape=(N,N,m,m).</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Array of shape=(N, N, m, m) with intensity data, <code class="docutils literal notranslate"><span class="pre">data[:,:,i,j]</span></code>
+is a noisy detector image in type uint16 for motor x and y at index i and j respectively.
+coordinates (<code class="xref py py-obj docutils literal notranslate"><span class="pre">numpy</span> <span class="pre">array</span></code>): array of shape=(2,m,m) continaning x and y coordinates.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>data (<code class="xref py py-obj docutils literal notranslate"><span class="pre">numpy</span> <span class="pre">array</span></code>)</p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+<section id="module-darling.filters">
+<span id="filters"></span><h2>filters<a class="headerlink" href="#module-darling.filters" title="Link to this heading">#</a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="darling.filters.snr_threshold">
+<span class="sig-prename descclassname"><span class="pre">darling.filters.</span></span><span class="sig-name descname"><span class="pre">snr_threshold</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mean</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sigma</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">primary_threshold</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">secondary_threshold</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">copy</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">loop_outer_dims</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/AxelHenningsson/darling/tree/main/darling/filters.py/"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darling.filters.snr_threshold" title="Link to this definition">#</a></dt>
+<dd><p>Threshold data based on a local signal-to-noise ratio (SNR) criterion.</p>
+<p>Each data bin is classified using a Gaussian noise model defined by the
+input mean and sigma. The signal-to-noise ratio (SNR) is defined as:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">SNR</span> <span class="o">=</span> <span class="p">(</span><span class="n">local_value</span> <span class="o">-</span> <span class="n">mean</span><span class="p">)</span> <span class="o">/</span> <span class="n">sigma</span>
+</pre></div>
+</div>
+<p>Thresholding rules:</p>
+<blockquote>
+<div><dl class="simple">
+<dt>SNR &gt; primary_threshold</dt><dd><p>Always kept.</p>
+</dd>
+<dt>SNR &lt;= secondary_threshold</dt><dd><p>Always set to zero.</p>
+</dd>
+<dt>secondary_threshold &lt; SNR &lt;= primary_threshold</dt><dd><p>Kept only if at least one immediate neighbour has
+SNR &gt; primary_threshold.
+Neighbourhood sizes are 3, 9 and 27 in 1D, 2D and 3D respectively.</p>
+</dd>
+</dl>
+</div></blockquote>
+<p>Dimensionality handling:</p>
+<blockquote>
+<div><p>When <code class="docutils literal notranslate"><span class="pre">loop_outer_dims=True</span></code> (default), the first two dimensions of
+the data array are treated as outer dimensions (detector rows and
+columns). Thresholding is applied independently and in parallel to
+each trailing block.</p>
+<blockquote>
+<div><dl class="simple">
+<dt>Supported shapes:</dt><dd><p>shape=(a, b, m)
+shape=(a, b, m, n)
+shape=(a, b, m, n, o)</p>
+</dd>
+</dl>
+<p>In this case, mean and sigma must be arrays of shape=(a, b).</p>
+</div></blockquote>
+<p>When <code class="docutils literal notranslate"><span class="pre">loop_outer_dims=False</span></code>, thresholding is applied directly to
+the data array:</p>
+<blockquote>
+<div><dl class="simple">
+<dt>Supported shapes:</dt><dd><p>shape=(m,)
+shape=(m, n)
+shape=(m, n, o)</p>
+</dd>
+</dl>
+<p>In this case, mean and sigma must be scalars.</p>
+</div></blockquote>
+</div></blockquote>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">darling</span>
+
+<span class="n">a</span><span class="p">,</span> <span class="n">b</span> <span class="o">=</span> <span class="mi">16</span><span class="p">,</span> <span class="mi">16</span>
+<span class="n">m</span><span class="p">,</span> <span class="n">n</span><span class="p">,</span> <span class="n">o</span> <span class="o">=</span> <span class="mi">8</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">9</span>
+<span class="n">data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">rand</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">m</span><span class="p">,</span> <span class="n">n</span><span class="p">,</span> <span class="n">o</span><span class="p">)</span>
+<span class="n">mean</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">((</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">))</span> <span class="o">*</span> <span class="mi">2</span>
+<span class="n">sigma</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">((</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">))</span>
+<span class="n">data</span> <span class="o">=</span> <span class="n">darling</span><span class="o">.</span><span class="n">filters</span><span class="o">.</span><span class="n">snr_threshold</span><span class="p">(</span>
+    <span class="n">data</span><span class="p">,</span>
+    <span class="n">mean</span><span class="p">,</span>
+    <span class="n">sigma</span><span class="p">,</span>
+    <span class="n">primary_threshold</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span>
+    <span class="n">loop_outer_dims</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">copy</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>data</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">numpy.ndarray</span></code>) – Input data array to threshold.</p></li>
+<li><p><strong>mean</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">int</span></code>, <code class="xref py py-obj docutils literal notranslate"><span class="pre">float</span></code> or <code class="xref py py-obj docutils literal notranslate"><span class="pre">numpy.ndarray</span></code>) – Mean of the local Gaussian noise model.</p></li>
+<li><p><strong>sigma</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">int</span></code>, <code class="xref py py-obj docutils literal notranslate"><span class="pre">float</span></code> or <code class="xref py py-obj docutils literal notranslate"><span class="pre">numpy.ndarray</span></code>) – Standard deviation of the local Gaussian noise model.</p></li>
+<li><p><strong>primary_threshold</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">float</span></code>) – Primary SNR threshold. Must be greater than zero.</p></li>
+<li><p><strong>secondary_threshold</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">float</span></code>, optional) – Secondary SNR threshold. Defaults to None, in which case only
+the primary threshold is applied and no neighbour check is
+performed. Must be less than the primary threshold.</p></li>
+<li><p><strong>copy</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">bool</span></code>, optional) – Whether to return a thresholded copy of the data. Defaults to False.</p></li>
+<li><p><strong>loop_outer_dims</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">bool</span></code>, optional) – Whether to loop over the outer dimensions (a, b). Defaults to True.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The thresholded data (may be a copy or a view depending on <code class="docutils literal notranslate"><span class="pre">copy</span></code>).</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">numpy.ndarray</span></code></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="darling.filters.gaussian_filter">
+<span class="sig-prename descclassname"><span class="pre">darling.filters.</span></span><span class="sig-name descname"><span class="pre">gaussian_filter</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sigma</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">truncate</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">4.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">radius</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">axis</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">copy</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">loop_outer_dims</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/AxelHenningsson/darling/tree/main/darling/filters.py/"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darling.filters.gaussian_filter" title="Link to this definition">#</a></dt>
+<dd><p>Apply a separable, intensity-preserving Gaussian filter to a data array.</p>
+<p>The filter is implemented as a separable convolution with 1D Gaussian kernels
+along the requested trailing axes. The 1D Gaussian kernel is defined as:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">g</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="o">=</span> <span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="n">x</span><span class="o">**</span><span class="mi">2</span> <span class="o">/</span> <span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">sigma</span><span class="o">**</span><span class="mi">2</span><span class="p">))</span>
+</pre></div>
+</div>
+<p>A discrete kernel of width <code class="docutils literal notranslate"><span class="pre">2</span> <span class="pre">*</span> <span class="pre">radius</span> <span class="pre">+</span> <span class="pre">1</span></code> is constructed for each filtered
+axis and normalised to sum to 1 (intensity preserving). Convolution is performed
+with zero padding at the boundaries (samples outside the array are treated as 0).</p>
+<p>Dimensionality handling:</p>
+<blockquote>
+<div><p>When <code class="docutils literal notranslate"><span class="pre">loop_outer_dims=True</span></code> (default), the first two dimensions of the data
+array are treated as outer dimensions (detector rows and columns). The filter
+is applied independently and in parallel to each trailing block.</p>
+<blockquote>
+<div><dl class="simple">
+<dt>Supported shapes:</dt><dd><p>shape=(a, b, m)
+shape=(a, b, m, n)
+shape=(a, b, m, n, o)</p>
+</dd>
+</dl>
+</div></blockquote>
+<p>When <code class="docutils literal notranslate"><span class="pre">loop_outer_dims=False</span></code>, the filter is applied directly to the data array:</p>
+<blockquote>
+<div><dl class="simple">
+<dt>Supported shapes:</dt><dd><p>shape=(m,)
+shape=(m, n)
+shape=(m, n, o)</p>
+</dd>
+</dl>
+</div></blockquote>
+</div></blockquote>
+<p>The <code class="docutils literal notranslate"><span class="pre">axis</span></code> argument always refers to the trailing dimensions only (never the
+outer (a, b) dimensions). For example, for <code class="docutils literal notranslate"><span class="pre">shape=(a,</span> <span class="pre">b,</span> <span class="pre">m,</span> <span class="pre">n,</span> <span class="pre">o)</span></code>, the valid
+axis values refer to (m, n, o), i.e. <code class="docutils literal notranslate"><span class="pre">axis=(0,</span> <span class="pre">1,</span> <span class="pre">2)</span></code> or equivalently
+<code class="docutils literal notranslate"><span class="pre">axis=(-3,</span> <span class="pre">-2,</span> <span class="pre">-1)</span></code>.</p>
+<p>Kernel size:</p>
+<blockquote>
+<div><p>If <code class="docutils literal notranslate"><span class="pre">radius</span></code> is None, the radius is inferred per filtered axis as:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">radius</span> <span class="o">=</span> <span class="nb">round</span><span class="p">(</span><span class="n">truncate</span> <span class="o">*</span> <span class="n">sigma</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The resulting kernel width is <code class="docutils literal notranslate"><span class="pre">2</span> <span class="pre">*</span> <span class="pre">radius</span> <span class="pre">+</span> <span class="pre">1</span></code>. Larger sigma or radius
+produces stronger smoothing.</p>
+</div></blockquote>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">darling</span>
+
+<span class="n">a</span><span class="p">,</span> <span class="n">b</span> <span class="o">=</span> <span class="mi">16</span><span class="p">,</span> <span class="mi">16</span>
+<span class="n">m</span><span class="p">,</span> <span class="n">n</span><span class="p">,</span> <span class="n">o</span> <span class="o">=</span> <span class="mi">8</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">9</span>
+<span class="n">data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">rand</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">m</span><span class="p">,</span> <span class="n">n</span><span class="p">,</span> <span class="n">o</span><span class="p">)</span>
+
+<span class="c1"># filter each pixel block in parallel (default)</span>
+<span class="n">filtered</span> <span class="o">=</span> <span class="n">darling</span><span class="o">.</span><span class="n">filters</span><span class="o">.</span><span class="n">gaussian_filter</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">sigma</span><span class="o">=</span><span class="mf">1.24</span><span class="p">,</span> <span class="n">copy</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+<span class="c1"># filter a single pixel block (useful for preview)</span>
+<span class="n">i</span><span class="p">,</span> <span class="n">j</span> <span class="o">=</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">5</span>
+<span class="n">filtered_pixel</span> <span class="o">=</span> <span class="n">darling</span><span class="o">.</span><span class="n">filters</span><span class="o">.</span><span class="n">gaussian_filter</span><span class="p">(</span>
+    <span class="n">data</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">],</span>
+    <span class="n">sigma</span><span class="o">=</span><span class="mf">1.24</span><span class="p">,</span>
+    <span class="n">loop_outer_dims</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="n">copy</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>data</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">numpy.ndarray</span></code>) – The data to filter. Must be one of shape=(a, b, m, n, o),
+shape=(a, b, m, n) or shape=(a, b, m) when <code class="docutils literal notranslate"><span class="pre">loop_outer_dims</span></code> is True.
+When <code class="docutils literal notranslate"><span class="pre">loop_outer_dims</span></code> is False, the data array must be one of
+shape=(m, n, o), shape=(m, n) or shape=(m,).</p></li>
+<li><p><strong>sigma</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">int</span></code>, <code class="xref py py-obj docutils literal notranslate"><span class="pre">float</span></code> or <code class="xref py py-obj docutils literal notranslate"><span class="pre">tuple</span></code>) – Standard deviation(s) of the Gaussian kernel. If a scalar, the same
+sigma is used for all trailing dimensions. If a tuple, it must have
+the same length as <code class="docutils literal notranslate"><span class="pre">axis</span></code> (when axis is provided), and each filtered
+axis uses its corresponding sigma value.</p></li>
+<li><p><strong>truncate</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">float</span></code>, optional) – Truncation in units of sigma used to infer the radius when <code class="docutils literal notranslate"><span class="pre">radius</span></code> is
+not provided. Defaults to 4.0.</p></li>
+<li><p><strong>radius</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">int</span></code> or <code class="xref py py-obj docutils literal notranslate"><span class="pre">tuple</span></code>, optional) – Kernel radius/radii. If provided, the kernel width is <code class="docutils literal notranslate"><span class="pre">2</span> <span class="pre">*</span> <span class="pre">radius</span> <span class="pre">+</span> <span class="pre">1</span></code>.
+If a tuple, it must have the same length as <code class="docutils literal notranslate"><span class="pre">axis</span></code> (when axis is
+provided). Defaults to None (infer from <code class="docutils literal notranslate"><span class="pre">truncate</span></code> and <code class="docutils literal notranslate"><span class="pre">sigma</span></code>).</p></li>
+<li><p><strong>axis</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">int</span></code> or <code class="xref py py-obj docutils literal notranslate"><span class="pre">tuple</span></code>, optional) – Trailing axis/axes to filter. Defaults to None, in which case all trailing
+dimensions are filtered. Axis values may be negative and are interpreted
+relative to the trailing block (not the full array when <code class="docutils literal notranslate"><span class="pre">loop_outer_dims</span></code>
+is True).</p></li>
+<li><p><strong>copy</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">bool</span></code>, optional) – Whether to return a filtered copy of the data. Defaults to False, in which
+case the input array is modified in place.</p></li>
+<li><p><strong>loop_outer_dims</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">bool</span></code>, optional) – Whether to loop over the outer dimensions (a, b) and filter each trailing
+block independently. Defaults to True.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The filtered data (may be a copy or a view depending on <code class="docutils literal notranslate"><span class="pre">copy</span></code>).</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">numpy.ndarray</span></code></p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
 <section id="module-darling.properties">
 <span id="properties"></span><h2>properties<a class="headerlink" href="#module-darling.properties" title="Link to this heading">#</a></h2>
 <p>Functions module for computation of data features over 4D or 5D fields. I.e computation of moments of
@@ -1492,595 +2282,6 @@ The domain with the highest sum_intensity will be kept.</p></li>
 </dd></dl>
 
 </section>
-<section id="module-darling._dataset">
-<span id="dataset"></span><h2>DataSet<a class="headerlink" href="#module-darling._dataset" title="Link to this heading">#</a></h2>
-<dl class="py class">
-<dt class="sig sig-object py" id="darling._dataset.DataSet">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">darling._dataset.</span></span><span class="sig-name descname"><span class="pre">DataSet</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data_source</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">scan_id</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">suffix</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">scan_motor</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">roi</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/AxelHenningsson/darling/tree/main/darling/_dataset.py/"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darling._dataset.DataSet" title="Link to this definition">#</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
-<p>A DFXM data-set.</p>
-<p>This is the master data class of darling. Given a data source the DataSet class will read data from
-arbitrary layers, process, threshold, compute moments, visualize results, and compile 3D feature maps.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>(</strong> (<em>data_source</em>) – obj: <cite>string</cite> or <cite>darling.reader.Reader</cite>): A string to the absolute h5 file path
-location of the data, or a reader object implementing the darling.reader.Reader() interface.</p></li>
-<li><p><strong>scan_id</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">str</span></code> or <code class="xref py py-obj docutils literal notranslate"><span class="pre">list</span></code> or <code class="xref py py-obj docutils literal notranslate"><span class="pre">str</span></code>) – scan id or scan ids to load. Defaults to None,
-in which case no data is loaded on instantiation. In this case use load_scan() to load data.</p></li>
-<li><p><strong>suffix</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">str</span></code>) – A regular suffix pattern to match scan ids in the data source. For
-example, “.1” will find all top level keys in the h5 file that end with “.1”, such as “1.1”, “2.1”, etc.
-Defaults to None, in which case no data is loaded on instantiation. (Use load_scan() to load data.)</p></li>
-<li><p><strong>scan_motor</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">str</span></code>) – The path in the h5 file to the motor that is changing with the scan_id.
-Only relevant when multiple scan_ids are loaded. Defaults to None.</p></li>
-<li><p><strong>roi</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">tuple</span></code> of <code class="xref py py-obj docutils literal notranslate"><span class="pre">int</span></code>) – (row_min, row_max, column_min, column_max),
-The roi refers to the detector dimensions. I.e for each frame only the part that corresponds to
-frame[roi[0]:roi[1], roi[2]:roi[3]] is loaded. Defaults to None, in which case all data is loaded.</p></li>
-</ul>
-</dd>
-</dl>
-<dl class="py attribute">
-<dt class="sig sig-object py">
-<span class="sig-name descname"><span class="pre">reader</span> <span class="pre">(</span></span></dt>
-<dd><p>obj: <cite>darling.reader.Reader</cite>): A file reader implementing, at least, the functionallity
-specified in darling.reader.Reader().</p>
-</dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py">
-<span class="sig-name descname"><span class="pre">data</span> <span class="pre">(</span></span></dt>
-<dd><p>obj: <cite>numpy.ndarray</cite>): The data array of shape (a,b,m,n,(o)) where a,b are the detector
-dimensions and m,n,(o) are the motor dimensions.</p>
-</dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py">
-<span class="sig-name descname"><span class="pre">motors</span> <span class="pre">(</span></span></dt>
-<dd><p>obj: <cite>numpy.ndarray</cite>): The motor grids of shape (k, m,n,(o)) where k is the number of
-motors and m,n,(o) are the motor dimensions.</p>
-</dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py">
-<span class="sig-name descname"><span class="pre">h5file</span> <span class="pre">(</span></span></dt>
-<dd><p>obj: <cite>string</cite>): The absolute path to the h5 file in which all data resides.</p>
-</dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="darling._dataset.DataSet.roi">
-<span class="sig-name descname"><span class="pre">roi</span></span><a class="reference external" href="https://github.com/AxelHenningsson/darling/tree/main/darling/_dataset.py/"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darling._dataset.DataSet.roi" title="Link to this definition">#</a></dt>
-<dd><p>(row_min, row_max, column_min, column_max),
-The roi refers to the detector dimensions. I.e for each frame only the part that corresponds to
-frame[roi[0]:roi[1], roi[2]:roi[3]] is loaded. Defaults to None, in which case all data is loaded.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">tuple</span></code> of <code class="xref py py-obj docutils literal notranslate"><span class="pre">int</span></code></p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py">
-<span class="sig-name descname"><span class="pre">verbose</span> <span class="pre">(</span></span></dt>
-<dd><p>obj: <a href="#id1"><span class="problematic" id="id2">``</span></a>bool): Prints progress on loading. Defaults to False.</p>
-</dd></dl>
-
-<dl class="py property">
-<dt class="sig sig-object py" id="darling._dataset.DataSet.dtype">
-<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">dtype</span></span><a class="reference external" href="https://github.com/AxelHenningsson/darling/tree/main/darling/_dataset.py/"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darling._dataset.DataSet.dtype" title="Link to this definition">#</a></dt>
-<dd></dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="darling._dataset.DataSet.info">
-<span class="sig-name descname"><span class="pre">info</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/AxelHenningsson/darling/tree/main/darling/_dataset.py/"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darling._dataset.DataSet.info" title="Link to this definition">#</a></dt>
-<dd></dd></dl>
-
-<dl class="py property">
-<dt class="sig sig-object py" id="darling._dataset.DataSet.scan_params">
-<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">scan_params</span></span><a class="reference external" href="https://github.com/AxelHenningsson/darling/tree/main/darling/_dataset.py/"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darling._dataset.DataSet.scan_params" title="Link to this definition">#</a></dt>
-<dd><p>The scan parameters for the loaded data in a dictionary.</p>
-<p>Example output:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">out</span> <span class="o">=</span> <span class="p">{</span>
-    <span class="s1">&#39;scan_command&#39;</span><span class="p">:</span> <span class="s1">&#39;fscan2d chi -0.5 0.08 26 diffry 7 0.06 37 0.5 0.500417&#39;</span><span class="p">,</span>
-    <span class="s1">&#39;scan_shape&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mi">26</span><span class="p">,</span> <span class="mi">37</span><span class="p">],</span>
-    <span class="s1">&#39;motor_names&#39;</span><span class="p">:</span> <span class="p">[</span><span class="s1">&#39;instrument/chi/value&#39;</span><span class="p">,</span> <span class="s1">&#39;instrument/diffry/data&#39;</span><span class="p">],</span>
-    <span class="s1">&#39;integrated_motors&#39;</span><span class="p">:</span> <span class="p">[</span><span class="kc">False</span><span class="p">,</span> <span class="kc">True</span><span class="p">],</span>
-    <span class="s1">&#39;data_name&#39;</span><span class="p">:</span> <span class="s1">&#39;instrument/pco_ff/image&#39;</span><span class="p">,</span>
-    <span class="s1">&#39;scan_id&#39;</span><span class="p">:</span> <span class="s1">&#39;1.1&#39;</span><span class="p">,</span>
-    <span class="s1">&#39;invariant_motors&#39;</span><span class="p">:</span> <span class="p">{</span>
-        <span class="s1">&#39;ccmth&#39;</span><span class="p">:</span> <span class="mf">6.679671220242654</span><span class="p">,</span>
-        <span class="s1">&#39;s8vg&#39;</span><span class="p">:</span> <span class="mf">0.09999999999999998</span><span class="p">,</span>
-        <span class="s1">&#39;s8vo&#39;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span>
-        <span class="s1">&#39;s8ho&#39;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span>
-        <span class="s1">&#39;s8hg&#39;</span><span class="p">:</span> <span class="mf">0.5</span><span class="p">,</span>
-        <span class="s1">&#39;phi&#39;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span>
-        <span class="s1">&#39;mainx&#39;</span><span class="p">:</span> <span class="o">-</span><span class="mf">5000.0</span><span class="p">,</span>
-        <span class="s1">&#39;obx&#39;</span><span class="p">:</span> <span class="mf">263.1299999999999</span><span class="p">,</span>
-        <span class="s1">&#39;oby&#39;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span>
-        <span class="s1">&#39;obz&#39;</span><span class="p">:</span> <span class="mf">85.35999999999876</span><span class="p">,</span>
-        <span class="s1">&#39;obz3&#39;</span><span class="p">:</span> <span class="mf">0.0693999999999999</span><span class="p">,</span>
-        <span class="s1">&#39;obpitch&#39;</span><span class="p">:</span> <span class="mf">17.979400000000002</span><span class="p">,</span>
-        <span class="s1">&#39;obyaw&#39;</span><span class="p">:</span> <span class="o">-</span><span class="mf">0.06589062499999998</span><span class="p">,</span>
-        <span class="s1">&#39;cdx&#39;</span><span class="p">:</span> <span class="o">-</span><span class="mf">11.8</span><span class="p">,</span>
-        <span class="s1">&#39;dcx&#39;</span><span class="p">:</span> <span class="mf">545.0</span><span class="p">,</span>
-        <span class="s1">&#39;dcz&#39;</span><span class="p">:</span> <span class="o">-</span><span class="mf">150.0</span><span class="p">,</span>
-        <span class="s1">&#39;ffz&#39;</span><span class="p">:</span> <span class="mf">1621.611386138614</span><span class="p">,</span>
-        <span class="s1">&#39;ffy&#39;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span>
-        <span class="s1">&#39;ffsel&#39;</span><span class="p">:</span> <span class="o">-</span><span class="mf">60.0</span><span class="p">,</span>
-        <span class="s1">&#39;x_pixel_size&#39;</span><span class="p">:</span> <span class="mf">6.5</span><span class="p">,</span>
-        <span class="s1">&#39;y_pixel_size&#39;</span><span class="p">:</span> <span class="mf">6.5</span>
-    <span class="p">}</span>
-<span class="p">}</span>
-</pre></div>
-</div>
-<dl class="field-list simple">
-<dt class="field-odd">Returns<span class="colon">:</span></dt>
-<dd class="field-odd"><p>The scan parameters.</p>
-</dd>
-<dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">dict</span></code></p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py property">
-<dt class="sig sig-object py" id="darling._dataset.DataSet.sensors">
-<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">sensors</span></span><a class="reference external" href="https://github.com/AxelHenningsson/darling/tree/main/darling/_dataset.py/"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darling._dataset.DataSet.sensors" title="Link to this definition">#</a></dt>
-<dd><p>The sensor data for the loaded data in a dictionary.</p>
-<p>this contains things like the pico4 current data that monitors the direct beam current.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Returns<span class="colon">:</span></dt>
-<dd class="field-odd"><p>The sensor data.</p>
-</dd>
-<dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">dict</span></code></p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="darling._dataset.DataSet.load_scan">
-<span class="sig-name descname"><span class="pre">load_scan</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">scan_id</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">scan_motor</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">roi</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/AxelHenningsson/darling/tree/main/darling/_dataset.py/"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darling._dataset.DataSet.load_scan" title="Link to this definition">#</a></dt>
-<dd><p>Load a scan into RAM.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>scan_id</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">str</span></code> or <code class="xref py py-obj docutils literal notranslate"><span class="pre">list</span></code> or <code class="xref py py-obj docutils literal notranslate"><span class="pre">str</span></code>) – scan id or scan ids to load.</p></li>
-<li><p><strong>scan_motor</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">str</span></code>) – path in h5file to the motor that is changing with the scan_id.
-Defaults to None. Must be set when scan_id is not a single string.</p></li>
-<li><p><strong>roi</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">tuple</span></code> of <code class="xref py py-obj docutils literal notranslate"><span class="pre">int</span></code>) – row_min row_max and column_min and column_max,
-defaults to None, in which case all data is loaded. The roi refers to the detector
-dimensions.</p></li>
-<li><p><strong>(</strong> (<em>verbose</em>) – obj: <a href="#id3"><span class="problematic" id="id4">``</span></a>bool): Prints progress on loading. Defaults to False.</p></li>
-</ul>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="darling._dataset.DataSet.subtract">
-<span class="sig-name descname"><span class="pre">subtract</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">background</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtype=&lt;class</span> <span class="pre">'numpy.uint16'&gt;</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/AxelHenningsson/darling/tree/main/darling/_dataset.py/"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darling._dataset.DataSet.subtract" title="Link to this definition">#</a></dt>
-<dd><p>Subtract a fixed integer value from the data block.</p>
-<dl class="simple">
-<dt>Warning: If dtype is not np.uint16, data will be cast to dtype, which will create a</dt><dd><p>temporary copy of the data.</p>
-</dd>
-</dl>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>background</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">int</span></code> or <code class="xref py py-obj docutils literal notranslate"><span class="pre">numpy.ndarray</span></code>) – fixed background value or background array to subtract.
-the array will be broadcast to the data block shape. I.e for a shape=(a,b,m,n) data block, the background
-could be of detector dimension shape=(a,b) or shape=(a,b,1,1).</p></li>
-<li><p><strong>dtype</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">numpy.dtype</span></code>) – the data type of the output array. Defaults to np.uint16.
-in which case the data is clipped to the range [0, 2^16-1]. protects against uint16
-sign flips.</p></li>
-</ul>
-</dd>
-</dl>
-</dd></dl>
-
-</dd></dl>
-
-</section>
-<section id="module-darling.reader">
-<span id="reader"></span><h2>reader<a class="headerlink" href="#module-darling.reader" title="Link to this heading">#</a></h2>
-<p>Collection of pre-implemneted h5 readers developed for id03 format.</p>
-<p>NOTE: In general the file reader is strongly dependent on data collection scheme and it is therefore the
-purpose of darling to allow the user to subclass Reader() and implement their own specific data structure.</p>
-<p>Once the reader is implemented in darling format it is possible to interface the DataSet class and use
-all features of darling.</p>
-<dl class="py class">
-<dt class="sig sig-object py" id="darling.reader.Reader">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">darling.reader.</span></span><span class="sig-name descname"><span class="pre">Reader</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">abs_path_to_h5_file</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/AxelHenningsson/darling/tree/main/darling/reader.py/"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darling.reader.Reader" title="Link to this definition">#</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
-<p>Parent class for readers.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>(</strong> (<em>abs_path_to_h5_file</em>) – obj: <cite>str</cite>): Absolute file path to data.</p>
-</dd>
-</dl>
-<dl class="py attribute">
-<dt class="sig sig-object py">
-<span class="sig-name descname"><span class="pre">abs_path_to_h5_file</span> <span class="pre">(</span></span></dt>
-<dd><p>obj: <cite>str</cite>): Absolute file path to data.</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="darling.reader.Reader.fetch">
-<span class="sig-name descname"><span class="pre">fetch</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/AxelHenningsson/darling/tree/main/darling/reader.py/"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darling.reader.Reader.fetch" title="Link to this definition">#</a></dt>
-<dd><p>Fetch a value from the h5 file.</p>
-<p>This is usefull to fetch excotic motor values or meta-data that has not yet been implemented
-in the standard darling readers.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>key</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">str</span></code>) – The key to fetch from the h5 file. (full h5 path in the h5 file)</p></li>
-<li><p><strong>scan_id</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">str</span></code>) – The scan id to fetch from. Defaults to None, in which case the scan id
-is taken from the reader.scan_params[“scan_id”].</p></li>
-</ul>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>The value from the h5 file.</p>
-</dd>
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">numpy.ndarray</span></code></p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="darling.reader.Reader.__call__">
-<span class="sig-name descname"><span class="pre">__call__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">scan_id</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">roi</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/AxelHenningsson/darling/tree/main/darling/reader.py/"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darling.reader.Reader.__call__" title="Link to this definition">#</a></dt>
-<dd><p>Method to read a single 2D scan</p>
-<dl class="simple">
-<dt>NOTE: This method is meant to be purpose implemented to fit the specific data aqusition</dt><dd><p>scheme used.</p>
-</dd>
-</dl>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>scan_id</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">str</span></code>) – scan id to load from, these are internal kayes to diffirentiate
-layers.</p></li>
-<li><p><strong>roi</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">tuple</span></code> of <code class="xref py py-obj docutils literal notranslate"><span class="pre">int</span></code>) – row_min row_max and column_min and column_max,
-defaults to None, in which case all data is loaded. The roi refers to the detector
-dimensions.</p></li>
-</ul>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>data (<code class="xref py py-obj docutils literal notranslate"><span class="pre">numpy</span> <span class="pre">array</span></code>) of shape=(a,b,m,n) and type np.uint16 and motors
-(<code class="xref py py-obj docutils literal notranslate"><span class="pre">tuple</span></code> of <code class="xref py py-obj docutils literal notranslate"><span class="pre">numpy</span> <span class="pre">array</span></code>) of shape=(m,) and shape=(n,) and type
-np.float32. a,b are detector dimensions while m,n are scan dimensions over
-which teh motor settings vary.</p>
-</dd>
-</dl>
-</dd></dl>
-
-</dd></dl>
-
-<dl class="py class">
-<dt class="sig sig-object py" id="darling.reader.MosaScan">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">darling.reader.</span></span><span class="sig-name descname"><span class="pre">MosaScan</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">abs_path_to_h5_file</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/AxelHenningsson/darling/tree/main/darling/reader.py/"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darling.reader.MosaScan" title="Link to this definition">#</a></dt>
-<dd><p>Bases: <a class="reference internal" href="#darling.reader.Reader" title="darling.reader.Reader"><code class="xref py py-class docutils literal notranslate"><span class="pre">Reader</span></code></a></p>
-<p>Load a 2D mosa scan. This is a id03 specific implementation matching a specific beamline mosa scan macro.</p>
-<p>NOTE: This reader was specifically written for data collection at id03. For general purpose reading of data you
-must implement your own reader class. The exact reding of data is strongly dependent on data aqusition scheme and
-data structure implementation.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>str</strong> (<em>abs_path_to_h5_file</em>) – absolute path to the h5 file with the diffraction images.</p>
-</dd>
-</dl>
-<dl class="py method">
-<dt class="sig sig-object py" id="darling.reader.MosaScan.__call__">
-<span class="sig-name descname"><span class="pre">__call__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">scan_id</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">roi</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/AxelHenningsson/darling/tree/main/darling/reader.py/"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darling.reader.MosaScan.__call__" title="Link to this definition">#</a></dt>
-<dd><p>Load a scan</p>
-<p>this loads the mosa data array with shape N,N,m,n where N is the detector dimension and
-m,n are the motor dimensions as ordered in the self.motor_names. You may view the implemented darling readers as example templates for implementing
-your own reader.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>scan_id</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">str</span></code>) – scan id to load from, e.g 1.1, 2.1 etc…</p></li>
-<li><p><strong>roi</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">tuple</span></code> of <code class="xref py py-obj docutils literal notranslate"><span class="pre">int</span></code>) – row_min row_max and column_min and column_max,
-defaults to None, in which case all data is loaded</p></li>
-</ul>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p><dl class="simple">
-<dt>data of shape=(a,b,m,n) and the</dt><dd><p>motor arrays as 2d meshgrids, shape=(k,m,n)
-where k is the number of motors used in the
-scan (typically 1,2 or 3).</p>
-</dd>
-</dl>
-</p>
-</dd>
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>data, motors</p>
-</dd>
-</dl>
-</dd></dl>
-
-</dd></dl>
-
-<dl class="py class">
-<dt class="sig sig-object py" id="darling.reader.Darks">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">darling.reader.</span></span><span class="sig-name descname"><span class="pre">Darks</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">abs_path_to_h5_file</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/AxelHenningsson/darling/tree/main/darling/reader.py/"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darling.reader.Darks" title="Link to this definition">#</a></dt>
-<dd><p>Bases: <a class="reference internal" href="#darling.reader.MosaScan" title="darling.reader.MosaScan"><code class="xref py py-class docutils literal notranslate"><span class="pre">MosaScan</span></code></a></p>
-<p>Load a series of motorless images. This is a id03 specific implementation matching a specific beamline macro.</p>
-<p>Typically used to red dark images collected with a loopscan.</p>
-<p>NOTE: This reader was specifically written for data collection at id03. For general purpose reading of data you
-must implement your own reader class. The exact reding of data is strongly dependent on data aqusition scheme and
-data structure implementation.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>str</strong> (<em>abs_path_to_h5_file</em>) – absolute path to the h5 file with the diffraction images.</p>
-</dd>
-</dl>
-<dl class="py method">
-<dt class="sig sig-object py" id="darling.reader.Darks.__call__">
-<span class="sig-name descname"><span class="pre">__call__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">scan_id</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">roi</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/AxelHenningsson/darling/tree/main/darling/reader.py/"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darling.reader.Darks.__call__" title="Link to this definition">#</a></dt>
-<dd><p>Load a scan</p>
-<p>this loads the static scan data array with shape a,b,m where a,b are the detector dimensions and
-m is the number of (motorless) images. You may view the implemented darling readers as example templates
-for implementing your own reader.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>scan_id</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">str</span></code>) – scan id to load from, e.g 1.1, 2.1 etc…</p></li>
-<li><p><strong>roi</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">tuple</span></code> of <code class="xref py py-obj docutils literal notranslate"><span class="pre">int</span></code>) – row_min row_max and column_min and column_max,
-defaults to None, in which case all data is loaded</p></li>
-</ul>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>data of shape=(a,b,m) and an empty motor array.</p>
-</dd>
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>data, motors</p>
-</dd>
-</dl>
-</dd></dl>
-
-</dd></dl>
-
-<dl class="py class">
-<dt class="sig sig-object py" id="darling.reader.RockingScan">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">darling.reader.</span></span><span class="sig-name descname"><span class="pre">RockingScan</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">abs_path_to_h5_file</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/AxelHenningsson/darling/tree/main/darling/reader.py/"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darling.reader.RockingScan" title="Link to this definition">#</a></dt>
-<dd><p>Bases: <a class="reference internal" href="#darling.reader.MosaScan" title="darling.reader.MosaScan"><code class="xref py py-class docutils literal notranslate"><span class="pre">MosaScan</span></code></a></p>
-<p>Load a 1D rocking scan. This is a id03 specific implementation matching a specific beamline macro.</p>
-<p>A rocking scan is simply a set of 2D detector images collected at different rocking angles of the goniometer.</p>
-<p>NOTE: This reader was specifically written for data collection at id03. For general purpose reading of data you
-must implement your own reader class. The exact reding of data is strongly dependent on data aqusition scheme and
-data structure implementation.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>str</strong> (<em>abs_path_to_h5_file</em>) – absolute path to the h5 file with the diffraction images.</p>
-</dd>
-</dl>
-<dl class="py method">
-<dt class="sig sig-object py" id="darling.reader.RockingScan.__call__">
-<span class="sig-name descname"><span class="pre">__call__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">scan_id</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">roi</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/AxelHenningsson/darling/tree/main/darling/reader.py/"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darling.reader.RockingScan.__call__" title="Link to this definition">#</a></dt>
-<dd><p>Load a scan</p>
-<p>this loads the rocking scan data array with shape a,b,m where a,b are the detector dimensions and
-m is the motor dimensions. You may view the implemented darling readers as example templates
-for implementing your own reader.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>scan_id</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">str</span></code>) – scan id to load from, e.g 1.1, 2.1 etc…</p></li>
-<li><p><strong>roi</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">tuple</span></code> of <code class="xref py py-obj docutils literal notranslate"><span class="pre">int</span></code>) – row_min row_max and column_min and column_max,
-defaults to None, in which case all data is loaded</p></li>
-</ul>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p><dl class="simple">
-<dt>data of shape=(a,b,m) and the</dt><dd><p>motor arrays as an array of shape=(k, n)
-where k is the number of motors used in the
-scan (i.e k=1 for a rocking scan).</p>
-</dd>
-</dl>
-</p>
-</dd>
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>data, motors</p>
-</dd>
-</dl>
-</dd></dl>
-
-</dd></dl>
-
-</section>
-<section id="module-darling.assets">
-<span id="assets"></span><h2>assets<a class="headerlink" href="#module-darling.assets" title="Link to this heading">#</a></h2>
-<p>Module to load example data and phantoms.</p>
-<dl class="py function">
-<dt class="sig sig-object py" id="darling.assets.path">
-<span class="sig-prename descclassname"><span class="pre">darling.assets.</span></span><span class="sig-name descname"><span class="pre">path</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/AxelHenningsson/darling/tree/main/darling/assets.py/"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darling.assets.path" title="Link to this definition">#</a></dt>
-<dd></dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="darling.assets.mosa_field">
-<span class="sig-prename descclassname"><span class="pre">darling.assets.</span></span><span class="sig-name descname"><span class="pre">mosa_field</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/AxelHenningsson/darling/tree/main/darling/assets.py/"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darling.assets.mosa_field" title="Link to this definition">#</a></dt>
-<dd><p>Load a 2D numpy array of a mosaicity field.</p>
-<p>mosa[…, 0] is the chi angle.
-mosa[…, 1] is the mu angle.</p>
-<p>data originates from the 1 -1 1 reflection of a 5% deformed Al1050 sample.</p>
-<p>ESRF ID03, experiment hc6042.
-dataset : Al_1050_strengthening_strainmosa_stregnthening_pct5_large_range
-Scan number : 5.1.
-Analysis: background subtraction, and a first maxima gaussian fitting.</p>
-<p>mean omega angle was 17.8345 and mean chi angle was 0.60997 the crystal to
-sample grain orientation matrix was measured to be :</p>
-<blockquote>
-<div><p>[0.83550027,  0.33932153, -0.43220389]
-[0.01167249,  0.77541728,  0.63134127]
-[0.54936605, -0.53253069,  0.64390062]</p>
-</div></blockquote>
-<p>from 3DXRD. The sample is in tensile strain with the grain 1-11 aling the
-tensile axis wich is identified as the lab-z axis.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Returns<span class="colon">:</span></dt>
-<dd class="field-odd"><p>2D array of shape=(m, n) with mosaicity values.</p>
-</dd>
-<dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p>mosa (<code class="xref py py-obj docutils literal notranslate"><span class="pre">numpy</span> <span class="pre">array</span></code>)</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="darling.assets.domains">
-<span class="sig-prename descclassname"><span class="pre">darling.assets.</span></span><span class="sig-name descname"><span class="pre">domains</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">scan_id</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'1.1'</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/AxelHenningsson/darling/tree/main/darling/assets.py/"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darling.assets.domains" title="Link to this definition">#</a></dt>
-<dd><p>load a (tiny) part of a 2d mosaicity scan collected at the ESRF id03.</p>
-<p>in constrast to mosaicity_scan() this dataset features a domain structure
-partioned into cells.</p>
-<p>NOTE: due to the domain partitioning this dataset has been inlcuded in the darling
-assets for unit testing various domain related feature extarction methods such as
-gaussian fitting.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>scan_id</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">str</span></code>) – one of 1.1 or 2.1, specifying first or second layer scanned in the sample.</p>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>absolute path to h5 file.
-data (<code class="xref py py-obj docutils literal notranslate"><span class="pre">numpy</span> <span class="pre">array</span></code>):  Array of shape=(a, b, m, n) with intensity data.
-<code class="docutils literal notranslate"><span class="pre">data[:,:,i,j]</span></code> is a noisy detector image in type uint16 for phi and
-chi at index i and j respectively.
-coordinates (<code class="xref py py-obj docutils literal notranslate"><span class="pre">numpy</span> <span class="pre">array</span></code>): array of shape=(2,m,n) continaning
-angle coordinates.</p>
-</dd>
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>data_path (<code class="xref py py-obj docutils literal notranslate"><span class="pre">str</span></code>)</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="darling.assets.rocking_scan">
-<span class="sig-prename descclassname"><span class="pre">darling.assets.</span></span><span class="sig-name descname"><span class="pre">rocking_scan</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/AxelHenningsson/darling/tree/main/darling/assets.py/"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darling.assets.rocking_scan" title="Link to this definition">#</a></dt>
-<dd><p>load a downsampled 1d rocking scan collected at the ESRF id03.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Returns<span class="colon">:</span></dt>
-<dd class="field-odd"><p>absolute path to h5 file.
-data (<code class="xref py py-obj docutils literal notranslate"><span class="pre">numpy</span> <span class="pre">array</span></code>):  Array of shape=(a, b, m, n) with intensity data. <code class="docutils literal notranslate"><span class="pre">data[:,:,i,j]</span></code>
-is a noisy detector image in type uint16 for phi and chi at index i and j respectively.
-coordinates (<code class="xref py py-obj docutils literal notranslate"><span class="pre">numpy</span> <span class="pre">array</span></code>): array of shape=(2,m,n) continaning angle coordinates.</p>
-</dd>
-<dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p>data_path (<code class="xref py py-obj docutils literal notranslate"><span class="pre">str</span></code>)</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="darling.assets.motor_drift">
-<span class="sig-prename descclassname"><span class="pre">darling.assets.</span></span><span class="sig-name descname"><span class="pre">motor_drift</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">scan_id</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'1.1'</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/AxelHenningsson/darling/tree/main/darling/assets.py/"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darling.assets.motor_drift" title="Link to this definition">#</a></dt>
-<dd><p>load a (tiny) part of a 2d mosaicity scan collected at the ESRF id03.</p>
-<p>NOTE: This dataset features motor drift and has been inlcuded in the darling
-assets for unit testing.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>scan_id</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">str</span></code>) – one of 1.1 or 2.1, specifying first or second layer scanned in the sample.</p>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>absolute path to h5 file.
-data (<code class="xref py py-obj docutils literal notranslate"><span class="pre">numpy</span> <span class="pre">array</span></code>):  Array of shape=(a, b, m, n) with intensity data. <code class="docutils literal notranslate"><span class="pre">data[:,:,i,j]</span></code> is a
-noisy detector image in type uint16 for phi and chi at index i and j respectively.
-coordinates (<code class="xref py py-obj docutils literal notranslate"><span class="pre">numpy</span> <span class="pre">array</span></code>): array of shape=(2,m,n) continaning angle coordinates.</p>
-</dd>
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>data_path (<code class="xref py py-obj docutils literal notranslate"><span class="pre">str</span></code>)</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="darling.assets.mosaicity_scan">
-<span class="sig-prename descclassname"><span class="pre">darling.assets.</span></span><span class="sig-name descname"><span class="pre">mosaicity_scan</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">scan_id</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'1.1'</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/AxelHenningsson/darling/tree/main/darling/assets.py/"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darling.assets.mosaicity_scan" title="Link to this definition">#</a></dt>
-<dd><p>Load a (tiny) part of a 2D mosaicity scan collected at the ESRF ID03.</p>
-<p>This is a central detector ROI for a 111 reflection in a 5% deformed Aluminium. Two layers
-are available with scan_id 1.1 and 2.1.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>scan_id</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">str</span></code>) – One of 1.1 or 2.1, specifying first or second layer scanned in the sample.</p>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>Absolute path to h5 file.
-data (<code class="xref py py-obj docutils literal notranslate"><span class="pre">numpy</span> <span class="pre">array</span></code>): Array of shape (a, b, m, n) with intensity data.
-<code class="docutils literal notranslate"><span class="pre">data[:,:,i,j]</span></code> is a noisy detector image (uint16) for phi and chi at index <code class="docutils literal notranslate"><span class="pre">i,</span> <span class="pre">j</span></code>.
-coordinates (<code class="xref py py-obj docutils literal notranslate"><span class="pre">numpy</span> <span class="pre">array</span></code>): Array of shape (2, m, n) containing angle coordinates.</p>
-</dd>
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>data_path (<code class="xref py py-obj docutils literal notranslate"><span class="pre">str</span></code>)</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="darling.assets.energy_mu_scan">
-<span class="sig-prename descclassname"><span class="pre">darling.assets.</span></span><span class="sig-name descname"><span class="pre">energy_mu_scan</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/AxelHenningsson/darling/tree/main/darling/assets.py/"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darling.assets.energy_mu_scan" title="Link to this definition">#</a></dt>
-<dd><p>Load a (tiny) part of a 2D ccmth-mu scan collected at the ESRF ID03.</p>
-<p>This is a central detector ROI for a BiFeO3 energy scan with a small slit inserted in the
-backfocal plane. The scan is performed with the ccmth motor (i.e the monochromator) and the
-mu motor (i.e the base cradle/rocking cradle).</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>scan_id</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">str</span></code>) – Must be ‘1.1’. Only one scan is available.</p>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>Absolute path to h5 file.
-data (<code class="xref py py-obj docutils literal notranslate"><span class="pre">numpy</span> <span class="pre">array</span></code>): Array of shape (a, b, m, n) with intensity data.
-<code class="docutils literal notranslate"><span class="pre">data[:,:,i,j]</span></code> is a noisy detector image (uint16) for ccmth and mu at index <code class="docutils literal notranslate"><span class="pre">i,</span> <span class="pre">j</span></code>.
-coordinates (<code class="xref py py-obj docutils literal notranslate"><span class="pre">numpy</span> <span class="pre">array</span></code>): Array of shape (2, m, n) containing angle coordinates.</p>
-</dd>
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>data_path (<code class="xref py py-obj docutils literal notranslate"><span class="pre">str</span></code>)</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="darling.assets.energy_mosa_scan">
-<span class="sig-prename descclassname"><span class="pre">darling.assets.</span></span><span class="sig-name descname"><span class="pre">energy_mosa_scan</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/AxelHenningsson/darling/tree/main/darling/assets.py/"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darling.assets.energy_mosa_scan" title="Link to this definition">#</a></dt>
-<dd><p>Load a (tiny) part of a 3D strain-mosaicity scan collected at the ESRF ID03.</p>
-<p>This is the central detector ROI for a Al1050 crystal.</p>
-<p>The scan is performed with the ccmth motor (i.e the monochromator) and the
-mu and chi motors (i.e the base cradle/rocking cradle and rolling top stage).</p>
-<dl class="field-list simple">
-<dt class="field-odd">Returns<span class="colon">:</span></dt>
-<dd class="field-odd"><p>Absolute path to h5 file.
-data (<code class="xref py py-obj docutils literal notranslate"><span class="pre">numpy</span> <span class="pre">array</span></code>): Array of shape (a, b, m, n) with intensity data.
-<code class="docutils literal notranslate"><span class="pre">data[:,:,i,j]</span></code> is a noisy detector image (uint16) for ccmth and mu at index <code class="docutils literal notranslate"><span class="pre">i,</span> <span class="pre">j</span></code>.
-coordinates (<code class="xref py py-obj docutils literal notranslate"><span class="pre">numpy</span> <span class="pre">array</span></code>): Array of shape (2, m, n) containing angle coordinates.</p>
-</dd>
-<dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p>data_path (<code class="xref py py-obj docutils literal notranslate"><span class="pre">str</span></code>)</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="darling.assets.gaussian_blobs">
-<span class="sig-prename descclassname"><span class="pre">darling.assets.</span></span><span class="sig-name descname"><span class="pre">gaussian_blobs</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">N</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">32</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">m</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">9</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/AxelHenningsson/darling/tree/main/darling/assets.py/"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darling.assets.gaussian_blobs" title="Link to this definition">#</a></dt>
-<dd><p>Phantom 2d scan of gaussian blobs with shifting means and covariance.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>N</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">int</span></code>) – Desired data array size which is of shape=(N,N,m,m).</p></li>
-<li><p><strong>m</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">int</span></code>) – Desired data array size which is of shape=(N,N,m,m).</p></li>
-</ul>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>Array of shape=(N, N, m, m) with intensity data, <code class="docutils literal notranslate"><span class="pre">data[:,:,i,j]</span></code>
-is a noisy detector image in type uint16 for motor x and y at index i and j respectively.
-coordinates (<code class="xref py py-obj docutils literal notranslate"><span class="pre">numpy</span> <span class="pre">array</span></code>): array of shape=(2,m,m) continaning x and y coordinates.</p>
-</dd>
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>data (<code class="xref py py-obj docutils literal notranslate"><span class="pre">numpy</span> <span class="pre">array</span></code>)</p>
-</dd>
-</dl>
-</dd></dl>
-
-</section>
 <section id="module-darling.metadata">
 <span id="metadata"></span><h2>metadata<a class="headerlink" href="#module-darling.metadata" title="Link to this heading">#</a></h2>
 <p>The metadata module is intended to contain easy configuration for the different beamlines/ changes
@@ -2204,6 +2405,57 @@ such that the entire detector is copied as is.</p></li>
 </ul>
 </li>
 <li class="toc-h1 nav-item toc-entry"><a class="reference internal nav-link" href="#documentation">Documentation</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-darling._dataset">DataSet</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#darling._dataset.DataSet"><code class="docutils literal notranslate"><span class="pre">DataSet</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darling._dataset.DataSet.roi"><code class="docutils literal notranslate"><span class="pre">DataSet.roi</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darling._dataset.DataSet.dtype"><code class="docutils literal notranslate"><span class="pre">DataSet.dtype</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darling._dataset.DataSet.info"><code class="docutils literal notranslate"><span class="pre">DataSet.info()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darling._dataset.DataSet.scan_params"><code class="docutils literal notranslate"><span class="pre">DataSet.scan_params</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darling._dataset.DataSet.sensors"><code class="docutils literal notranslate"><span class="pre">DataSet.sensors</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darling._dataset.DataSet.load_scan"><code class="docutils literal notranslate"><span class="pre">DataSet.load_scan()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darling._dataset.DataSet.subtract"><code class="docutils literal notranslate"><span class="pre">DataSet.subtract()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darling._dataset.DataSet.save"><code class="docutils literal notranslate"><span class="pre">DataSet.save()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-darling.reader">reader</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#darling.reader.Reader"><code class="docutils literal notranslate"><span class="pre">Reader</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darling.reader.Reader.fetch"><code class="docutils literal notranslate"><span class="pre">Reader.fetch()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darling.reader.Reader.__call__"><code class="docutils literal notranslate"><span class="pre">Reader.__call__()</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#darling.reader.MosaScan"><code class="docutils literal notranslate"><span class="pre">MosaScan</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darling.reader.MosaScan.__call__"><code class="docutils literal notranslate"><span class="pre">MosaScan.__call__()</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#darling.reader.Darks"><code class="docutils literal notranslate"><span class="pre">Darks</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darling.reader.Darks.__call__"><code class="docutils literal notranslate"><span class="pre">Darks.__call__()</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#darling.reader.RockingScan"><code class="docutils literal notranslate"><span class="pre">RockingScan</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darling.reader.RockingScan.__call__"><code class="docutils literal notranslate"><span class="pre">RockingScan.__call__()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-darling.assets">assets</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#darling.assets.path"><code class="docutils literal notranslate"><span class="pre">path()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#darling.assets.mosa_field"><code class="docutils literal notranslate"><span class="pre">mosa_field()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#darling.assets.domains"><code class="docutils literal notranslate"><span class="pre">domains()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#darling.assets.rocking_scan"><code class="docutils literal notranslate"><span class="pre">rocking_scan()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#darling.assets.motor_drift"><code class="docutils literal notranslate"><span class="pre">motor_drift()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#darling.assets.mosaicity_scan"><code class="docutils literal notranslate"><span class="pre">mosaicity_scan()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#darling.assets.energy_mu_scan"><code class="docutils literal notranslate"><span class="pre">energy_mu_scan()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#darling.assets.energy_mosa_scan"><code class="docutils literal notranslate"><span class="pre">energy_mosa_scan()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#darling.assets.gaussian_blobs"><code class="docutils literal notranslate"><span class="pre">gaussian_blobs()</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-darling.filters">filters</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#darling.filters.snr_threshold"><code class="docutils literal notranslate"><span class="pre">snr_threshold()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#darling.filters.gaussian_filter"><code class="docutils literal notranslate"><span class="pre">gaussian_filter()</span></code></a></li>
+</ul>
+</li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-darling.properties">properties</a><ul class="nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#darling.properties.rgb"><code class="docutils literal notranslate"><span class="pre">rgb()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#darling.properties.kam"><code class="docutils literal notranslate"><span class="pre">kam()</span></code></a></li>
@@ -2240,51 +2492,6 @@ such that the entire detector is copied as is.</p></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-darling.peaksearcher">peaksearcher</a><ul class="nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#darling.peaksearcher.label_sparse"><code class="docutils literal notranslate"><span class="pre">label_sparse()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#darling.peaksearcher.extract_features"><code class="docutils literal notranslate"><span class="pre">extract_features()</span></code></a></li>
-</ul>
-</li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-darling._dataset">DataSet</a><ul class="nav section-nav flex-column">
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#darling._dataset.DataSet"><code class="docutils literal notranslate"><span class="pre">DataSet</span></code></a><ul class="nav section-nav flex-column">
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darling._dataset.DataSet.roi"><code class="docutils literal notranslate"><span class="pre">DataSet.roi</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darling._dataset.DataSet.dtype"><code class="docutils literal notranslate"><span class="pre">DataSet.dtype</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darling._dataset.DataSet.info"><code class="docutils literal notranslate"><span class="pre">DataSet.info()</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darling._dataset.DataSet.scan_params"><code class="docutils literal notranslate"><span class="pre">DataSet.scan_params</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darling._dataset.DataSet.sensors"><code class="docutils literal notranslate"><span class="pre">DataSet.sensors</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darling._dataset.DataSet.load_scan"><code class="docutils literal notranslate"><span class="pre">DataSet.load_scan()</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darling._dataset.DataSet.subtract"><code class="docutils literal notranslate"><span class="pre">DataSet.subtract()</span></code></a></li>
-</ul>
-</li>
-</ul>
-</li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-darling.reader">reader</a><ul class="nav section-nav flex-column">
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#darling.reader.Reader"><code class="docutils literal notranslate"><span class="pre">Reader</span></code></a><ul class="nav section-nav flex-column">
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darling.reader.Reader.fetch"><code class="docutils literal notranslate"><span class="pre">Reader.fetch()</span></code></a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darling.reader.Reader.__call__"><code class="docutils literal notranslate"><span class="pre">Reader.__call__()</span></code></a></li>
-</ul>
-</li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#darling.reader.MosaScan"><code class="docutils literal notranslate"><span class="pre">MosaScan</span></code></a><ul class="nav section-nav flex-column">
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darling.reader.MosaScan.__call__"><code class="docutils literal notranslate"><span class="pre">MosaScan.__call__()</span></code></a></li>
-</ul>
-</li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#darling.reader.Darks"><code class="docutils literal notranslate"><span class="pre">Darks</span></code></a><ul class="nav section-nav flex-column">
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darling.reader.Darks.__call__"><code class="docutils literal notranslate"><span class="pre">Darks.__call__()</span></code></a></li>
-</ul>
-</li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#darling.reader.RockingScan"><code class="docutils literal notranslate"><span class="pre">RockingScan</span></code></a><ul class="nav section-nav flex-column">
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darling.reader.RockingScan.__call__"><code class="docutils literal notranslate"><span class="pre">RockingScan.__call__()</span></code></a></li>
-</ul>
-</li>
-</ul>
-</li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-darling.assets">assets</a><ul class="nav section-nav flex-column">
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#darling.assets.path"><code class="docutils literal notranslate"><span class="pre">path()</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#darling.assets.mosa_field"><code class="docutils literal notranslate"><span class="pre">mosa_field()</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#darling.assets.domains"><code class="docutils literal notranslate"><span class="pre">domains()</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#darling.assets.rocking_scan"><code class="docutils literal notranslate"><span class="pre">rocking_scan()</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#darling.assets.motor_drift"><code class="docutils literal notranslate"><span class="pre">motor_drift()</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#darling.assets.mosaicity_scan"><code class="docutils literal notranslate"><span class="pre">mosaicity_scan()</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#darling.assets.energy_mu_scan"><code class="docutils literal notranslate"><span class="pre">energy_mu_scan()</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#darling.assets.energy_mosa_scan"><code class="docutils literal notranslate"><span class="pre">energy_mosa_scan()</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#darling.assets.gaussian_blobs"><code class="docutils literal notranslate"><span class="pre">gaussian_blobs()</span></code></a></li>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-darling.metadata">metadata</a><ul class="nav section-nav flex-column">
