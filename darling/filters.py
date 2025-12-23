@@ -391,27 +391,40 @@ def gaussian_filter(
         The resulting kernel width is ``2 * radius + 1``. Larger sigma or radius
         produces stronger smoothing.
 
+    Example:
+
     .. code-block:: python
 
+        import matplotlib.pyplot as plt
         import numpy as np
         import darling
 
-        a, b = 16, 16
-        m, n, o = 8, 6, 9
-        data = np.random.rand(a, b, m, n, o)
+        _, data, motors = darling.assets.mosaicity_scan()
 
-        # filter each pixel block in parallel (default)
-        filtered = darling.filters.gaussian_filter(data, sigma=1.24, copy=True)
-
-        # filter a single pixel block (useful for preview)
-        i, j = 3, 5
-        filtered_pixel = darling.filters.gaussian_filter(
-            data[i, j],
-            sigma=1.24,
-            loop_outer_dims=False,
+        filtered_data = darling.filters.gaussian_filter(
+            data,
+            sigma = (1.0, 1.0),
+            axis = (0, 1),
+            radius = (3, 5),
             copy=True,
+            loop_outer_dims=True,
         )
 
+        fig, ax = plt.subplots(1, 2, figsize=(14, 7))
+        im = ax[0].imshow(data[20, 10, 3:27, 10:36], vmin=95, vmax=140, cmap="viridis")
+        ax[0].text(1, 4, "Raw Data at pixel (20, 10)", fontsize=22, fontweight="bold")
+        fig.colorbar(im, ax=ax[0], fraction=0.0425, pad=0.02)
+        im = ax[1].imshow(filtered_data[20, 10, 3:27, 10:36], vmin=95, vmax=140, cmap="viridis")
+        ax[1].text(1, 4, "Filtered Data at pixel (20, 10) ", fontsize=22, fontweight="bold")
+        fig.colorbar(im, ax=ax[1], fraction=0.0425, pad=0.02)
+        for a in ax.flatten():
+            for spine in a.spines.values():
+                spine.set_visible(False)
+        plt.tight_layout()
+        plt.show()
+
+
+    .. image:: ../../docs/source/images/gaussian_filter.png
 
     Args:
         data (:obj:`numpy.ndarray`):
