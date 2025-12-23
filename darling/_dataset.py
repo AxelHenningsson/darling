@@ -40,7 +40,7 @@ class DataSet(object):
         roi (:obj:`tuple` of :obj:`int`): (row_min, row_max, column_min, column_max),
             The roi refers to the detector dimensions. I.e for each frame only the part that corresponds to
             frame[roi[0]:roi[1], roi[2]:roi[3]] is loaded. Defaults to None, in which case all data is loaded.
-        verbose (:obj: ``bool): Prints progress on loading. Defaults to False.
+        verbose (:obj: `bool`): Prints progress on loading. Defaults to False.
 
     """
 
@@ -189,7 +189,7 @@ class DataSet(object):
             roi (:obj:`tuple` of :obj:`int`): row_min row_max and column_min and column_max,
                 defaults to None, in which case all data is loaded. The roi refers to the detector
                 dimensions.
-            verbose (:obj: ``bool): Prints progress on loading. Defaults to False.
+            verbose (:obj: `bool`): Prints progress on loading. Defaults to False.
 
         """
         if not (isinstance(scan_id, list) or isinstance(scan_id, str)):
