@@ -55,25 +55,50 @@ def snr_threshold(
 
             In this case, mean and sigma must be scalars.
 
+    Example:
+
     .. code-block:: python
 
+        import matplotlib.pyplot as plt
         import numpy as np
         import darling
 
-        a, b = 16, 16
-        m, n, o = 8, 6, 9
-        data = np.random.rand(a, b, m, n, o)
-        mean = np.ones((a, b)) * 2
-        sigma = np.ones((a, b))
-        data = darling.filters.snr_threshold(
+        _, data, motors = darling.assets.mosaicity_scan()
+        a, b, m, n = data.shape
+        mean = 100 * np.ones((a, b))
+        sigma = 10 * np.ones((a, b))
+        primary_threshold = 3
+        secondary_threshold = 1
+
+        filtered_data = darling.filters.snr_threshold(
             data,
             mean,
             sigma,
-            primary_threshold=1.0,
-            loop_outer_dims=True,
+            primary_threshold,
+            secondary_threshold,
             copy=True,
+            loop_outer_dims=True,
         )
 
+        fig, ax = plt.subplots(1, 2, figsize=(14, 7))
+        im = ax[0].imshow(data[20, 10, 0:31, 10:36], norm='log', cmap='jet')
+        ax[0].text(1, 4, "Raw Data at pixel (20, 10)", fontsize=22, fontweight="bold")
+        fig.colorbar(im, ax=ax[0], fraction=0.054, pad=0.04)
+        im = ax[1].imshow(filtered_data[20, 10, 0:31, 10:36], norm='log', cmap='jet')
+        ax[1].text(1, 4, "SNR Filtered Data at pixel (20, 10) ", fontsize=22, fontweight="bold")
+        # annotate the  primary threshold
+        ax[1].text(1, 6, f"Primary Threshold: SNR >= {primary_threshold}", fontsize=20)
+        # annotate the secondary threshold
+        ax[1].text(1, 8, f"Secondary Threshold: SNR >= {secondary_threshold} ", fontsize=20)
+        fig.colorbar(im, ax=ax[1], fraction=0.054, pad=0.04)
+        for a in ax.flatten():
+            for spine in a.spines.values():
+                spine.set_visible(False)
+        plt.tight_layout()
+        plt.show()
+
+
+    .. image:: ../../docs/source/images/snr.png
 
     Args:
         data (:obj:`numpy.ndarray`):
