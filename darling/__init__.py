@@ -3,6 +3,7 @@ from importlib.metadata import PackageNotFoundError, version
 from . import (
     _color,
     assets,
+    filters,
     goniometer,
     metadata,
     peaksearcher,
