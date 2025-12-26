@@ -1220,6 +1220,107 @@ in theta, phi and chi can be retrieved as:</p>
 </pre></div>
 </div>
 <dl class="py function">
+<dt class="sig sig-object py" id="darling.properties.estimate_white_noise">
+<span class="sig-prename descclassname"><span class="pre">darling.properties.</span></span><span class="sig-name descname"><span class="pre">estimate_white_noise</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">inital_guess</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">truncate</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">3.5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_iterations</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">convergence_tol</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.001</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">loop_outer_dims</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gauss_newton_refine</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_iter_gauss_newton</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">3</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/AxelHenningsson/darling/tree/main/darling/properties.py/"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darling.properties.estimate_white_noise" title="Link to this definition">#</a></dt>
+<dd><p>Build a per-pixel Gaussian white-noise model from a multidimensional data array.</p>
+<p>The method separates (approximately) additive white noise from signal by repeatedly
+estimating a Gaussian from the low end portion of the distribution (defined by a
+symmetric truncation around a current mean value). Optionally, it refines the estimate
+using a Gauss-Newton curve fit to a histogram.</p>
+<p>This function is usefull for predicting accurate darks with associated uncertainties from
+collected diffraction data. This method of predicting darks has 3 major benefits:</p>
+<ul class="simple">
+<li><p>No additional dark frames need to be collected.</p></li>
+<li><p>The metrics are often statistically much more robust than independently collected dark frames due to the
+possibly large number of samples (a 20 x 30 mosa scan gives 600 samples per pixel which often can correspond
+to 400-500 dark samples per pixel). This is especially apparent for the estimation of the standard deviation
+of the dark field which is sensetive to the sample size.</p></li>
+<li><p>The conditions of the dark estimate is guaranteed to be exactly the same as the conditions of the data.</p></li>
+</ul>
+<p>NOTE: This method is only valid as long as the data signal is somewhat sparse and clearly
+separated from the noise floor. I.e for each detector pixel, the majority of readouts are
+dark-redouts, without any diffraction signal.</p>
+<p>Example usecase:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">darling</span>
+
+<span class="n">_</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">motors</span> <span class="o">=</span> <span class="n">darling</span><span class="o">.</span><span class="n">assets</span><span class="o">.</span><span class="n">mosaicity_scan</span><span class="p">()</span>
+<span class="n">mean</span><span class="p">,</span> <span class="n">std</span> <span class="o">=</span> <span class="n">darling</span><span class="o">.</span><span class="n">properties</span><span class="o">.</span><span class="n">estimate_white_noise</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+
+<span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">14</span><span class="p">,</span> <span class="mi">7</span><span class="p">))</span>
+<span class="n">im</span> <span class="o">=</span> <span class="n">ax</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">mean</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="s2">&quot;plasma&quot;</span><span class="p">)</span>
+<span class="n">ax</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">text</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="s2">&quot;Estimate of Noise Mean&quot;</span><span class="p">,</span> <span class="n">fontweight</span><span class="o">=</span><span class="s2">&quot;bold&quot;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;k&quot;</span><span class="p">)</span>
+<span class="n">fig</span><span class="o">.</span><span class="n">colorbar</span><span class="p">(</span><span class="n">im</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">fraction</span><span class="o">=</span><span class="mf">0.0335</span><span class="p">,</span> <span class="n">pad</span><span class="o">=</span><span class="mf">0.02</span><span class="p">)</span>
+<span class="n">im</span> <span class="o">=</span> <span class="n">ax</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">std</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="s2">&quot;spring&quot;</span><span class="p">)</span>
+<span class="n">ax</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">text</span><span class="p">(</span>
+    <span class="mi">1</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="s2">&quot;Estimate of Noise Standard-Deviation&quot;</span><span class="p">,</span> <span class="n">fontweight</span><span class="o">=</span><span class="s2">&quot;bold&quot;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;k&quot;</span>
+<span class="p">)</span>
+<span class="n">fig</span><span class="o">.</span><span class="n">colorbar</span><span class="p">(</span><span class="n">im</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">fraction</span><span class="o">=</span><span class="mf">0.0335</span><span class="p">,</span> <span class="n">pad</span><span class="o">=</span><span class="mf">0.02</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">ax</span><span class="o">.</span><span class="n">flatten</span><span class="p">():</span>
+    <span class="k">for</span> <span class="n">spine</span> <span class="ow">in</span> <span class="n">a</span><span class="o">.</span><span class="n">spines</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+        <span class="n">spine</span><span class="o">.</span><span class="n">set_visible</span><span class="p">(</span><span class="kc">False</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+<img alt="_images/white_noise.png" src="_images/white_noise.png" />
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>data</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">numpy.ndarray</span></code>) – If loop_outer_dims is <code class="docutils literal notranslate"><span class="pre">True</span></code>, array of shape
+<code class="docutils literal notranslate"><span class="pre">(a,</span> <span class="pre">b,</span> <span class="pre">m)</span></code>, <code class="docutils literal notranslate"><span class="pre">(a,</span> <span class="pre">b,</span> <span class="pre">m,</span> <span class="pre">n)</span></code>, or <code class="docutils literal notranslate"><span class="pre">(a,</span> <span class="pre">b,</span> <span class="pre">m,</span> <span class="pre">n,</span> <span class="pre">o)</span></code>. For each detector pixel
+<code class="docutils literal notranslate"><span class="pre">(i,</span> <span class="pre">j)</span></code>, the values <code class="docutils literal notranslate"><span class="pre">data[i,</span> <span class="pre">j,</span> <span class="pre">...]</span></code> form the sample distribution across
+scan coordinates. If loop_outer_dims is <code class="docutils literal notranslate"><span class="pre">False</span></code>, array of shape <code class="docutils literal notranslate"><span class="pre">(m,)</span></code>, <code class="docutils literal notranslate"><span class="pre">(m,</span> <span class="pre">n)</span></code>,
+or <code class="docutils literal notranslate"><span class="pre">(m,</span> <span class="pre">n,</span> <span class="pre">o)</span></code>, containing the sample distribution across scan coordinates.</p></li>
+<li><p><strong>inital_guess</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">tuple</span></code> of <code class="xref py py-obj docutils literal notranslate"><span class="pre">float</span></code>) – Initial guess for the noise mean
+and standard deviation. This is your expected mean noise level and standard
+deviation of the noise. If not provided, a robust (but rough) estimate of
+the noise floor is computed by sampling random pixels. The assumption is that
+the majority of the data is noise (at least 25%).</p></li>
+<li><p><strong>truncate</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">float</span></code>) – Truncation factor that defines the inlier range
+<code class="docutils literal notranslate"><span class="pre">(mean</span> <span class="pre">-</span> <span class="pre">truncate</span> <span class="pre">*</span> <span class="pre">std,</span> <span class="pre">mean</span> <span class="pre">+</span> <span class="pre">truncate</span> <span class="pre">*</span> <span class="pre">std)</span></code> used when estimating
+mean and standard deviation. Defaults to <code class="docutils literal notranslate"><span class="pre">3.5</span></code>. For each iteration, only the
+data points within this range are used to update the estimate of the mean and
+standard deviation.</p></li>
+<li><p><strong>max_iterations</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">int</span></code>) – Maximum number of tail-statistics iterations.
+Defaults to <code class="docutils literal notranslate"><span class="pre">5</span></code>. I.e the algorithm will iterate at most 5 times to update
+the estimate of the mean and standard deviation.</p></li>
+<li><p><strong>convergence_tol</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">float</span></code>) – Absolute convergence tolerance for both mean
+and standard deviation updates. Defaults to <code class="docutils literal notranslate"><span class="pre">1e-3</span></code>. I.e the algorithm will
+stop iterating if the absolute difference between the new and old estimate of
+the mean and standard deviation is less than this value.</p></li>
+<li><p><strong>loop_outer_dims</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">bool</span></code>) – If <code class="docutils literal notranslate"><span class="pre">True</span></code>, estimate mean and standard deviation
+independently for each pixel, returning arrays of shape <code class="docutils literal notranslate"><span class="pre">(a,</span> <span class="pre">b)</span></code>. I.e the
+algorithm will estimate the mean and standard deviation for each pixel independently.
+If <code class="docutils literal notranslate"><span class="pre">False</span></code>, estimate a single (global) mean and standard deviation by
+flattening the entire array. Defaults to <code class="docutils literal notranslate"><span class="pre">True</span></code>.</p></li>
+<li><p><strong>gauss_newton_refine</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">bool</span></code>) – If <code class="docutils literal notranslate"><span class="pre">True</span></code>, refine the estimates using a
+Gauss-Newton fit of a Gaussian to a histogram constructed from the truncated
+samples. Defaults to <code class="docutils literal notranslate"><span class="pre">True</span></code>. I.e the algorithm will refine the estimate of
+the mean and standard deviation using a Gauss-Newton fit of a Gaussian to a
+histogram constructed from the truncated samples.</p></li>
+<li><p><strong>n_iter_gauss_newton</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">int</span></code>) – Number of Gauss-Newton iterations used during
+refinement. Only used if <code class="docutils literal notranslate"><span class="pre">gauss_newton_refine</span></code> is <code class="docutils literal notranslate"><span class="pre">True</span></code>. Defaults to <code class="docutils literal notranslate"><span class="pre">3</span></code>.
+I.e the algorithm will perform 3 Gauss-Newton iterations to refine the estimate
+of the mean and standard deviation.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><p>Estimated noise mean and standard deviation.</p>
+<ul class="simple">
+<li><p>If <code class="docutils literal notranslate"><span class="pre">loop_outer_dims</span></code> is <code class="docutils literal notranslate"><span class="pre">True</span></code>, both are <code class="docutils literal notranslate"><span class="pre">numpy.ndarray</span></code> of shape <code class="docutils literal notranslate"><span class="pre">(a,</span> <span class="pre">b)</span></code>.</p></li>
+<li><p>If <code class="docutils literal notranslate"><span class="pre">loop_outer_dims</span></code> is <code class="docutils literal notranslate"><span class="pre">False</span></code>, both are scalar floats.</p></li>
+</ul>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>mean, std (<code class="xref py py-obj docutils literal notranslate"><span class="pre">tuple</span></code>)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
 <dt class="sig sig-object py" id="darling.properties.rgb">
 <span class="sig-prename descclassname"><span class="pre">darling.properties.</span></span><span class="sig-name descname"><span class="pre">rgb</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">property_2d</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">norm</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'dynamic'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">coordinates</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/AxelHenningsson/darling/tree/main/darling/properties.py/"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darling.properties.rgb" title="Link to this definition">#</a></dt>
 <dd><p>Compute a m, n, 3 rgb array from a 2d property map, e.g from a first moment map.</p>
@@ -1520,7 +1621,7 @@ which case the first moments are recomputed on the fly.</p></li>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="darling.properties.fit_1d_gaussian">
-<span class="sig-prename descclassname"><span class="pre">darling.properties.</span></span><span class="sig-name descname"><span class="pre">fit_1d_gaussian</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">coordinates</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">number_of_gauss_newton_iterations</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">7</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mask</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/AxelHenningsson/darling/tree/main/darling/properties.py/"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darling.properties.fit_1d_gaussian" title="Link to this definition">#</a></dt>
+<span class="sig-prename descclassname"><span class="pre">darling.properties.</span></span><span class="sig-name descname"><span class="pre">fit_1d_gaussian</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">coordinates</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_iter_gauss_newton</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">7</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mask</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/AxelHenningsson/darling/tree/main/darling/properties.py/"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darling.properties.fit_1d_gaussian" title="Link to this definition">#</a></dt>
 <dd><p>Fit analytical gaussian + linear background for each pixel in a 2D image.</p>
 <p>The input volume is assumed to have shape (ny, nx, m), where the
 last axis corresponds to the 1D curves to be fitted with
@@ -1535,7 +1636,7 @@ a Gaussian + linear background. For each data[i, j, :] the function fits</p>
 respectively. I.e, as an example, these could be the phi and chi angular
 cooridnates as a meshgrid. Shape=(ndim, m, n, …). where ndim=1 for a rocking scan,
 ndim=2 for a mosaicity scan, etc.</p></li>
-<li><p><strong>number_of_gauss_newton_iterations</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">int</span></code>) – Number of Gauss-Newton iterations to use for the fit. Defaults to 7.</p></li>
+<li><p><strong>n_iter_gauss_newton</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">int</span></code>) – Number of Gauss-Newton iterations to use for the fit. Defaults to 7.</p></li>
 <li><p><strong>mask</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">numpy.ndarray</span></code>) – 2D array of shape (ny, nx) with dtype bool. Defaults to None. If provided, only the pixels where mask is True will be fitted.</p></li>
 </ul>
 </dd>
@@ -2491,6 +2592,7 @@ such that the entire detector is copied as is.</p></li>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-darling.properties">properties</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#darling.properties.estimate_white_noise"><code class="docutils literal notranslate"><span class="pre">estimate_white_noise()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#darling.properties.rgb"><code class="docutils literal notranslate"><span class="pre">rgb()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#darling.properties.kam"><code class="docutils literal notranslate"><span class="pre">kam()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#darling.properties.moments"><code class="docutils literal notranslate"><span class="pre">moments()</span></code></a></li>

@@ -30,12 +30,306 @@ in theta, phi and chi can be retrieved as:
 
 """
 
+import numba
 import numpy as np
 
 import darling._color as color
 import darling._jitkernels as kernels
 import darling.peaksearcher as peaksearcher
 from darling._gaussian_fit import fit_gaussian_with_linear_background_1D
+from darling._white_noise import _estimate_white_noise
+
+
+def estimate_white_noise(
+    data,
+    inital_guess=None,
+    truncate=3.5,
+    max_iterations=5,
+    convergence_tol=1e-3,
+    loop_outer_dims=True,
+    gauss_newton_refine=True,
+    n_iter_gauss_newton=3,
+):
+    """Build a per-pixel Gaussian white-noise model from a multidimensional data array.
+
+    The method separates (approximately) additive white noise from signal by repeatedly
+    estimating a Gaussian from the low end portion of the distribution (defined by a
+    symmetric truncation around a current mean value). Optionally, it refines the estimate
+    using a Gauss-Newton curve fit to a histogram.
+
+    This function is usefull for predicting accurate darks with associated uncertainties from
+    collected diffraction data. This method of predicting darks has 3 major benefits:
+
+    - No additional dark frames need to be collected.
+    - The metrics are often statistically much more robust than independently collected dark frames due to the
+      possibly large number of samples (a 20 x 30 mosa scan gives 600 samples per pixel which often can correspond
+      to 400-500 dark samples per pixel). This is especially apparent for the estimation of the standard deviation
+      of the dark field which is sensetive to the sample size.
+    - The conditions of the dark estimate is guaranteed to be exactly the same as the conditions of the data.
+
+    NOTE: This method is only valid as long as the data signal is somewhat sparse and clearly
+    separated from the noise floor. I.e for each detector pixel, the majority of readouts are
+    dark-redouts, without any diffraction signal.
+
+    Example usecase:
+
+    .. code-block:: python
+
+        import matplotlib.pyplot as plt
+        import numpy as np
+        import darling
+
+        _, data, motors = darling.assets.mosaicity_scan()
+        mean, std = darling.properties.estimate_white_noise(data)
+
+        fig, ax = plt.subplots(1, 2, figsize=(14, 7))
+        im = ax[0].imshow(mean, cmap="plasma")
+        ax[0].text(1, 4, "Estimate of Noise Mean", fontweight="bold", color="k")
+        fig.colorbar(im, ax=ax[0], fraction=0.0335, pad=0.02)
+        im = ax[1].imshow(std, cmap="spring")
+        ax[1].text(
+            1, 4, "Estimate of Noise Standard-Deviation", fontweight="bold", color="k"
+        )
+        fig.colorbar(im, ax=ax[1], fraction=0.0335, pad=0.02)
+        for a in ax.flatten():
+            for spine in a.spines.values():
+                spine.set_visible(False)
+        plt.tight_layout()
+        plt.show()
+
+
+    .. image:: ../../docs/source/images/white_noise.png
+
+    Args:
+        data (:obj:`numpy.ndarray`): If loop_outer_dims is ``True``, array of shape
+            ``(a, b, m)``, ``(a, b, m, n)``, or ``(a, b, m, n, o)``. For each detector pixel
+            ``(i, j)``, the values ``data[i, j, ...]`` form the sample distribution across
+            scan coordinates. If loop_outer_dims is ``False``, array of shape ``(m,)``, ``(m, n)``,
+            or ``(m, n, o)``, containing the sample distribution across scan coordinates.
+        inital_guess (:obj:`tuple` of :obj:`float`): Initial guess for the noise mean
+            and standard deviation. This is your expected mean noise level and standard
+            deviation of the noise. If not provided, a robust (but rough) estimate of
+            the noise floor is computed by sampling random pixels. The assumption is that
+            the majority of the data is noise (at least 25%).
+        truncate (:obj:`float`): Truncation factor that defines the inlier range
+            ``(mean - truncate * std, mean + truncate * std)`` used when estimating
+            mean and standard deviation. Defaults to ``3.5``. For each iteration, only the
+            data points within this range are used to update the estimate of the mean and
+            standard deviation.
+        max_iterations (:obj:`int`): Maximum number of tail-statistics iterations.
+            Defaults to ``5``. I.e the algorithm will iterate at most 5 times to update
+            the estimate of the mean and standard deviation.
+        convergence_tol (:obj:`float`): Absolute convergence tolerance for both mean
+            and standard deviation updates. Defaults to ``1e-3``. I.e the algorithm will
+            stop iterating if the absolute difference between the new and old estimate of
+            the mean and standard deviation is less than this value.
+        loop_outer_dims (:obj:`bool`): If ``True``, estimate mean and standard deviation
+            independently for each pixel, returning arrays of shape ``(a, b)``. I.e the
+            algorithm will estimate the mean and standard deviation for each pixel independently.
+            If ``False``, estimate a single (global) mean and standard deviation by
+            flattening the entire array. Defaults to ``True``.
+        gauss_newton_refine (:obj:`bool`): If ``True``, refine the estimates using a
+            Gauss-Newton fit of a Gaussian to a histogram constructed from the truncated
+            samples. Defaults to ``True``. I.e the algorithm will refine the estimate of
+            the mean and standard deviation using a Gauss-Newton fit of a Gaussian to a
+            histogram constructed from the truncated samples.
+        n_iter_gauss_newton (:obj:`int`): Number of Gauss-Newton iterations used during
+            refinement. Only used if ``gauss_newton_refine`` is ``True``. Defaults to ``3``.
+            I.e the algorithm will perform 3 Gauss-Newton iterations to refine the estimate
+            of the mean and standard deviation.
+
+    Returns:
+        mean, std (:obj:`tuple`): Estimated noise mean and standard deviation.
+
+        - If ``loop_outer_dims`` is ``True``, both are ``numpy.ndarray`` of shape ``(a, b)``.
+        - If ``loop_outer_dims`` is ``False``, both are scalar floats.
+    """
+    return _estimate_white_noise(
+        data,
+        inital_guess,
+        truncate,
+        max_iterations,
+        convergence_tol,
+        loop_outer_dims,
+        gauss_newton_refine,
+        n_iter_gauss_newton,
+    )
+
+
+@numba.njit(parallel=True, cache=True)
+def _estimate_white_noise_parallel(
+    data,
+    truncate,
+    mean_guess,
+    std_guess,
+    max_iterations,
+    convergence_tol,
+):
+    mean = np.full(data.shape[:2], mean_guess, dtype=np.float64)
+    std = np.full(data.shape[:2], std_guess, dtype=np.float64)
+    has_converged = np.full(data.shape[:2], False, dtype=bool)
+
+    for _ in range(max_iterations):
+        for i in numba.prange(data.shape[0]):
+            for j in range(data.shape[1]):
+                if has_converged[i, j]:
+                    continue
+
+                old_mean = float(mean[i, j])
+                old_std = float(std[i, j])
+
+                new_mean, new_std = _iterate_white_noise_tail_statistics(
+                    data[i, j].ravel().astype(np.float64),
+                    truncate,
+                    old_mean,
+                    old_std,
+                )
+
+                res_mean = np.abs(new_mean - old_mean)
+                res_std = np.abs(new_std - old_std)
+
+                mean[i, j] = new_mean
+                std[i, j] = new_std
+
+                if res_mean < convergence_tol and res_std < convergence_tol:
+                    has_converged[i, j] = True
+
+    return mean, std
+
+
+@numba.njit(parallel=True)
+def _curve_fit_white_noise_parallel(
+    data,
+    truncate,
+    mean,
+    std,
+    n_iter_gauss_newton,
+):
+    new_mean = np.empty(data.shape[:2], dtype=np.float64)
+    new_std = np.empty(data.shape[:2], dtype=np.float64)
+    for i in numba.prange(data.shape[0]):
+        for j in range(data.shape[1]):
+            new_mean[i, j], new_std[i, j], success = _curve_fit_white_noise_1D(
+                data[i, j].ravel(),
+                truncate,
+                mean[i, j],
+                std[i, j],
+                n_iter_gauss_newton,
+            )
+            if not success:
+                new_mean[i, j] = mean[i, j]
+                new_std[i, j] = std[i, j]
+    return new_mean, new_std
+
+
+@numba.njit
+def _curve_fit_white_noise_1D(
+    data,
+    truncate,
+    mean,
+    std,
+    n_iter_gauss_newton,
+):
+    if std <= 0.0:
+        return mean, std, 0
+
+    hist, bin_edges_start, bin_size = _histogram_white_noise_1d(
+        data,
+        truncate,
+        mean,
+        std,
+    )
+
+    A = hist.max()
+
+    bin_edges = np.linspace(
+        bin_edges_start,
+        bin_edges_start + bin_size * (len(hist) - 1),
+        len(hist),
+    )
+
+    bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2.0
+
+    initial_params = np.array([A, std, mean])
+    fitted_params, success = gauss_newton_fit_1D(
+        hist,
+        bin_centers,
+        initial_params,
+        n_iter=n_iter_gauss_newton,
+        func_and_grad=func_and_grad_gaussian,
+    )
+
+    return fitted_params[2], fitted_params[1], success
+
+
+@numba.njit(cache=True)
+def _histogram_white_noise_1d(data_flat, truncate, mean, std):
+    width = truncate * std
+    cut = mean + width
+
+    bin_size = std / 2.0
+    nbins = int((2.0 * width) / bin_size) + 1
+    bin_edges_start = mean - width
+
+    hist = np.zeros(nbins, dtype=np.float64)
+    inv = 1.0 / bin_size
+    n = len(data_flat)
+
+    for i in range(n):
+        x = data_flat[i]
+        if x < cut and x > bin_edges_start:
+            idx = int((x - bin_edges_start) * inv)
+            if idx < 0:
+                continue
+            if idx >= nbins:
+                idx = nbins - 1
+            hist[idx] += 1
+
+    return hist, bin_edges_start, bin_size
+
+
+@numba.njit(cache=True)
+def _iterate_white_noise_tail_statistics(
+    data_flat,
+    truncate,
+    mean,
+    std,
+):
+    new_mean = 0.0
+    new_std = 0.0
+    count = 0
+
+    cut = mean + truncate * std
+    low = mean - truncate * std
+    n = len(data_flat)
+
+    for i in range(n):
+        x = data_flat[i]
+        if x < cut and x > low:
+            count += 1
+            new_mean += x
+
+    if count == 0:
+        return mean, std
+
+    new_mean /= count
+
+    for i in range(n):
+        x = data_flat[i]
+        if x < cut and x > low:
+            dx = x - new_mean
+            new_std += dx * dx
+
+    if count > 1:
+        new_std /= count - 1
+    else:
+        return new_mean, 0.0
+
+    if new_std <= 0.0:
+        return new_mean, 0.0
+    else:
+        new_std = np.sqrt(new_std)
+        return new_mean, new_std
 
 
 def rgb(property_2d, norm="dynamic", coordinates=None):
@@ -408,7 +702,7 @@ def _check_data(data, coordinates):
 def fit_1d_gaussian(
     data,
     coordinates,
-    number_of_gauss_newton_iterations=7,
+    n_iter_gauss_newton=7,
     mask=None,
 ):
     """Fit analytical gaussian + linear background for each pixel in a 2D image.
@@ -427,7 +721,7 @@ def fit_1d_gaussian(
             respectively. I.e, as an example, these could be the phi and chi angular
             cooridnates as a meshgrid. Shape=(ndim, m, n, ...). where ndim=1 for a rocking scan,
             ndim=2 for a mosaicity scan, etc.
-        number_of_gauss_newton_iterations (:obj:`int`): Number of Gauss-Newton iterations to use for the fit. Defaults to 7.
+        n_iter_gauss_newton (:obj:`int`): Number of Gauss-Newton iterations to use for the fit. Defaults to 7.
         mask (:obj:`numpy.ndarray`): 2D array of shape (ny, nx) with dtype bool. Defaults to None. If provided, only the pixels where mask is True will be fitted.
     Returns:
         :obj:`numpy.ndarray`: Output array of shape (ny, nx, 5) of dtype float64 with
@@ -448,7 +742,7 @@ def fit_1d_gaussian(
     return fit_gaussian_with_linear_background_1D(
         data,
         coordinates[0],
-        number_of_gauss_newton_iterations,
+        n_iter_gauss_newton,
         mask,
     )
 

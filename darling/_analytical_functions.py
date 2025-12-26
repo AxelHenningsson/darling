@@ -205,6 +205,40 @@ def func_and_grad_gaussian_with_linear_background(params, x):
 
 
 @numba.njit(cache=True)
+def func_and_grad_gaussian(params, x):
+    """Evaluate Gaussian and its gradient.
+
+    Args:
+        params (:obj:`numpy.ndarray`): Array of parameters of shape (3,), where
+        params[0] is the amplitude of the Gaussian peak (A),
+        params[1] is the standard deviation of the Gaussian peak (sigma),
+        params[2] is the mean position of the Gaussian peak (mu).
+        x (:obj:`float`): Position at which to evaluate the function.
+
+    Returns:
+        tuple:
+            func (:obj:`float`): Function value f(x).
+            grad (:obj:`numpy.ndarray`): Gradient vector of shape (3,)
+                ordered as [df/dA, df/dsigma, df/dmu].
+    """
+    A, sigma, mu = params
+    res = mu - x
+    res2 = res * res
+    s2 = sigma * sigma
+    s3 = s2 * sigma
+    l1 = np.exp(-0.5 * res2 / s2)
+    func = A * l1
+    grad = np.array(
+        [
+            l1,
+            A * res2 * l1 / s3,
+            -A * res * l1 / s2,
+        ]
+    )
+    return func, grad
+
+
+@numba.njit(cache=True)
 def func_and_grad_pseudo_voigt_with_linear_background(params, x):
     """Evaluate pseudo-Voigt with linear background and its gradient.
 
