@@ -35,6 +35,8 @@ class TestDiffractionVectors(unittest.TestCase):
         np.testing.assert_equal(np.abs(intragranular_mosaicity) < 3, True)
 
         if self.debug:
+            import matplotlib.pyplot as plt
+
             fontsize = 22
             ticksize = 22
             plt.rcParams["font.size"] = fontsize

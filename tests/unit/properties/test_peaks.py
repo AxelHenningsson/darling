@@ -99,6 +99,7 @@ class TestPeakSearcher(unittest.TestCase):
             self.assertTrue(cy in range(0, w, 21))
 
         if self.debug:
+            import matplotlib.pyplot as plt
             plt.style.use("dark_background")
             fig, ax = plt.subplots(1, 2, figsize=(14, 7))
             im = ax[0].imshow(img)
@@ -312,6 +313,8 @@ class TestPeaks(unittest.TestCase):
         self.assertTrue(np.all(features["number_of_pixels"] >= 0))
 
         if self.debug:
+            import matplotlib.pyplot as plt
+
             plt.style.use("dark_background")
             fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(13, 7))
             im1 = ax1.imshow(features["mean_motor1"][..., 0])

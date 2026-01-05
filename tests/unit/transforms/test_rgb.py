@@ -122,6 +122,8 @@ class TestRGB(unittest.TestCase):
         )
 
         if self.debug:
+            import matplotlib.pyplot as plt
+
             plt.style.use("dark_background")
             fig, ax = plt.subplots(1, 1, figsize=(7, 7))
             ax.set_title("Handle nans")

@@ -35,6 +35,8 @@ class TestMoments(unittest.TestCase):
         relative_error = (true_mean - mu) / resolution
 
         if self.debug:
+            import matplotlib.pyplot as plt
+
             plt.style.use("dark_background")
             fig, ax = plt.subplots(1, 3, figsize=(6, 8))
             im = ax[0].imshow(mu[:, :])
@@ -82,6 +84,8 @@ class TestMoments(unittest.TestCase):
         )
 
         if self.debug:
+            import matplotlib.pyplot as plt
+
             plt.style.use("dark_background")
             fig, ax = plt.subplots(3, 2, figsize=(6, 8))
             for i in range(2):  # computed mean
@@ -133,6 +137,8 @@ class TestMoments(unittest.TestCase):
         )
 
         if self.debug:
+            import matplotlib.pyplot as plt
+
             plt.style.use("dark_background")
             fig, ax = plt.subplots(3, 3, figsize=(6, 8))
             for i in range(3):  # computed mean
@@ -197,6 +203,8 @@ class TestMoments(unittest.TestCase):
         self.assertEqual(mu.dtype, np.float32)
 
         if self.debug:
+            import matplotlib.pyplot as plt
+
             plt.style.use("dark_background")
             fig, ax = plt.subplots(1, 2, figsize=(12, 4))
             for i in range(2):
@@ -233,6 +241,8 @@ class TestMoments(unittest.TestCase):
         )
 
         if self.debug:
+            import matplotlib.pyplot as plt
+
             plt.style.use("dark_background")
             fig, ax = plt.subplots(1, 3, figsize=(8, 6))
             im = ax[0].imshow(np.sqrt(cov) / sigma0)
@@ -287,6 +297,8 @@ class TestMoments(unittest.TestCase):
 
         if self.debug:
             error = np.sqrt(true_variance) - np.sqrt(cov)
+            import matplotlib.pyplot as plt
+
             plt.style.use("dark_background")
             fig, ax = plt.subplots(3, cov.shape[2], figsize=(6, 8))
             for i in range(cov.shape[2]):  # computed covariance
@@ -357,6 +369,8 @@ class TestMoments(unittest.TestCase):
 
         if self.debug:
             error = np.sqrt(true_variance) - np.sqrt(cov)
+            import matplotlib.pyplot as plt
+
             plt.style.use("dark_background")
             fig, ax = plt.subplots(3, cov.shape[2], figsize=(6, 8))
             for i in range(cov.shape[2]):  # computed covariance
@@ -438,6 +452,8 @@ class TestMoments(unittest.TestCase):
         self.assertEqual(cov.dtype, np.float32)
 
         if self.debug:
+            import matplotlib.pyplot as plt
+
             plt.style.use("dark_background")
             fig, ax = plt.subplots(1, 2, figsize=(12, 4))
             for i in range(2):
