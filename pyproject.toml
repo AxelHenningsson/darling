@@ -11,9 +11,13 @@ packages = ["darling"]
 [tool.hatch.build.targets.sdist]
 include = ["darling/**", "README.rst", "LICENSE"]
 
+[tool.pytest.ini_options]
+pythonpath = ["."]
+addopts = ["--import-mode=importlib"]
+
 [project]
 name = "darling-pypi"
-version = "1.0.0"
+version = "2.0.0"
 description = "A python [D]ark field x-ray microscopy [A]nalysis &amp; [R]econstruction [L]ibrary for rapid data [IN]spection &amp; [G]raphing"
 readme = "README.rst"
 license = { file = "LICENSE" }

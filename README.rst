@@ -24,13 +24,15 @@ the python **[D]ark** field x-ray microscopy **[A]nalysis** & **[R]econstruction
 
 Authors
 ------------------------------------
-``darling`` is written and maintained by: 
+``darling`` is written and maintained by:
 
 `Axel Henningsson <https://github.com/AxelHenningsson>`_,
+
+with important early contributions from:
 `Felix Tristan Frankus <https://github.com/adcret>`_ and
 `Adam André William Cretton <https://github.com/fetrifra>`_
 
-affiliated with DTU. The core ideas of this library was originally written during a beamtime at ESRF id03D. 
+The core ideas of this library was originally written during a beamtime at ESRF id03D.
 
 Until an associated journal publication is available, if you use this code in your research, we ask that you cite this repository.
 
@@ -44,46 +46,31 @@ Usecase
 Loading & plotting Data
 ================================================
 
-Darling collects many useful tools in the properties module.
+Darling collects many useful tools in the ``properties`` and ``transforms`` modules.
 
-For example, it is possible to model the angular intensity distribution of a scan using a Gaussian Mixture Model (GMM)
-and then color code the scan based on the first maxima of the GMM using a RGB color map known as a mosaicity map.
-
-
-.. code-block:: python
-
-   import numpy as np
-
-   # read some toy data in
-   path_to_data, _, _ = darling.assets.domains()  # replace with your own data
-   scan_id = "1.1"  # tope level key in the hdf5 file
-   dset = darling.DataSet(path_to_data, scan_id)
-
-   # model the intensity distribution using a GMM
-   features = darling.properties.gaussian_mixture(dset.data, k=4, coordinates=dset.motors)
-
-   # color code the scan based on the first maxima of the GMM
-   first_maxima_mean = np.concatenate(
-      (features["mean_motor1"][..., 0, None], features["mean_motor2"][..., 0, None]),
-      axis=-1,
-   )
-   rgbmap, colorkey, colorgrid = darling.properties.rgb(
-      first_maxima_mean, norm="dynamic", coordinates=dset.motors
-   )
-
-To visualize the resulting mosaicity map, you can use the following code:
+For example, it is possible to segment per-pixel peaks and extract features from them. Color-coding the the mean motor position of the first peak per pixel gives a mosaicity map as shown below.
 
 
 .. code-block:: python
 
-   import matplotlib.pyplot as plt
+   import darling
 
-   # plot the resulting mosaicity map
-   plt.style.use('dark_background')
-   fig, ax = plt.subplots(1, 1, figsize=(7,7))
-   im = ax.imshow(rgbmap)
-   plt.tight_layout()
+   # replace with your own data path
+   path_to_data, _, _ = darling.io.assets.domains()
+   dset = darling.DataSet(path_to_data, scan_id="1.1")
+
+   # segment per-pixel peaks and extract features
+   peakmap = darling.properties.peaks(dset.data, k=4, coordinates=dset.motors)
+
+   # color code the scan based on the first peak-maxima mean motor position
+   rgbmap, colorkey, colorgrid = darling.transforms.rgb(
+      peakmap.mean, coordinates=dset.motors
+   )
+
+   plt.figure()
+   plt.imshow(rgbmap)
    plt.show()
+
 
 .. image:: https://github.com/AxelHenningsson/darling/blob/dev/docs/source/images/domains_mosa.png?raw=true
    :align: center
@@ -111,7 +98,7 @@ In general, you probably want to install in a fresh virtual environment as
    cd darling
    pip install -e .
 
-use 
+use
 
 .. code-block:: bash
 
