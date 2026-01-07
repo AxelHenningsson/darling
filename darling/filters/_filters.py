@@ -1,3 +1,5 @@
+import warnings
+
 import numba
 import numpy as np
 
@@ -359,6 +361,9 @@ def gaussian_filter(
     axis and normalised to sum to 1 (intensity preserving). Convolution is performed
     with zero padding at the boundaries (samples outside the array are treated as 0).
 
+    NOTE: For integer data, the filtering will not be intensity preserving due to casting.
+    Such data will raise a UserWarning.
+
     Dimensionality handling:
 
         When ``loop_outer_dims=True`` (default), the first two dimensions of the data
@@ -402,7 +407,7 @@ def gaussian_filter(
         _, data, motors = darling.io.assets.mosaicity_scan()
 
         filtered_data = darling.filters.gaussian_filter(
-            data,
+            data.astype(np.float64),
             sigma = (1.0, 1.0),
             axis = (0, 1),
             radius = (3, 5),
@@ -459,21 +464,26 @@ def gaussian_filter(
     Returns:
         :obj:`numpy.ndarray`:
             The filtered data (may be a copy or a view depending on ``copy``).
+
+    Raises:
+        UserWarning: If the input data is of integer type. For integer data, the filtering will not be intensity
+        preserving due to float -> integer casting.
     """
     if loop_outer_dims is False:
         trailing_dims = data.ndim
         _check_inputs_gaussian_filter(
-            data, sigma, truncate, radius, axis, loop_outer_dims, trailing_dims
+            data, sigma, truncate, radius, axis, loop_outer_dims
         )
+        trailing_dims = data.ndim
         kernels, axis = _get_kernels_and_axis(
             data, sigma, truncate, radius, axis, trailing_dims
         )
         return _gaussian_filter_single_pixel(data, kernels, axis, copy)
     else:
-        trailing_dims = data.ndim - 2
         _check_inputs_gaussian_filter(
-            data, sigma, truncate, radius, axis, loop_outer_dims, trailing_dims
+            data, sigma, truncate, radius, axis, loop_outer_dims
         )
+        trailing_dims = data.ndim - 2
         kernels, axis = _get_kernels_and_axis(
             data, sigma, truncate, radius, axis, trailing_dims
         )
@@ -708,7 +718,7 @@ def _check_input_snr_threshold(
 
 
 def _check_inputs_gaussian_filter(
-    data, sigma, truncate, radius, axis, loop_outer_dims, trailing_dims
+    data, sigma, truncate, radius, axis, loop_outer_dims, supress_warnings=False
 ):
     if axis is not None and isinstance(sigma, tuple) and not isinstance(axis, tuple):
         raise ValueError("You passed a tuple of sigma but axis is not a tuple")
@@ -780,6 +790,8 @@ def _check_inputs_gaussian_filter(
     else:
         raise ValueError(f"Sigma must be an int, float or tuple but got {type(sigma)}")
 
+    trailing_dims = data.ndim - 2 if loop_outer_dims is True else data.ndim
+
     feasible_axis_values = [i for i in range(trailing_dims)] + [
         -i for i in range(1, trailing_dims + 1)
     ]
@@ -801,6 +813,65 @@ def _check_inputs_gaussian_filter(
         raise ValueError(f"Axis must be an integer or tuple but got {type(axis)}")
     else:
         pass
+
+    if not supress_warnings:
+        if np.issubdtype(data.dtype, np.integer):
+            warnings.warn(
+                f"data is of integer type {data.dtype}, hence Gaussian filtering will not be intensity preserving due to float -> integer casting.",
+                UserWarning,
+                stacklevel=2,
+            )
+
+
+def _get_filter_parameters_from_dict(data, loop_outer_dims, filter):
+    """Get kernels and axis from a dictionary of filter parameters.
+
+    This is a helper function for darling.properties.peaks() to get the
+    kernels and axis from a dictionary of filter parameters with the
+    end goal of applying smoothing on the fly, before peak detection.
+
+    Args:
+        data (:obj:`numpy.ndarray`): Input data array.
+        loop_outer_dims (:obj:`bool`): Whether to loop over the outer dimensions.
+        filter (:obj:`dict`): Dictionary of filter parameters.
+            Must contain the keys "sigma", "truncate", "radius", "axis".
+    Returns:
+        :obj:`tuple`: Tuple of kernels and axis and threshold.
+    """
+    filter_dict = {
+        "sigma": None,
+        "truncate": 4.0,
+        "radius": None,
+        "axis": None,
+        "threshold": None,
+    }
+    for key in filter_dict:
+        if filter is not None and key in filter:
+            filter_dict[key] = filter[key]
+
+    threshold = (
+        np.min(data) if filter_dict["threshold"] is None else filter_dict["threshold"]
+    )
+
+    if filter_dict["sigma"] is None:
+        return None, None, threshold
+
+    sigma = filter_dict["sigma"]
+    truncate = filter_dict["truncate"]
+    radius = filter_dict["radius"]
+    axis = filter_dict["axis"]
+
+    trailing_dims = data.ndim - 2 if loop_outer_dims is True else data.ndim
+
+    _check_inputs_gaussian_filter(
+        data, sigma, truncate, radius, axis, loop_outer_dims, supress_warnings=True
+    )
+
+    kernels, axis = _get_kernels_and_axis(
+        data, sigma, truncate, radius, axis, trailing_dims
+    )
+
+    return kernels, axis, threshold
 
 
 if __name__ == "__main__":

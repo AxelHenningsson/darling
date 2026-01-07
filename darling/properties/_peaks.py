@@ -35,6 +35,12 @@ import warnings
 import numba
 import numpy as np
 
+from ..filters._filters import (
+    _convolve_1d,
+    _convolve_2d,
+    _convolve_3d,
+    _get_filter_parameters_from_dict,
+)
 from ._constants import _FEATURE_MAPPING
 from ._peakmap import PeakMap
 
@@ -58,10 +64,14 @@ def peaks(
     k=3,
     coordinates=None,
     loop_outer_dims=True,
+    filter=None,
 ):
     """Find peaks/domains on a 2D grid of 1D, 2D or 3D data-blocks and extract features from them.
 
     A peak/domain is defined as a connected domain of pixels surrounding a local maximum.
+
+    NOTE: Zero valued pixels are treated as void. When thresholding is used,
+        data values less than the threshold are set to zero and are thus treated as void.
 
     For a data array of shape (a, b, m, n, o), each primary pixel (i, j) contains a
     (m, n, o) sub-array that is analyzed as a 3D image. Local maxima are identified
@@ -139,6 +149,15 @@ def peaks(
         loop_outer_dims (:obj:`bool`): whether to loop over the outer dimensions of the data array.
             Defaults to True in which case the data array must be at least 3D and at most 5D.
             If False, the data array must be 1D, 2D or 3D (i.e data for a single pixel)
+        filter (:obj:`dict`): A dictionary of filter parameters defining a Gaussian filter and thresholding.
+            Defaults to None, in which case no filter is applied. The filter dictionary must contain the keys:
+            - **sigma**: Standard deviation of the Gaussian filter. Defaults to None.
+            - **truncate**: Truncation of the Gaussian filter. Defaults to 4.0.
+            - **radius**: Radius of the Gaussian filter. Defaults to None.
+            - **axis**: Axis of the Gaussian filter. Defaults to None.
+            - **threshold**: Threshold for peak detection. Defaults to np.min(data).
+            When both sigma and threshold are set, thresholding is applied before the Gaussian filtering.
+            Values less than or equal the threshold are not considered during peak / domain segmentation.
 
     Returns:
         :obj:`darling.properties.PeakMap` : a wrapper for the per peak features as a dictionary with keys corresponding to:
@@ -167,20 +186,45 @@ def peaks(
             See the PeakMap class for more details.
 
     """
-    _check_inputs_peaks(data, k, coordinates, loop_outer_dims)
+    _check_inputs_peaks(data, k, coordinates, loop_outer_dims, filter)
+    kernels, axis, threshold = _get_filter_parameters_from_dict(
+        data, loop_outer_dims, filter
+    )
     if loop_outer_dims:
         trailing_dims = data.ndim - 2
-        features_array = _peaksearch_parallel(data, k, coordinates)
+        features_array = _peaksearch_parallel(
+            data,
+            k,
+            coordinates,
+            kernels,
+            axis,
+            threshold,
+        )
     else:
         trailing_dims = data.ndim
-        labeled_array, _ = local_max_label(data, loop_outer_dims=False)
-        features_array = extract_features(labeled_array, data, k, coordinates)
+        labeled_array, nlabels = local_max_label(data, loop_outer_dims, filter)
+        features_array = _extract_features(labeled_array, data, coordinates, nlabels, k)
     feature_table = _build_feature_table(features_array, trailing_dims)
     return PeakMap(feature_table)
 
 
-def _check_inputs_peaks(data, k, coordinates, loop_outer_dims):
+def _check_inputs_peaks(data, k, coordinates, loop_outer_dims, filter):
     """Basic sanity checks on the inputs to the peaks function."""
+    trailing_dims = data.ndim - 2 if loop_outer_dims is True else data.ndim
+
+    if filter is not None and not isinstance(filter, dict):
+        raise ValueError(f"filter must be a dictionary but got {type(filter)}")
+    if filter is not None and "sigma" not in filter:
+        raise ValueError(f"filter must contain a 'sigma' key but got {filter.keys()}")
+    if filter is not None and "truncate" not in filter:
+        raise ValueError(
+            f"filter must contain a 'truncate' key but got {filter.keys()}"
+        )
+    if filter is not None and "radius" not in filter:
+        raise ValueError(f"filter must contain a 'radius' key but got {filter.keys()}")
+    if filter is not None and "axis" not in filter:
+        raise ValueError(f"filter must contain a 'axis' key but got {filter.keys()}")
+
     if k < 0:
         raise ValueError(f"k must be larger than 0 but got {k}")
     if loop_outer_dims is True and data.ndim not in [3, 4, 5]:
@@ -195,7 +239,6 @@ def _check_inputs_peaks(data, k, coordinates, loop_outer_dims):
         raise ValueError(
             f"coordinates must be a numpy array but got {type(coordinates)}"
         )
-    trailing_dims = data.ndim - 2 if loop_outer_dims is True else data.ndim
     if coordinates is not None and coordinates.shape[0] != trailing_dims:
         raise ValueError(
             f"coordinates.shape[0] must be {trailing_dims} for such data but got {coordinates.ndim}"
@@ -224,7 +267,7 @@ def label_sparse(data):
     return local_max_label(data)
 
 
-def local_max_label(data, loop_outer_dims=True):
+def local_max_label(data, loop_outer_dims=True, filter=None):
     """Assigns pixels in a 1D, 2D or 3D image to the closest local maxima.
 
     The algorithm proceeds as follows:
@@ -241,6 +284,9 @@ def local_max_label(data, loop_outer_dims=True):
 
     To illustrate how the local maxclimber algorithm can separate overlapping gaussians
     we can consider the following example:
+
+    NOTE: Zero valued pixels are treated as void. When thresholding is used,
+        data values less than the threshold are set to zero and are thus treated as void.
 
     .. code-block:: python
 
@@ -280,19 +326,33 @@ def local_max_label(data, loop_outer_dims=True):
         loop_outer_dims (:obj:`bool`): whether to loop over the outer dimensions of the data array.
             Defaults to True, in which case the data array must be 1D, 2D or 3D.
             If True, the data array must be at least 3D and at most 5D.
+        filter (:obj:`dict`): A dictionary of filter parameters defining a Gaussian filter and thresholding.
+            Defaults to None, in which case no filter is applied. The filter dictionary must contain the keys:
+            - **sigma**: Standard deviation of the Gaussian filter. Defaults to None.
+            - **truncate**: Truncation of the Gaussian filter. Defaults to 4.0.
+            - **radius**: Radius of the Gaussian filter. Defaults to None.
+            - **axis**: Axis of the Gaussian filter. Defaults to None.
+            - **threshold**: Threshold for peak detection. Defaults to np.min(data).
+            When both sigma and threshold are set, thresholding is applied before the Gaussian filtering.
+            Values less than or equal the threshold are not considered during peak / domain segmentation.
 
     Returns:
         labeled_array (:obj:`numpy.ndarray`): same shape as the input ``data`` with integer labels for each pixel.
         number_of_labels (:obj:`int`): the number of labels assigned to the data map
     """
+
+    kernels, axis, threshold = _get_filter_parameters_from_dict(
+        data, loop_outer_dims, filter
+    )
+
     if loop_outer_dims:
         trailing_dims = data.ndim - 2
         if trailing_dims == 1:
-            return _local_max_label_1D_parallel(data)
+            return _local_max_label_1D_parallel(data, kernels, axis, threshold)
         elif trailing_dims == 2:
-            return _local_max_label_2D_parallel(data)
+            return _local_max_label_2D_parallel(data, kernels, axis, threshold)
         elif trailing_dims == 3:
-            return _local_max_label_3D_parallel(data)
+            return _local_max_label_3D_parallel(data, kernels, axis, threshold)
         else:
             raise ValueError(
                 f"When loop_outer_dims is True, trailing dimensions of data must be 1D, 2D or 3D but found {trailing_dims} trailing dimensions"
@@ -303,11 +363,17 @@ def local_max_label(data, loop_outer_dims=True):
             data.shape, np.prod(data.shape)
         )
         if trailing_dims == 1:
-            return _local_max_label_1D(data, labeled_array, tmpi)
+            return _local_max_label_1D(
+                data, labeled_array, tmpi, kernels, axis, threshold
+            )
         elif trailing_dims == 2:
-            return _local_max_label_2D(data, labeled_array, tmpi, tmpj)
+            return _local_max_label_2D(
+                data, labeled_array, tmpi, tmpj, kernels, axis, threshold
+            )
         elif trailing_dims == 3:
-            return _local_max_label_3D(data, labeled_array, tmpi, tmpj, tmpk)
+            return _local_max_label_3D(
+                data, labeled_array, tmpi, tmpj, tmpk, kernels, axis, threshold
+            )
         else:
             raise ValueError(
                 f"When loop_outer_dims is False, total dimensions of data must be 1D, 2D or 3D but found {trailing_dims} dimensions"
@@ -322,47 +388,58 @@ def extract_features(labeled_array, data, k, coordinates=None):
             2D data, (m,) for 1D data
         data (:obj:`numpy.ndarray`): The underlying intensity data array with shape (m,n,o) for 3D data,
             (m,n) for 2D data, (m,) for 1D data
+        k (:obj:`int`): number of segmented domains to keep features for, the first k peaks with highest
+            integrated intensity will be kept, remaining peaks are ignored. Defaults to 3.
         coordinates (:obj:`tuple`): A tuple with the coordinates of the motor positions.
             The coordinates are expected to be in the same order as axis 0, 1, 2 of the data array.
             and to have shapes (1, m, n), (2, m, n) or (3, m, n, o) for 1D, 2D or 3D data respectively.
             Defaults to None in which case integer indices are assumed to prevail.
             (i.e motors of the axis are np.arange(m), np.arange(n), np.arange(o))
-        k (:obj:`int`): number of segmented domains to keep features for, the first k peaks with highest
-            integrated intensity will be kept, remaining peaks are ignored. Defaults to 3.
 
     Returns:
-        :obj:`dict` of :obj:`numpy.ndarray`: a dictionary with keys corresponding to
-        various local-max labeled peak features. These are:
-        - **sum_intensity**: Sum of the intensity values in the segmented domain.
-        - **max_intensity**: Integrated intensity in the segmented domain.
-        - **number_of_pixels**: Number of pixels in the segmented domain.
-        - **maxima_axis_0**: Coordinate of the pixel with the highest intensity along axis=0 in the the segmented domain.
-        - **maxima_axis_1**: Coordinate of the pixel with the highest intensity along axis=1 in the the segmented domain.
-        - **maxima_axis_2**: Coordinate of the pixel with the highest intensity along axis=2 in the the segmented domain.
-        - **mean_axis_0**: Arithmetric Mean coordinate along axis=0 in the the segmented domain.
-        - **mean_axis_1**: Arithmetric Mean coordinate along axis=1 in the the segmented domain.
-        - **mean_axis_2**: Arithmetric Mean coordinate along axis=2 in the the segmented domain.
-        - **variance_axis_0**: Variance of the coordinates along axis=0 in the the segmented domain.
-        - **variance_axis_1**: Variance of the coordinates along axis=1 in the the segmented domain.
-        - **variance_axis_2**: Variance of the coordinates along axis=2 in the the segmented domain.
-        - **variance_axis_0_axis_1**: Covariance of the coordinates along axis=0 and axis=1 in the the segmented domain.
-        - **variance_axis_0_axis_2**: Covariance of the coordinates along axis=0 and axis=2 in the the segmented domain.
-        - **variance_axis_1_axis_2**: Covariance of the coordinates along axis=1 and axis=2 in the the segmented domain.
+        :obj:`darling.properties.PeakMap` : a wrapper for the per peak features as a dictionary with keys corresponding to:
+            - **sum_intensity**: Sum of the intensity values in the segmented domain.
+            - **max_intensity**: Integrated intensity in the segmented domain.
+            - **number_of_pixels**: Number of pixels in the segmented domain.
+            - **maxima_axis_0**: Coordinate of the pixel with the highest intensity along axis=0 in the the segmented domain.
+            - **maxima_axis_1**: Coordinate of the pixel with the highest intensity along axis=1 in the the segmented domain.
+            - **maxima_axis_2**: Coordinate of the pixel with the highest intensity along axis=2 in the the segmented domain.
+            - **mean_axis_0**: Arithmetric Mean coordinate along axis=0 in the the segmented domain.
+            - **mean_axis_1**: Arithmetric Mean coordinate along axis=1 in the the segmented domain.
+            - **mean_axis_2**: Arithmetric Mean coordinate along axis=2 in the the segmented domain.
+            - **variance_axis_0**: Variance of the coordinates along axis=0 in the the segmented domain.
+            - **variance_axis_1**: Variance of the coordinates along axis=1 in the the segmented domain.
+            - **variance_axis_2**: Variance of the coordinates along axis=2 in the the segmented domain.
+            - **variance_axis_0_axis_1**: Covariance of the coordinates along axis=0 and axis=1 in the the segmented domain.
+            - **variance_axis_0_axis_2**: Covariance of the coordinates along axis=0 and axis=2 in the the segmented domain.
+            - **variance_axis_1_axis_2**: Covariance of the coordinates along axis=1 and axis=2 in the the segmented domain.
+
+            For loop_outer_dims is True, these are fields across the 2D outer dimensions of the data array such that
+            features["max_intensity"][i, j, k] is the integrated intensity in the segmented domain for pixel (i, j) and peak number k.
+            features["number_of_pixels"][i, j, k] is the number of pixels in the segmented domain for pixel (i, j) and peak number k.
+            ...etc....
+
+            The PeakMap object provides additional convenience methods for manipulating the features table, such as sorting.
+            See the PeakMap class for more details.
     """
     coordinates = np.indices(data.shape) if coordinates is None else coordinates
     nlabels = np.max(labeled_array)
-    return _extract_features(labeled_array, data, coordinates, nlabels, k)
+    features_array = _extract_features(labeled_array, data, coordinates, nlabels, k)
+    feature_table = _build_feature_table(
+        features_array, trailing_dims=labeled_array.ndim
+    )
+    return PeakMap(feature_table)
 
 
-def _peaksearch_parallel(data, k, coordinates):
+def _peaksearch_parallel(data, k, coordinates, kernels, axis, threshold):
     """Parallel wrapper for peaksearch for 1D, 2D or 3D data. See these functions for docs and algorithm details."""
     trailing_dims = data.ndim - 2
     if trailing_dims == 1:
-        return _peaksearch_parallel_1D(data, coordinates, k)
+        return _peaksearch_parallel_1D(data, coordinates, k, kernels, axis, threshold)
     elif trailing_dims == 2:
-        return _peaksearch_parallel_2D(data, coordinates, k)
+        return _peaksearch_parallel_2D(data, coordinates, k, kernels, axis, threshold)
     elif trailing_dims == 3:
-        return _peaksearch_parallel_3D(data, coordinates, k)
+        return _peaksearch_parallel_3D(data, coordinates, k, kernels, axis, threshold)
     else:
         raise ValueError(
             f"Trailing dimensions of data array are expected to be 1D, 2D or 3D but found {trailing_dims} trailing dimensions with total shape of data.shape={data.shape}"
@@ -408,7 +485,7 @@ def _allocate_climber_arrays(data_shape, max_iterations):
 
 
 @numba.njit(parallel=True)
-def _local_max_label_1D_parallel(data):
+def _local_max_label_1D_parallel(data, kernels, axis, threshold):
     """Parallel wrapper for local_max_label_1D for 1D data. See this function for docs and algorithm details."""
     a, b, m = data.shape
     labels = np.empty((a, b, m), dtype=np.uint16)
@@ -416,6 +493,8 @@ def _local_max_label_1D_parallel(data):
 
     nthreads = numba.get_num_threads()
     labeled_array, tmpi, _, _ = _allocate_climber_arrays_per_thread((m,), m, nthreads)
+
+    # TODO: apply the smoothing + thresholding on the fly
 
     for p in numba.prange(a * b):
         t = numba.get_thread_id()
@@ -428,13 +507,16 @@ def _local_max_label_1D_parallel(data):
             data[i, j],
             labeled_array[t],
             tmpi[t],
+            kernels,
+            axis,
+            threshold,
         )
 
     return labels, nlabels
 
 
 @numba.njit(parallel=True)
-def _local_max_label_2D_parallel(data):
+def _local_max_label_2D_parallel(data, kernels, axis, threshold):
     """Parallel wrapper for local_max_label_2D for 2D data. See this function for docs and algorithm details."""
     a, b, m, n = data.shape
     labels = np.empty((a, b, m, n), dtype=np.uint16)
@@ -457,13 +539,16 @@ def _local_max_label_2D_parallel(data):
             labeled_array[t],
             tmpi[t],
             tmpj[t],
+            kernels,
+            axis,
+            threshold,
         )
 
     return labels, nlabels
 
 
 @numba.njit(parallel=True)
-def _local_max_label_3D_parallel(data):
+def _local_max_label_3D_parallel(data, kernels, axis, threshold):
     """Parallel wrapper for local_max_label_3D for 3D data. See this function for docs and algorithm details."""
     a, b, m, n, o = data.shape
     labels = np.empty((a, b, m, n, o), dtype=np.uint16)
@@ -473,6 +558,8 @@ def _local_max_label_3D_parallel(data):
     labeled_array, tmpi, tmpj, tmpk = _allocate_climber_arrays_per_thread(
         (m, n, o), m * n * o, nthreads
     )
+
+    # TODO: apply the smoothing + thresholding on the fly
 
     for p in numba.prange(a * b):
         t = numba.get_thread_id()
@@ -487,13 +574,16 @@ def _local_max_label_3D_parallel(data):
             tmpi[t],
             tmpj[t],
             tmpk[t],
+            kernels,
+            axis,
+            threshold,
         )
 
     return labels, nlabels
 
 
 @numba.njit(cache=True)
-def _local_max_label_1D(data, labeled_array, tmpi):
+def _local_max_label_1D(data_block, labeled_array, tmpi, kernels, axis, threshold):
     """Assigns pixels in a 1D image to the closest local maxima.
 
     The algorithm proceeds as follows:
@@ -508,13 +598,25 @@ def _local_max_label_1D(data, labeled_array, tmpi):
     This process ensures that each pixel is assigned to the nearest local maximum
     through a gradient ascent type climb.
 
+    NOTE: data values of exactly zero are treated as void. When thresholding is used,
+        data values less than the threshold are set to zero and are thus treated as void.
+
     Args:
-        data (:obj:`numpy.ndarray`): a 1D data map to process. shape=(m,)
+        data (:obj:`numpy.ndarray`): a 3D data map to process. shape=(m,)
+        labeled_array (:obj:`numpy.ndarray`): shape=(m,n) with integer labels for each pixel.
+        tmpi (:obj:`numpy.ndarray`): shape=(m,) with integer indices of the pixels in the data map.
+        tmpj (:obj:`numpy.ndarray`): shape=(m,) with integer indices of the pixels in the data map.
+        tmpk (:obj:`numpy.ndarray`): shape=(m,) with integer indices of the pixels in the data map.
+        kernels (:obj:`tuple` of `numpy.ndarray`): Gaussian kernels.
+        axis (:obj:`tuple` of `int`): Axis of the data array along which the kernels are applied.
+        threshold (:obj:`float`): Data values less than the threshold are set to zero before peak detection.
 
     Returns:
         labeled_array (:obj:`numpy.ndarray`): shape=(m,) with integer labels for each pixel.
         number_of_labels (:obj:`int`): the number of labels assigned to the data map. This is the number peaks found.
     """
+
+    data = _apply_filters_1D(data_block, kernels, axis, threshold)
     m = data.shape[0]
     max_iterations = m
     label = 1
@@ -594,7 +696,9 @@ def _local_max_label_1D(data, labeled_array, tmpi):
 
 
 @numba.njit(cache=True)
-def _local_max_label_2D(data, labeled_array, tmpi, tmpj):
+def _local_max_label_2D(
+    data_block, labeled_array, tmpi, tmpj, kernels, axis, threshold
+):
     """Assigns pixels in a 2D image to the closest local maxima.
 
     The algorithm proceeds as follows:
@@ -609,13 +713,25 @@ def _local_max_label_2D(data, labeled_array, tmpi, tmpj):
     This process ensures that each pixel is assigned to the nearest local maximum
     through a gradient ascent type climb.
 
+    NOTE: data values of exactly zero are treated as void. When thresholding is used,
+        data values less than the threshold are set to zero and are thus treated as void.
+
     Args:
-        data (:obj:`numpy.ndarray`): a 2D data map to process. shape=(m,n)
+        data (:obj:`numpy.ndarray`): a 3D data map to process. shape=(m,n)
+        labeled_array (:obj:`numpy.ndarray`): shape=(m,n) with integer labels for each pixel.
+        tmpi (:obj:`numpy.ndarray`): shape=(m*n, ) with integer indices of the pixels in the data map.
+        tmpj (:obj:`numpy.ndarray`): shape=(m*n,) with integer indices of the pixels in the data map.
+        tmpk (:obj:`numpy.ndarray`): shape=(m*n,) with integer indices of the pixels in the data map.
+        kernels (:obj:`tuple` of `numpy.ndarray`): Gaussian kernels.
+        axis (:obj:`tuple` of `int`): Axis of the data array along which the kernels are applied.
+        threshold (:obj:`float`): Data values less than the threshold are set to zero before peak detection.
 
     Returns:
         labeled_array (:obj:`numpy.ndarray`): shape=(m,n) with integer labels for each pixel.
         number_of_labels (:obj:`int`): the number of labels assigned to the data map. This is the number peaks found.
     """
+
+    data = _apply_filters_2D(data_block, kernels, axis, threshold)
     m, n = data.shape
     max_iterations = m * n
     label = 1
@@ -702,7 +818,9 @@ def _local_max_label_2D(data, labeled_array, tmpi, tmpj):
 
 
 @numba.njit(cache=True)
-def _local_max_label_3D(data, labeled_array, tmpi, tmpj, tmpk):
+def _local_max_label_3D(
+    data_block, labeled_array, tmpi, tmpj, tmpk, kernels, axis, threshold
+):
     """Assigns pixels in a 3D image to the closest local maxima.
 
     The algorithm proceeds as follows:
@@ -717,13 +835,26 @@ def _local_max_label_3D(data, labeled_array, tmpi, tmpj, tmpk):
     This process ensures that each pixel is assigned to the nearest local maximum
     through a gradient ascent type climb.
 
+    NOTE: data values of exactly zero are treated as void. When thresholding is used,
+        data values less than the threshold are set to zero and are thus treated as void.
+
     Args:
         data (:obj:`numpy.ndarray`): a 3D data map to process. shape=(m,n,o)
+        labeled_array (:obj:`numpy.ndarray`): shape=(m,n,o) with integer labels for each pixel.
+        tmpi (:obj:`numpy.ndarray`): shape=(m*n*o, ) with integer indices of the pixels in the data map.
+        tmpj (:obj:`numpy.ndarray`): shape=(m*n*o,) with integer indices of the pixels in the data map.
+        tmpk (:obj:`numpy.ndarray`): shape=(m*n*o,) with integer indices of the pixels in the data map.
+        kernels (:obj:`tuple` of `numpy.ndarray`): Gaussian kernels.
+        axis (:obj:`tuple` of `int`): Axis of the data array along which the kernels are applied.
+        threshold (:obj:`float`): Data values less than the threshold are set to zero before peak detection.
 
     Returns:
         labeled_array (:obj:`numpy.ndarray`): shape=(m,n,o) with integer labels for each pixel.
         number_of_labels (:obj:`int`): the number of labels assigned to the data map. This is the number peaks found.
     """
+
+    data = _apply_filters_3D(data_block, kernels, axis, threshold)
+
     m, n, o = data.shape
     max_iterations = m * n * o
     label = 1
@@ -748,7 +879,7 @@ def _local_max_label_3D(data, labeled_array, tmpi, tmpj, tmpk):
     for ii in range(0, m):
         for jj in range(0, n):
             for kk in range(0, o):
-                # if the pixel is already labeled or has zero intensity, skip it
+                # if the pixel is already labeled or has less than noise floor, skip it
                 if labeled_array[ii, jj, kk] > 0 or data[ii, jj, kk] == 0:
                     continue
 
@@ -833,6 +964,78 @@ def _local_max_label_3D(data, labeled_array, tmpi, tmpj, tmpk):
                         iterations += 1
 
     return labeled_array, label - 1
+
+
+@numba.njit(cache=True)
+def _apply_filters_1D(data_block, kernels, axis, threshold):
+    """Applies a Gaussian filter and thresholding to a 1D data map.
+
+    Args:
+        data_block (:obj:`numpy.ndarray`): a 1D data map to process. shape=(m,)
+        kernels (:obj:`tuple` of `numpy.ndarray`): Gaussian kernels.
+        axis (:obj:`tuple` of `int`): Axis of the data array along which the kernels are applied.
+        threshold (:obj:`float`): Data values less than the threshold are set to zero before peak detection.
+
+    Returns:
+        data (:obj:`numpy.ndarray`): a 1D data map with the filtered data. shape=(m,) as dtype=np.float64
+    """
+    data = data_block.astype(np.float64)
+    m = data.shape[0]
+    for ii in range(0, m):
+        if data[ii] <= threshold:
+            data[ii] = 0
+    if kernels is not None:
+        data = _convolve_1d(data, kernels, axis)
+    return data
+
+
+@numba.njit(cache=True)
+def _apply_filters_2D(data_block, kernels, axis, threshold):
+    """Applies a Gaussian filter and thresholding to a 2D data map.
+
+    Args:
+        data_block (:obj:`numpy.ndarray`): a 2D data map to process. shape=(m,n)
+        kernels (:obj:`tuple` of `numpy.ndarray`): Gaussian kernels.
+        axis (:obj:`tuple` of `int`): Axis of the data array along which the kernels are applied.
+        threshold (:obj:`float`): Data values less than the threshold are set to zero before peak detection.
+
+    Returns:
+        data (:obj:`numpy.ndarray`): a 2D data map with the filtered data. shape=(m,n) as dtype=np.float64
+    """
+    data = data_block.astype(np.float64)
+    m, n = data.shape
+    for ii in range(0, m):
+        for jj in range(0, n):
+            if data[ii, jj] <= threshold:
+                data[ii, jj] = 0
+    if kernels is not None:
+        data = _convolve_2d(data, kernels, axis)
+    return data
+
+
+@numba.njit(cache=True)
+def _apply_filters_3D(data_block, kernels, axis, threshold):
+    """Applies a Gaussian filter and thresholding to a 3D data map.
+
+    Args:
+        data_block (:obj:`numpy.ndarray`): a 3D data map to process. shape=(m,n,o)
+        kernels (:obj:`tuple` of `numpy.ndarray`): Gaussian kernels.
+        axis (:obj:`tuple` of `int`): Axis of the data array along which the kernels are applied.
+        threshold (:obj:`float`): Data values less than the threshold are set to zero before peak detection.
+
+    Returns:
+        data (:obj:`numpy.ndarray`): a 3D data map with the filtered data. shape=(m,n,o) as dtype=np.float64
+    """
+    data = data_block.astype(np.float64)
+    m, n, o = data.shape
+    for ii in range(0, m):
+        for jj in range(0, n):
+            for kk in range(0, o):
+                if data[ii, jj, kk] <= threshold:
+                    data[ii, jj, kk] = 0
+    if kernels is not None:
+        data = _convolve_3d(data, kernels, axis)
+    return data
 
 
 @numba.njit(cache=True)
@@ -1193,7 +1396,7 @@ def _extract_features_3D(labeled_array, data, coordinates, nlabels, k):
 
 
 @numba.njit(parallel=True)
-def _peaksearch_parallel_1D(data, coordinates, k):
+def _peaksearch_parallel_1D(data, coordinates, k, kernels, axis, threshold):
     """Parallel wrapper for local_max_label and extract_features for 1D data. See these functions for algorithm details.
 
     Args:
@@ -1204,6 +1407,14 @@ def _peaksearch_parallel_1D(data, coordinates, k):
             and to have shape=(1, m). (indexing = ij is assumed, see numpy.meshgrid docs for details)
         k (:obj:`int`): number of segmented domains to keep features for
             The domain with the highest sum_intensity will be kept.
+        kernels (:obj:`tuple` of `numpy.ndarray`): Gaussian kernels. Defaults to None,
+            i.e no smoothing is applied prior to peak detection. When set, a Gaussian filter with the given
+            kernels is applied prior to peak detection.
+        axis (:obj:`tuple` of `int`): Axis of the data array along which the kernels are applied. Defaults to None,
+            i.e no axis is applied. When set, the data is filtered along the given axis.
+        threshold (:obj:`float`): Threshold for peak detection. Defaults to None, i.e no thresholding.
+            When set, data values less than the threshold are set to zero before peak detection. Thresholding
+            is applied before the kernels are applied.
 
     Returns:
         features (:obj:`numpy.ndarray`): A 2D array with the extracted features with indices following
@@ -1223,7 +1434,9 @@ def _peaksearch_parallel_1D(data, coordinates, k):
 
         t = numba.get_thread_id()
         labeled_array[t].fill(0)
-        labels_1d, nlabels = _local_max_label_1D(data[i, j], labeled_array[t], tmpi[t])
+        labels_1d, nlabels = _local_max_label_1D(
+            data[i, j], labeled_array[t], tmpi[t], kernels, axis, threshold
+        )
         features[i, j] = _extract_features_1D(
             labels_1d, data[i, j], coordinates, nlabels, k
         )
@@ -1231,7 +1444,7 @@ def _peaksearch_parallel_1D(data, coordinates, k):
 
 
 @numba.njit(parallel=True)
-def _peaksearch_parallel_2D(data, coordinates, k):
+def _peaksearch_parallel_2D(data, coordinates, k, kernels, axis, threshold):
     """Parallel wrapper for local_max_label and extract_features for 2D data. See these functions for algorithm details.
 
     Args:
@@ -1242,6 +1455,14 @@ def _peaksearch_parallel_2D(data, coordinates, k):
             and to have shape=(2, m, n). (indexing = ij is assumed, see numpy.meshgrid docs for details)
         k (:obj:`int`): number of segmented domains to keep features for
             The domain with the highest sum_intensity will be kept.
+        kernels (:obj:`tuple` of `numpy.ndarray`): Gaussian kernels. Defaults to None,
+            i.e no smoothing is applied prior to peak detection. When set, a Gaussian filter with the given
+            kernels is applied prior to peak detection.
+        axis (:obj:`tuple` of `int`): Axis of the data array along which the kernels are applied. Defaults to None,
+            i.e no axis is applied. When set, the data is filtered along the given axis.
+        threshold (:obj:`float`): Threshold for peak detection. Defaults to None, i.e no thresholding.
+            When set, data values less than the threshold are set to zero before peak detection. Thresholding
+            is applied before the kernels are applied.
 
     Returns:
         features (:obj:`numpy.ndarray`): A 2D array with the extracted features with indices following
@@ -1263,7 +1484,7 @@ def _peaksearch_parallel_2D(data, coordinates, k):
         t = numba.get_thread_id()
         labeled_array[t].fill(0)
         labels_2d, nlabels = _local_max_label_2D(
-            data[i, j], labeled_array[t], tmpi[t], tmpj[t]
+            data[i, j], labeled_array[t], tmpi[t], tmpj[t], kernels, axis, threshold
         )
         features[i, j] = _extract_features_2D(
             labels_2d, data[i, j], coordinates, nlabels, k
@@ -1272,7 +1493,7 @@ def _peaksearch_parallel_2D(data, coordinates, k):
 
 
 @numba.njit(parallel=True)
-def _peaksearch_parallel_3D(data, coordinates, k):
+def _peaksearch_parallel_3D(data, coordinates, k, kernels, axis, threshold):
     """Parallel wrapper for local_max_label and extract_features for 3D data. See these functions for algorithm details.
 
     Args:
@@ -1283,6 +1504,14 @@ def _peaksearch_parallel_3D(data, coordinates, k):
             and to have shape=(3, m, n, o). (indexing = ij is assumed, see numpy.meshgrid docs for details)
         k (:obj:`int`): number of segmented domains to keep features for
             The domain with the highest sum_intensity will be kept.
+        kernels (:obj:`tuple` of `numpy.ndarray`): Gaussian kernels. Defaults to None,
+            i.e no smoothing is applied prior to peak detection. When set, a Gaussian filter with the given
+            kernels is applied prior to peak detection.
+        axis (:obj:`tuple` of `int`): Axis of the data array along which the kernels are applied. Defaults to None,
+            i.e no axis is applied. When set, the data is filtered along the given axis.
+        threshold (:obj:`float`): Threshold for peak detection. Defaults to None, i.e no thresholding.
+            When set, data values less than the threshold are set to zero before peak detection. Thresholding
+            is applied before the kernels are applied.
 
     Returns:
         features (:obj:`numpy.ndarray`): A 2D array with the extracted features with indices following
@@ -1303,8 +1532,16 @@ def _peaksearch_parallel_3D(data, coordinates, k):
 
         t = numba.get_thread_id()
         labeled_array[t].fill(0)
+
         labels_3d, nlabels = _local_max_label_3D(
-            data[i, j], labeled_array[t], tmpi[t], tmpj[t], tmpk[t]
+            data[i, j],
+            labeled_array[t],
+            tmpi[t],
+            tmpj[t],
+            tmpk[t],
+            kernels,
+            axis,
+            threshold,
         )
         features[i, j] = _extract_features_3D(
             labels_3d, data[i, j], coordinates, nlabels, k
@@ -1313,5 +1550,4 @@ def _peaksearch_parallel_3D(data, coordinates, k):
 
 
 if __name__ == "__main__":
-    pass
     pass

@@ -1,10 +1,10 @@
 import unittest
 
-import matplotlib.pyplot as plt
 import numpy as np
 from scipy import ndimage
 
 import darling
+from darling.properties._peaks import _extract_features
 
 
 class TestPeakSearcher(unittest.TestCase):
@@ -24,8 +24,9 @@ class TestPeakSearcher(unittest.TestCase):
         labeled_array, n_features = darling.properties.local_max_label(
             img, loop_outer_dims=False
         )
-        features = darling.properties.extract_features(
-            labeled_array, img, k=len(intensities) + 1
+        coordinates = np.indices(img.shape)
+        features = _extract_features(
+            labeled_array, img, coordinates, n_features, k=len(intensities) + 1
         )
         self.assertEqual(n_features, len(targetindices))
         self.assertEqual(features.shape[1], len(intensities) + 1)
@@ -100,6 +101,7 @@ class TestPeakSearcher(unittest.TestCase):
 
         if self.debug:
             import matplotlib.pyplot as plt
+
             plt.style.use("dark_background")
             fig, ax = plt.subplots(1, 2, figsize=(14, 7))
             im = ax[0].imshow(img)
@@ -493,6 +495,143 @@ class TestPeaks(unittest.TestCase):
         for key in features.keys():
             self.assertTrue("_col" not in key)
             self.assertTrue("_motor2" not in key)
+
+    def test_peaks_with_filter(self):
+        sigma = 2.17
+        truncate = 4.1
+        radius = None
+        axis = None
+        threshold = 115
+        k = 3
+
+        filter = {
+            "sigma": sigma,
+            "truncate": truncate,
+            "radius": radius,
+            "axis": axis,
+            "threshold": threshold,
+        }
+
+        _, data, coordinates = darling.io.assets.domains()
+
+        data = np.zeros((coordinates.shape[1], coordinates.shape[2]), dtype=np.uint16)
+        data += 99 + np.random.uniform(-10, 10, size=data.shape).astype(data.dtype)
+        data[13, 12] = 330 + 100
+        data[12, 12] = 1870 + 100
+        data[11, 12] = 1320 + 100
+        data[11, 11] = 1160 + 100
+        data[10, 11] = 480 + 100
+
+        features1 = darling.properties.peaks(
+            data.copy(),
+            k=k,
+            coordinates=coordinates,
+            filter=filter,
+            loop_outer_dims=False,
+        )
+
+        data_filtered = data.astype(np.float64)
+
+        data_filtered[data_filtered <= threshold] = 0
+
+        data_filtered = darling.filters.gaussian_filter(
+            data_filtered,
+            sigma,
+            truncate,
+            radius,
+            axis,
+            copy=True,
+            loop_outer_dims=False,
+        )
+
+        labeld_array, nfeatures = darling.properties.local_max_label(
+            data_filtered,
+            loop_outer_dims=False,
+            filter=None,
+        )
+
+        features2 = darling.properties.extract_features(
+            labeld_array,
+            data,
+            k=k,
+            coordinates=coordinates,
+        )
+
+        for key in features1.keys():
+            assert np.allclose(features1[key], features2[key])
+
+        if self.debug:
+            import matplotlib.pyplot as plt
+
+            plt.style.use("dark_background")
+            fig, ax = plt.subplots(1, 2, figsize=(14, 7))
+            im = ax[0].imshow(data, vmax=400)
+            fig.colorbar(im, ax=ax[0], fraction=0.032, pad=0.04)
+            im = ax[1].imshow(data_filtered, vmax=400)
+            fig.colorbar(im, ax=ax[1], fraction=0.032, pad=0.04)
+            plt.tight_layout()
+            plt.show()
+
+    def test_peaks_with_filter_parallel(self):
+        sigma = (2.17, 1.3)
+        truncate = 4.1
+        radius = None
+        axis = (-2, -1)
+        threshold = 115
+        k = 3
+
+        filter = {
+            "sigma": sigma,
+            "truncate": truncate,
+            "radius": radius,
+            "axis": axis,
+            "threshold": threshold,
+        }
+
+        _, data, coordinates = darling.io.assets.domains()
+
+        features1 = darling.properties.peaks(
+            data.copy(),
+            k=k,
+            coordinates=coordinates,
+            filter=filter,
+            loop_outer_dims=True,
+        )
+
+        data_filtered = data.astype(np.float64)
+
+        data_filtered[data_filtered <= threshold] = 0
+
+        data_filtered = darling.filters.gaussian_filter(
+            data_filtered,
+            sigma,
+            truncate,
+            radius,
+            axis,
+            copy=False,
+            loop_outer_dims=True,
+        )
+
+        labeld_array, _ = darling.properties.local_max_label(
+            data_filtered,
+            loop_outer_dims=True,
+            filter=None,
+        )
+
+        for _ in range(10):
+            i, j = (
+                np.random.randint(0, data.shape[0] - 1),
+                np.random.randint(0, data.shape[1] - 1),
+            )
+            features2 = darling.properties.extract_features(
+                labeld_array[i, j],
+                data[i, j],
+                k=k,
+                coordinates=coordinates,
+            )
+
+            for key in features1.keys():
+                assert np.allclose(features1[key][i, j], features2[key])
 
 
 if __name__ == "__main__":

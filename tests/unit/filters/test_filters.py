@@ -444,6 +444,7 @@ class TestGaussianFilter(unittest.TestCase):
         np.testing.assert_allclose(data1, data2)
 
         i, j, k = location
+        np.testing.assert_allclose(np.sum(data1), np.sum(dirac))
         np.testing.assert_allclose(data1[:, j + 1, :], 0)
         np.testing.assert_allclose(data1[:, j - 1, :], 0)
         np.testing.assert_allclose(np.sum(data1[:, j, :]), 1)
@@ -465,7 +466,7 @@ class TestGaussianFilter(unittest.TestCase):
             plt.tight_layout()
             plt.show()
 
-    def test_gaussian_filter_parallel(self):
+    def test_gaussian_filter_parallel_1(self):
         shape = (32, 32, 32)
         data = np.zeros((8, 8, *shape))
 
@@ -519,7 +520,7 @@ class TestGaussianFilter(unittest.TestCase):
                     np.sum(data1[ii, jj, :, j, :] > 0), (2 * radius + 1) ** 2
                 )
 
-    def test_gaussian_filter_parallel(self):
+    def test_gaussian_filter_parallel_2(self):
         shape = (32, 32, 32)
         data = np.zeros((8, 8, *shape))
 
