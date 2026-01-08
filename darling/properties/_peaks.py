@@ -186,10 +186,10 @@ def peaks(
             See the PeakMap class for more details.
 
     """
-    _check_inputs_peaks(data, k, coordinates, loop_outer_dims, filter)
-    kernels, axis, threshold = _get_filter_parameters_from_dict(
+    kernels, axis, threshold, filter_to_apply = _get_filter_parameters_from_dict(
         data, loop_outer_dims, filter
     )
+    _check_inputs_peaks(data, k, coordinates, loop_outer_dims, filter_to_apply)
     if loop_outer_dims:
         trailing_dims = data.ndim - 2
         features_array = _peaksearch_parallel(
@@ -202,7 +202,7 @@ def peaks(
         )
     else:
         trailing_dims = data.ndim
-        labeled_array, nlabels = local_max_label(data, loop_outer_dims, filter)
+        labeled_array, nlabels = local_max_label(data, loop_outer_dims, filter_to_apply)
         features_array = _extract_features(labeled_array, data, coordinates, nlabels, k)
     feature_table = _build_feature_table(features_array, trailing_dims)
     return PeakMap(feature_table)
@@ -341,7 +341,7 @@ def local_max_label(data, loop_outer_dims=True, filter=None):
         number_of_labels (:obj:`int`): the number of labels assigned to the data map
     """
 
-    kernels, axis, threshold = _get_filter_parameters_from_dict(
+    kernels, axis, threshold, _ = _get_filter_parameters_from_dict(
         data, loop_outer_dims, filter
     )
 

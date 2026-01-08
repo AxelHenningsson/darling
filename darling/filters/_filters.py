@@ -854,7 +854,7 @@ def _get_filter_parameters_from_dict(data, loop_outer_dims, filter):
     )
 
     if filter_dict["sigma"] is None:
-        return None, None, threshold
+        return None, None, threshold, filter_dict
 
     sigma = filter_dict["sigma"]
     truncate = filter_dict["truncate"]
@@ -871,7 +871,7 @@ def _get_filter_parameters_from_dict(data, loop_outer_dims, filter):
         data, sigma, truncate, radius, axis, trailing_dims
     )
 
-    return kernels, axis, threshold
+    return kernels, axis, threshold, filter_dict
 
 
 if __name__ == "__main__":
