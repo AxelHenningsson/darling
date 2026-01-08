@@ -11,7 +11,8 @@ class Testio(unittest.TestCase):
 
     def setUp(self):
         self.path_to_data, _, _ = darling.io.assets.energy_mu_scan()
-        self.dset = darling.DataSet(self.path_to_data, scan_id="1.1")
+        self.roi=(2, 98, 3, 87)
+        self.dset = darling.DataSet(self.path_to_data, scan_id="1.1", roi=self.roi)
         here = os.path.dirname(os.path.abspath(__file__))
         self.filename = os.path.join(here, "test.dar5")
 
@@ -26,6 +27,7 @@ class Testio(unittest.TestCase):
         self.assertTrue(os.path.exists(self.filename))
 
         dset = darling.DataSet(self.filename)
+        self.assertEqual(dset.roi, self.roi)
         self.assertEqual(dset.data.shape, self.dset.data.shape)
         self.assertEqual(dset.motors.shape, self.dset.motors.shape)
 

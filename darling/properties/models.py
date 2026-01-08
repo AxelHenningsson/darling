@@ -333,5 +333,112 @@ def func_and_grad_pseudo_voigt_with_linear_background(params, x):
     return func, grad
 
 
+@numba.njit(cache=True)
+def func_and_grad_gaussian_mixture(params, x, dim):
+    """Evaluate an anisotropic Gaussian mixture (Cholesky parameterisation) and its gradient.
+
+    Args:
+        params (:obj:`numpy.ndarray`): Flat parameter vector of shape
+            ``(number_of_gaussians * parameters_per_gaussian,)`` where
+            ``parameters_per_gaussian = 1 + dim + dim * (dim + 1) // 2``.
+            For each Gaussian component the parameters are ordered as::
+
+                [amplitude,
+                 mu_0, ..., mu_{dim-1},
+                 alpha_0, ..., alpha_{dim-1},
+                 L_off_0, ..., L_off_{dim*(dim-1)//2 - 1}]
+
+            Here :math:`L` is the lower-triangular Cholesky factor of the precision matrix,
+            with ``L[i, i] = alpha_i ** 2`` and the strictly lower-triangular entries
+            ``L[i, j]`` (for ``i > j``) taken from ``L_off_*`` in row-major order over
+            the lower triangle.
+        x (:obj:`numpy.ndarray`): Evaluation point of shape ``(dim,)``.
+        dim (:obj:`int`): Spatial dimension of the Gaussian mixture (1, 2, or 3).
+
+    Returns:
+        tuple:
+            function_value (:obj:`float`): Value of the Gaussian mixture
+                :math:`f(x) = \\sum_k A_k \\exp\\bigl(-\\tfrac{1}{2} \\lVert L_k^T (x - \\mu_k) \\rVert^2\\bigr)`.
+            gradient (:obj:`numpy.ndarray`): Gradient vector of shape ``(params.size,)``,
+                containing :math:`\\partial f(x)/\\partial \\text{params}` in the same
+                ordering as ``params``.
+    """
+    n_params = params.size
+    params_per_gaussian = 1 + dim + dim * (dim + 1) // 2
+    n_gaussians = n_params // params_per_gaussian
+
+    grad = np.zeros(n_params, dtype=params.dtype)
+    f_val = 0.0
+
+    for k in range(n_gaussians):
+        offset = k * params_per_gaussian
+
+        A = params[offset]
+
+        mu_start = offset + 1
+        mu_end = mu_start + dim
+
+        r = np.empty(dim, dtype=params.dtype)
+        for i in range(dim):
+            r[i] = x[i] - params[mu_start + i]
+
+        L_param_start = mu_end
+
+        alpha = np.empty(dim, dtype=params.dtype)
+        for i in range(dim):
+            alpha[i] = params[L_param_start + i]
+
+        L_off_start = L_param_start + dim
+
+        L = np.zeros((dim, dim), dtype=params.dtype)
+        for i in range(dim):
+            L[i, i] = alpha[i] * alpha[i]
+
+        idx_off = 0
+        for i in range(1, dim):
+            for j in range(i):
+                L[i, j] = params[L_off_start + idx_off]
+                idx_off += 1
+
+        u = np.zeros(dim, dtype=params.dtype)
+        for j in range(dim):
+            s = 0.0
+            for i in range(dim):
+                s += L[i, j] * r[i]
+            u[j] = s
+
+        t = 0.0
+        for j in range(dim):
+            t += u[j] * u[j]
+
+        ell = np.exp(-0.5 * t)
+        f_k = A * ell
+        f_val += f_k
+
+        grad[offset] += ell
+
+        Lu = np.zeros(dim, dtype=params.dtype)
+        for i in range(dim):
+            s = 0.0
+            for j in range(dim):
+                s += L[i, j] * u[j]
+            Lu[i] = s
+
+        for i in range(dim):
+            grad[mu_start + i] += A * ell * Lu[i]
+
+        for i in range(dim):
+            grad[L_param_start + i] += -2.0 * A * ell * alpha[i] * u[i] * r[i]
+
+        idx_off = 0
+        for i in range(1, dim):
+            for j in range(i):
+                param_index = L_off_start + idx_off
+                grad[param_index] += -A * ell * u[j] * r[i]
+                idx_off += 1
+
+    return f_val, grad
+
+
 if __name__ == "__main__":
     pass

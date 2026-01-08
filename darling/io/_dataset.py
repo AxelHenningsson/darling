@@ -267,7 +267,7 @@ class DataSet(object):
             self.motors = motors
             self.data = data
 
-            self.roi = roi
+        self.roi = roi
 
     def subtract(self, background, dtype=np.uint16):
         """Subtract a fixed integer value from the data block.
