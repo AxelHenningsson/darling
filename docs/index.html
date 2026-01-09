@@ -844,9 +844,13 @@ of the mean and standard deviation.</p></li>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="darling.properties.peaks">
-<span class="sig-prename descclassname"><span class="pre">darling.properties.</span></span><span class="sig-name descname"><span class="pre">peaks</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">k</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">3</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">coordinates</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">loop_outer_dims</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/AxelHenningsson/darling/tree/main/darling/properties.py/"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darling.properties.peaks" title="Link to this definition">#</a></dt>
+<span class="sig-prename descclassname"><span class="pre">darling.properties.</span></span><span class="sig-name descname"><span class="pre">peaks</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">k</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">3</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">coordinates</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">loop_outer_dims</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">filter</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/AxelHenningsson/darling/tree/main/darling/properties.py/"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darling.properties.peaks" title="Link to this definition">#</a></dt>
 <dd><p>Find peaks/domains on a 2D grid of 1D, 2D or 3D data-blocks and extract features from them.</p>
 <p>A peak/domain is defined as a connected domain of pixels surrounding a local maximum.</p>
+<dl class="simple">
+<dt>NOTE: Zero valued pixels are treated as void. When thresholding is used,</dt><dd><p>data values less than the threshold are set to zero and are thus treated as void.</p>
+</dd>
+</dl>
 <p>For a data array of shape (a, b, m, n, o), each primary pixel (i, j) contains a
 (m, n, o) sub-array that is analyzed as a 3D image. Local maxima are identified
 within this sub-array, and segmentation is performed to assign a label to
@@ -917,6 +921,15 @@ shape=(3, m, n, …) for 3D data, shape=(2, m, n) for 2D data, shape=(1, m) for 
 <li><p><strong>loop_outer_dims</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">bool</span></code>) – whether to loop over the outer dimensions of the data array.
 Defaults to True in which case the data array must be at least 3D and at most 5D.
 If False, the data array must be 1D, 2D or 3D (i.e data for a single pixel)</p></li>
+<li><p><strong>filter</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">dict</span></code>) – A dictionary of filter parameters defining a Gaussian filter and thresholding.
+Defaults to None, in which case no filter is applied. The filter dictionary must contain the keys:
+- <strong>sigma</strong>: Standard deviation of the Gaussian filter. Defaults to None.
+- <strong>truncate</strong>: Truncation of the Gaussian filter. Defaults to 4.0.
+- <strong>radius</strong>: Radius of the Gaussian filter. Defaults to None.
+- <strong>axis</strong>: Axis of the Gaussian filter. Defaults to None.
+- <strong>threshold</strong>: Threshold for peak detection. Defaults to np.min(data).
+When both sigma and threshold are set, thresholding is applied before the Gaussian filtering.
+Values less than or equal the threshold are not considered during peak / domain segmentation.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -956,7 +969,7 @@ See the PeakMap class for more details.</p>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="darling.properties.local_max_label">
-<span class="sig-prename descclassname"><span class="pre">darling.properties.</span></span><span class="sig-name descname"><span class="pre">local_max_label</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">loop_outer_dims</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/AxelHenningsson/darling/tree/main/darling/properties.py/"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darling.properties.local_max_label" title="Link to this definition">#</a></dt>
+<span class="sig-prename descclassname"><span class="pre">darling.properties.</span></span><span class="sig-name descname"><span class="pre">local_max_label</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">loop_outer_dims</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">filter</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/AxelHenningsson/darling/tree/main/darling/properties.py/"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darling.properties.local_max_label" title="Link to this definition">#</a></dt>
 <dd><p>Assigns pixels in a 1D, 2D or 3D image to the closest local maxima.</p>
 <p>The algorithm proceeds as follows:</p>
 <ol class="arabic">
@@ -975,6 +988,10 @@ See the PeakMap class for more details.</p>
 through a gradient ascent type climb.</p>
 <p>To illustrate how the local maxclimber algorithm can separate overlapping gaussians
 we can consider the following example:</p>
+<dl class="simple">
+<dt>NOTE: Zero valued pixels are treated as void. When thresholding is used,</dt><dd><p>data values less than the threshold are set to zero and are thus treated as void.</p>
+</dd>
+</dl>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
 <span class="kn">import</span> <span class="nn">darling</span>
@@ -1012,6 +1029,15 @@ we can consider the following example:</p>
 <li><p><strong>loop_outer_dims</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">bool</span></code>) – whether to loop over the outer dimensions of the data array.
 Defaults to True, in which case the data array must be 1D, 2D or 3D.
 If True, the data array must be at least 3D and at most 5D.</p></li>
+<li><p><strong>filter</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">dict</span></code>) – A dictionary of filter parameters defining a Gaussian filter and thresholding.
+Defaults to None, in which case no filter is applied. The filter dictionary must contain the keys:
+- <strong>sigma</strong>: Standard deviation of the Gaussian filter. Defaults to None.
+- <strong>truncate</strong>: Truncation of the Gaussian filter. Defaults to 4.0.
+- <strong>radius</strong>: Radius of the Gaussian filter. Defaults to None.
+- <strong>axis</strong>: Axis of the Gaussian filter. Defaults to None.
+- <strong>threshold</strong>: Threshold for peak detection. Defaults to np.min(data).
+When both sigma and threshold are set, thresholding is applied before the Gaussian filtering.
+Values less than or equal the threshold are not considered during peak / domain segmentation.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -1035,36 +1061,46 @@ number_of_labels (<code class="xref py py-obj docutils literal notranslate"><spa
 2D data, (m,) for 1D data</p></li>
 <li><p><strong>data</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">numpy.ndarray</span></code>) – The underlying intensity data array with shape (m,n,o) for 3D data,
 (m,n) for 2D data, (m,) for 1D data</p></li>
+<li><p><strong>k</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">int</span></code>) – number of segmented domains to keep features for, the first k peaks with highest
+integrated intensity will be kept, remaining peaks are ignored. Defaults to 3.</p></li>
 <li><p><strong>coordinates</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">tuple</span></code>) – A tuple with the coordinates of the motor positions.
 The coordinates are expected to be in the same order as axis 0, 1, 2 of the data array.
 and to have shapes (1, m, n), (2, m, n) or (3, m, n, o) for 1D, 2D or 3D data respectively.
 Defaults to None in which case integer indices are assumed to prevail.
 (i.e motors of the axis are np.arange(m), np.arange(n), np.arange(o))</p></li>
-<li><p><strong>k</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">int</span></code>) – number of segmented domains to keep features for, the first k peaks with highest
-integrated intensity will be kept, remaining peaks are ignored. Defaults to 3.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>a dictionary with keys corresponding to
-various local-max labeled peak features. These are:
-- <strong>sum_intensity</strong>: Sum of the intensity values in the segmented domain.
-- <strong>max_intensity</strong>: Integrated intensity in the segmented domain.
-- <strong>number_of_pixels</strong>: Number of pixels in the segmented domain.
-- <strong>maxima_axis_0</strong>: Coordinate of the pixel with the highest intensity along axis=0 in the the segmented domain.
-- <strong>maxima_axis_1</strong>: Coordinate of the pixel with the highest intensity along axis=1 in the the segmented domain.
-- <strong>maxima_axis_2</strong>: Coordinate of the pixel with the highest intensity along axis=2 in the the segmented domain.
-- <strong>mean_axis_0</strong>: Arithmetric Mean coordinate along axis=0 in the the segmented domain.
-- <strong>mean_axis_1</strong>: Arithmetric Mean coordinate along axis=1 in the the segmented domain.
-- <strong>mean_axis_2</strong>: Arithmetric Mean coordinate along axis=2 in the the segmented domain.
-- <strong>variance_axis_0</strong>: Variance of the coordinates along axis=0 in the the segmented domain.
-- <strong>variance_axis_1</strong>: Variance of the coordinates along axis=1 in the the segmented domain.
-- <strong>variance_axis_2</strong>: Variance of the coordinates along axis=2 in the the segmented domain.
-- <strong>variance_axis_0_axis_1</strong>: Covariance of the coordinates along axis=0 and axis=1 in the the segmented domain.
-- <strong>variance_axis_0_axis_2</strong>: Covariance of the coordinates along axis=0 and axis=2 in the the segmented domain.
-- <strong>variance_axis_1_axis_2</strong>: Covariance of the coordinates along axis=1 and axis=2 in the the segmented domain.</p>
+<dd class="field-even"><p><dl>
+<dt>a wrapper for the per peak features as a dictionary with keys corresponding to:</dt><dd><ul class="simple">
+<li><p><strong>sum_intensity</strong>: Sum of the intensity values in the segmented domain.</p></li>
+<li><p><strong>max_intensity</strong>: Integrated intensity in the segmented domain.</p></li>
+<li><p><strong>number_of_pixels</strong>: Number of pixels in the segmented domain.</p></li>
+<li><p><strong>maxima_axis_0</strong>: Coordinate of the pixel with the highest intensity along axis=0 in the the segmented domain.</p></li>
+<li><p><strong>maxima_axis_1</strong>: Coordinate of the pixel with the highest intensity along axis=1 in the the segmented domain.</p></li>
+<li><p><strong>maxima_axis_2</strong>: Coordinate of the pixel with the highest intensity along axis=2 in the the segmented domain.</p></li>
+<li><p><strong>mean_axis_0</strong>: Arithmetric Mean coordinate along axis=0 in the the segmented domain.</p></li>
+<li><p><strong>mean_axis_1</strong>: Arithmetric Mean coordinate along axis=1 in the the segmented domain.</p></li>
+<li><p><strong>mean_axis_2</strong>: Arithmetric Mean coordinate along axis=2 in the the segmented domain.</p></li>
+<li><p><strong>variance_axis_0</strong>: Variance of the coordinates along axis=0 in the the segmented domain.</p></li>
+<li><p><strong>variance_axis_1</strong>: Variance of the coordinates along axis=1 in the the segmented domain.</p></li>
+<li><p><strong>variance_axis_2</strong>: Variance of the coordinates along axis=2 in the the segmented domain.</p></li>
+<li><p><strong>variance_axis_0_axis_1</strong>: Covariance of the coordinates along axis=0 and axis=1 in the the segmented domain.</p></li>
+<li><p><strong>variance_axis_0_axis_2</strong>: Covariance of the coordinates along axis=0 and axis=2 in the the segmented domain.</p></li>
+<li><p><strong>variance_axis_1_axis_2</strong>: Covariance of the coordinates along axis=1 and axis=2 in the the segmented domain.</p></li>
+</ul>
+<p>For loop_outer_dims is True, these are fields across the 2D outer dimensions of the data array such that
+features[“max_intensity”][i, j, k] is the integrated intensity in the segmented domain for pixel (i, j) and peak number k.
+features[“number_of_pixels”][i, j, k] is the number of pixels in the segmented domain for pixel (i, j) and peak number k.
+…etc….</p>
+<p>The PeakMap object provides additional convenience methods for manipulating the features table, such as sorting.
+See the PeakMap class for more details.</p>
+</dd>
+</dl>
+</p>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">dict</span></code> of <code class="xref py py-obj docutils literal notranslate"><span class="pre">numpy.ndarray</span></code></p>
+<dd class="field-odd"><p><a class="reference internal" href="#darling.properties.PeakMap" title="darling.properties.PeakMap"><code class="xref py py-obj docutils literal notranslate"><span class="pre">darling.properties.PeakMap</span></code></a></p>
 </dd>
 </dl>
 </dd></dl>
@@ -1439,6 +1475,8 @@ along the requested trailing axes. The 1D Gaussian kernel is defined as:</p>
 <p>A discrete kernel of width <code class="docutils literal notranslate"><span class="pre">2</span> <span class="pre">*</span> <span class="pre">radius</span> <span class="pre">+</span> <span class="pre">1</span></code> is constructed for each filtered
 axis and normalised to sum to 1 (intensity preserving). Convolution is performed
 with zero padding at the boundaries (samples outside the array are treated as 0).</p>
+<p>NOTE: For integer data, the filtering will not be intensity preserving due to casting.
+Such data will raise a UserWarning.</p>
 <p>Dimensionality handling:</p>
 <blockquote>
 <div><p>When <code class="docutils literal notranslate"><span class="pre">loop_outer_dims=True</span></code> (default), the first two dimensions of the data
@@ -1483,7 +1521,7 @@ produces stronger smoothing.</p>
 <span class="n">_</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">motors</span> <span class="o">=</span> <span class="n">darling</span><span class="o">.</span><span class="n">io</span><span class="o">.</span><span class="n">assets</span><span class="o">.</span><span class="n">mosaicity_scan</span><span class="p">()</span>
 
 <span class="n">filtered_data</span> <span class="o">=</span> <span class="n">darling</span><span class="o">.</span><span class="n">filters</span><span class="o">.</span><span class="n">gaussian_filter</span><span class="p">(</span>
-    <span class="n">data</span><span class="p">,</span>
+    <span class="n">data</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">),</span>
     <span class="n">sigma</span> <span class="o">=</span> <span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">),</span>
     <span class="n">axis</span> <span class="o">=</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span>
     <span class="n">radius</span> <span class="o">=</span> <span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">5</span><span class="p">),</span>
@@ -1537,6 +1575,12 @@ block independently. Defaults to True.</p></li>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">numpy.ndarray</span></code></p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><ul class="simple">
+<li><p><strong>UserWarning</strong> – If the input data is of integer type. For integer data, the filtering will not be intensity</p></li>
+<li><p><strong>preserving due to float -&gt; integer casting.</strong> – </p></li>
+</ul>
 </dd>
 </dl>
 </dd></dl>
