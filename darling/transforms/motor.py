@@ -261,7 +261,7 @@ def reduce(motors, axis):
             "Reduced motor is not indexing=ij"
         )
 
-    return reduced
+    return np.ascontiguousarray(reduced)
 
 
 def reorder(motors, axis, data=None):
@@ -361,9 +361,9 @@ def reorder(motors, axis, data=None):
             )
         dim_perm_data = [0, 1] + [a + 2 for a in axes]
         reordered_data = np.transpose(data, axes=dim_perm_data)
-        return reordered, reordered_data
+        return np.ascontiguousarray(reordered), np.ascontiguousarray(reordered_data)
 
-    return reordered
+    return np.ascontiguousarray(reordered)
 
 
 if __name__ == "__main__":
