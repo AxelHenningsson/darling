@@ -131,3 +131,7 @@ class TestPeakMap(unittest.TestCase):
         self.assertEqual(mean2.shape, (self.data.shape[0], self.data.shape[1], 2))
         np.testing.assert_allclose(mean2[..., 0], self.peakmap.mean_axis_0[..., 1])
         np.testing.assert_allclose(mean2[..., 1], self.peakmap.mean_axis_1[..., 1])
+
+
+if __name__ == "__main__":
+    unittest.main()

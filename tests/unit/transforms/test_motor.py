@@ -95,6 +95,12 @@ class TestMotor(unittest.TestCase):
             self.assertEqual(np.min(np.abs(out)), 0)
             np.testing.assert_array_less(np.abs(motors).max(), np.abs(out).max())
 
+    def test_reduce_3d_to_1d_negative(self):
+        # allow for motor values to be indexing=ij but with decreasing values along axis
+        motors = -self.motors3D
+        rm = darling.transforms.motor.reduce(motors, axis=0)
+        self.assertEqual(rm.shape, (1, 5))
+        self.assertAlmostEqual(np.abs(np.diff(rm[0, :])).min(), 0.1234)
 
     def test_reduce(self):
         for motors in self.motorsND:

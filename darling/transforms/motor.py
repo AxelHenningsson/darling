@@ -256,11 +256,6 @@ def reduce(motors, axis):
 
     reduced = reduced[axes_keep]
 
-    for ax in range(len(reduced.shape[1:])):
-        assert np.median(np.diff(reduced[ax], axis=ax)) > 0, (
-            "Reduced motor is not indexing=ij"
-        )
-
     return np.ascontiguousarray(reduced)
 
 
