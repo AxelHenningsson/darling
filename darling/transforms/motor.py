@@ -344,10 +344,6 @@ def reorder(motors, axis, data=None):
     if set(reordered.shape) != set(motors.shape):
         raise ValueError("Reordered motor shape mismatch")
 
-    for ax in range(len(motors.shape[1:])):
-        if np.median(np.diff(reordered[ax], axis=ax)) <= 0:
-            raise ValueError("Reordered motor is not indexing=ij")
-
     if data is not None:
         if data.shape[2:] != motors.shape[1:]:
             raise ValueError(
