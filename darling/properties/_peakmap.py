@@ -139,11 +139,14 @@ class PeakMap:
     def get_dominance(self, k):
         """(:obj: `numpy.ndarray`): Dominance of selected peak number k. shape=(a,b). The dominnanace is defined as
         the ration between the integrated intensity of the selected peak number k and the sum of the integrated
-        intensities of all peaks in the pixel.
+        intensities of all peaks in the pixel. Wherever the total intensity is zero, the dominance is set to NaN.
         """
-        return self.feature_table["sum_intensity"][..., k] / self.feature_table[
-            "sum_intensity"
-        ].sum(axis=-1, keepdims=True)
+        sum_intensity = self.feature_table["sum_intensity"][..., k]
+        total_intensity = self.feature_table["sum_intensity"].sum(axis=-1)
+        m = total_intensity != 0
+        dominance = np.full_like(sum_intensity, fill_value=np.nan)
+        dominance[m] = sum_intensity[m] / total_intensity[m]
+        return dominance
 
     @property
     def max(self):
