@@ -141,7 +141,7 @@ class PeakMap:
         the ration between the integrated intensity of the selected peak number k and the sum of the integrated
         intensities of all peaks in the pixel.
         """
-        return self.feature_table["max_intensity"][..., k] / self.feature_table[
+        return self.feature_table["sum_intensity"][..., k] / self.feature_table[
             "sum_intensity"
         ].sum(axis=-1, keepdims=True)
 
