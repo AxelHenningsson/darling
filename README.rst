@@ -31,7 +31,7 @@ If you use ``darling`` in your research, please cite the following papers.
    Henningsson A, Frankus F T, Cretton A A W, Shukla A, Gayoso Padula A, La Bella M, Haack J, Staeck S, Poulsen H F and Winther G (2026) Multi-peak diffraction analysis for enhanced orientation mapping in dark-field X-ray microscopy of deformed metals using Darling. Submitted to the proceedings of the 46th Risø International Symposium on Materials Science: Characterization of Evolving Microstructures in Metals, IOP Conf. Ser.: Mater. Sci. Eng. In review as of May 13, 2026.
    Shukla A, Henningsson A, Cretton A A W and Yildirim C (2026) Direct visualization, segmentation and quantification of dislocation cells in cold-rolled Fe-3% Si using dark-field X-ray microscopy. Submitted to the proceedings of the 46th Risø International Symposium on Materials Science: Characterization of Evolving Microstructures in Metals, IOP Conf. Ser.: Mater. Sci. Eng. In review as of May 13, 2026.
 
-BibTeX is available here: `darling.bib <docs/_static/darling.bib>`_
+BibTeX is available here: `citation.bib <docs/_static/citation.bib>`_
 
 Usecase
 ------------------------------------------------
