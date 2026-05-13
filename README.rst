@@ -22,22 +22,16 @@ the python **[D]ark** field x-ray microscopy **[A]nalysis** & **[R]econstruction
    :target: https://axelhenningsson.github.io/darling/
    :alt: Sphinx documentation
 
-Authors
+Citation
 ------------------------------------
-``darling`` is written and maintained by:
+If you use ``darling`` in your research, please cite the following papers.
 
-`Axel Henningsson <https://github.com/AxelHenningsson>`_,
+.. code-block:: bibtex
 
-with important early contributions from:
-`Felix Tristan Frankus <https://github.com/adcret>`_ and
-`Adam André William Cretton <https://github.com/fetrifra>`_
+   Henningsson A, Frankus F T, Cretton A A W, Shukla A, Gayoso Padula A, La Bella M, Haack J, Staeck S, Poulsen H F and Winther G (2026) Multi-peak diffraction analysis for enhanced orientation mapping in dark-field X-ray microscopy of deformed metals using Darling. Submitted to the proceedings of the 46th Risø International Symposium on Materials Science: Characterization of Evolving Microstructures in Metals, IOP Conf. Ser.: Mater. Sci. Eng. In review as of May 13, 2026.
+   Shukla A, Henningsson A, Cretton A A W and Yildirim C (2026) Direct visualization, segmentation and quantification of dislocation cells in cold-rolled Fe-3% Si using dark-field X-ray microscopy. Submitted to the proceedings of the 46th Risø International Symposium on Materials Science: Characterization of Evolving Microstructures in Metals, IOP Conf. Ser.: Mater. Sci. Eng. In review as of May 13, 2026.
 
-The core ideas of this library was originally written during a beamtime at ESRF id03D.
-
-Until an associated journal publication is available, if you use this code in your research, we ask that you cite this repository.
-
-If you are interested in collaborating with us on DFXM data analysis, please reach out to us at: naxhe@dtu.dk
-and we can discuss the possibilities.
+BibTeX is available here: `darling.bib <docs/_static/darling.bib>`_
 
 Usecase
 ------------------------------------------------
@@ -144,4 +138,21 @@ This appraoch should work on other clusters as well, as long as some user permis
 Documentation
 ------------------------------------------------
 Darling hosts documentation at https://axelhenningsson.github.io/darling/
+
+
+
+Authors
+------------------------------------
+``darling`` is written and maintained by:
+
+`Axel Henningsson <https://github.com/AxelHenningsson>`_,
+
+with important early contributions from:
+`Felix Tristan Frankus <https://github.com/adcret>`_ and
+`Adam André William Cretton <https://github.com/fetrifra>`_
+
+The core ideas of this library was originally written during a beamtime at ESRF id03D.
+
+If you are interested in collaborating with us on DFXM data analysis, please reach out to us at: naxhe@dtu.dk
+and we can discuss the possibilities.
 
