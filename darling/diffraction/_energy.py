@@ -1,6 +1,27 @@
 import numpy as np
 
-from darling.crystal import lattice_spacing
+import darling
+
+
+def refractive_decrement(Z, rho, A, energy):
+    """Calculate the refractive decrement of a material.
+
+    Args:
+        Z (:obj:`int`): atomic number
+        rho (:obj:`float`): density, unit: g/cm^3
+        A (:obj:`float`): atomic mass number, unit: g/mol
+        energy (:obj:`float`): energy, unit: keV
+
+    Returns:
+        :obj:`float`: refractive decrement
+
+    """
+    wavelength = energy_to_wavelength(energy)  # unit: angstrom
+    r0 = 2.8179403227 * 1e-15  # classical electron radius, unit: m
+    Na = 6.02214076 * 10 ** (23)  # Avogadro's number, unit: mol^-1
+    Ne = rho * Na * Z / A  # electron density, unit: cm^-3
+    si_unit_scale = 1e-14
+    return si_unit_scale * Ne * (wavelength**2) * r0 / (2 * np.pi)  # unit: 1
 
 
 def ccmth_to_strain(ccmth, unit_cell, hkl, reference_bragg_angle):
@@ -17,7 +38,7 @@ def ccmth_to_strain(ccmth, unit_cell, hkl, reference_bragg_angle):
         :obj:`numpy array` or :obj:`float`: The strain. shape=(n,) or float.
     """
     wavelength = ccmth_to_wavelength(ccmth)
-    d0 = lattice_spacing(unit_cell, hkl)
+    d0 = darling.crystal.lattice_spacing(unit_cell, hkl)
     d = wavelength / (2 * np.sin(np.radians(reference_bragg_angle)))
     return (d - d0) / d0
 
@@ -80,4 +101,5 @@ def energy_to_wavelength(energy):
     Returns:
         :obj:`float`: The wavelength in Angstroms.
     """
+    return 12.398419874273968 / energy
     return 12.398419874273968 / energy

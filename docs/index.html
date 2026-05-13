@@ -263,17 +263,14 @@
 <a class="reference external image-reference" href="https://axelhenningsson.github.io/darling/"><img alt="Sphinx documentation" src="https://img.shields.io/badge/docs-sphinx-blue.svg" />
 </a>
 </section>
-<section id="authors">
-<h1>Authors<a class="headerlink" href="#authors" title="Link to this heading">#</a></h1>
-<p><code class="docutils literal notranslate"><span class="pre">darling</span></code> is written and maintained by:</p>
-<p><a class="reference external" href="https://github.com/AxelHenningsson">Axel Henningsson</a>,</p>
-<p>with important early contributions from:
-<a class="reference external" href="https://github.com/adcret">Felix Tristan Frankus</a> and
-<a class="reference external" href="https://github.com/fetrifra">Adam André William Cretton</a></p>
-<p>The core ideas of this library was originally written during a beamtime at ESRF id03D.</p>
-<p>Until an associated journal publication is available, if you use this code in your research, we ask that you cite this repository.</p>
-<p>If you are interested in collaborating with us on DFXM data analysis, please reach out to us at: <a class="reference external" href="mailto:naxhe&#37;&#52;&#48;dtu&#46;dk">naxhe<span>&#64;</span>dtu<span>&#46;</span>dk</a>
-and we can discuss the possibilities.</p>
+<section id="citation">
+<h1>Citation<a class="headerlink" href="#citation" title="Link to this heading">#</a></h1>
+<p>If you use <code class="docutils literal notranslate"><span class="pre">darling</span></code> in your research, please cite the following papers.</p>
+<div class="highlight-bibtex notranslate"><div class="highlight"><pre><span></span><span class="c">Henningsson A, Frankus F T, Cretton A A W, Shukla A, Gayoso Padula A, La Bella M, Haack J, Staeck S, Poulsen H F and Winther G (2026) Multi-peak diffraction analysis for enhanced orientation mapping in dark-field X-ray microscopy of deformed metals using Darling. Submitted to the proceedings of the 46th Risø International Symposium on Materials Science: Characterization of Evolving Microstructures in Metals, IOP Conf. Ser.: Mater. Sci. Eng. In review as of May 13, 2026.</span>
+<span class="c">Shukla A, Henningsson A, Cretton A A W and Yildirim C (2026) Direct visualization, segmentation and quantification of dislocation cells in cold-rolled Fe-3% Si using dark-field X-ray microscopy. Submitted to the proceedings of the 46th Risø International Symposium on Materials Science: Characterization of Evolving Microstructures in Metals, IOP Conf. Ser.: Mater. Sci. Eng. In review as of May 13, 2026.</span>
+</pre></div>
+</div>
+<p>BibTeX is available here: <a class="reference external" href="docs/_static/citation.bib">citation.bib</a></p>
 </section>
 <section id="usecase">
 <h1>Usecase<a class="headerlink" href="#usecase" title="Link to this heading">#</a></h1>
@@ -355,6 +352,17 @@ python<span class="w"> </span>-m<span class="w"> </span>ipykernel<span class="w"
 <section id="documentation">
 <h1>Documentation<a class="headerlink" href="#documentation" title="Link to this heading">#</a></h1>
 <p>Darling hosts documentation at <a class="reference external" href="https://axelhenningsson.github.io/darling/">https://axelhenningsson.github.io/darling/</a></p>
+</section>
+<section id="authors">
+<h1>Authors<a class="headerlink" href="#authors" title="Link to this heading">#</a></h1>
+<p><code class="docutils literal notranslate"><span class="pre">darling</span></code> is written and maintained by:</p>
+<p><a class="reference external" href="https://github.com/AxelHenningsson">Axel Henningsson</a>,</p>
+<p>with important early contributions from:
+<a class="reference external" href="https://github.com/adcret">Felix Tristan Frankus</a> and
+<a class="reference external" href="https://github.com/fetrifra">Adam André William Cretton</a></p>
+<p>The core ideas of this library was originally written during a beamtime at ESRF id03D.</p>
+<p>If you are interested in collaborating with us on DFXM data analysis, please reach out to us at: <a class="reference external" href="mailto:naxhe&#37;&#52;&#48;dtu&#46;dk">naxhe<span>&#64;</span>dtu<span>&#46;</span>dk</a>
+and we can discuss the possibilities.</p>
 <section id="module-darling.io._dataset.DataSet">
 <span id="dataset"></span><h2>DataSet<a class="headerlink" href="#module-darling.io._dataset.DataSet" title="Link to this heading">#</a></h2>
 <p>A DFXM data-set.</p>
@@ -1263,7 +1271,7 @@ numerical values are sorted first.</p></li>
 <span class="sig-name descname"><span class="pre">get_dominance</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">k</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/AxelHenningsson/darling/tree/main/darling/properties.py/"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darling.properties.PeakMap.get_dominance" title="Link to this definition">#</a></dt>
 <dd><p>(:obj: <cite>numpy.ndarray</cite>): Dominance of selected peak number k. shape=(a,b). The dominnanace is defined as
 the ration between the integrated intensity of the selected peak number k and the sum of the integrated
-intensities of all peaks in the pixel.</p>
+intensities of all peaks in the pixel. Wherever the total intensity is zero, the dominance is set to NaN.</p>
 </dd></dl>
 
 <dl class="py property">
@@ -2313,6 +2321,28 @@ crystal that was known to be strain-free.</p>
 </dd></dl>
 
 <dl class="py function">
+<dt class="sig sig-object py" id="darling.diffraction.refractive_decrement">
+<span class="sig-prename descclassname"><span class="pre">darling.diffraction.</span></span><span class="sig-name descname"><span class="pre">refractive_decrement</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">Z</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rho</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">A</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">energy</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/AxelHenningsson/darling/tree/main/darling/diffraction.py/"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darling.diffraction.refractive_decrement" title="Link to this definition">#</a></dt>
+<dd><p>Calculate the refractive decrement of a material.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>Z</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">int</span></code>) – atomic number</p></li>
+<li><p><strong>rho</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">float</span></code>) – density, unit: g/cm^3</p></li>
+<li><p><strong>A</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">float</span></code>) – atomic mass number, unit: g/mol</p></li>
+<li><p><strong>energy</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">float</span></code>) – energy, unit: keV</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>refractive decrement</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">float</span></code></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
 <dt class="sig sig-object py" id="darling.diffraction.diffraction_vectors">
 <span class="sig-prename descclassname"><span class="pre">darling.diffraction.</span></span><span class="sig-name descname"><span class="pre">diffraction_vectors</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">grain_orientation</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lattice_parameters</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hkl</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mu</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">omega</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">chi</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">phi</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">frame</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'lab'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mask</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">degrees</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/AxelHenningsson/darling/tree/main/darling/diffraction.py/"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darling.diffraction.diffraction_vectors" title="Link to this definition">#</a></dt>
 <dd><p>Compute the diffraction vectors over a spatial field.</p>
@@ -2410,6 +2440,190 @@ depending on which one/ones of the input angles have a size&gt;1</p>
 </dl>
 </dd></dl>
 
+<dl class="py class">
+<dt class="sig sig-object py" id="darling.diffraction.CompoundRefractiveLens">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">darling.diffraction.</span></span><span class="sig-name descname"><span class="pre">CompoundRefractiveLens</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">number_of_lenses</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lens_space</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lens_radius</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">energy</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">magnification</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sample_to_detector_distance</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lens_material</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'Be'</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/AxelHenningsson/darling/tree/main/darling/diffraction.py/"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darling.diffraction.CompoundRefractiveLens" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>A Compound Refractive Lens.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The math and notation in this class are partly based on Simons 2017:</p>
+<p><em>Simulating and optimizing compound refractive lens-based X-ray microscopes</em>,
+Journal of Synchrotron Radiation, 24, 392-401.
+doi: <a class="reference external" href="https://doi.org/10.1107/S160057751602049X">https://doi.org/10.1107/S160057751602049X</a></p>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>number_of_lenses</strong> (<em>int</em>) – Number of lenses.</p></li>
+<li><p><strong>lens_space</strong> (<em>float</em>) – Space between the lens centers, in microns.</p></li>
+<li><p><strong>lens_radius</strong> (<em>float</em>) – Lens radius of curvature at the apex, in microns.</p></li>
+<li><p><strong>energy</strong> (<em>float</em>) – X-ray energy, in keV.</p></li>
+<li><p><strong>magnification</strong> (<em>float</em>) – Desired magnification. When specified, the
+detector distance is computed to achieve this magnification. Exactly one
+of <code class="docutils literal notranslate"><span class="pre">magnification</span></code> or <code class="docutils literal notranslate"><span class="pre">sample_to_detector_distance</span></code> must be specified.</p></li>
+<li><p><strong>sample_to_detector_distance</strong> (<em>float</em>) – Desired total sample-to-detector
+distance, in mm. When specified, the magnification is derived from this
+distance. This parameter is sometimes referred to as <code class="docutils literal notranslate"><span class="pre">L</span></code> and is the
+length of the optical path from the sample image plane to the detector.
+Exactly one of <code class="docutils literal notranslate"><span class="pre">magnification</span></code> or <code class="docutils literal notranslate"><span class="pre">sample_to_detector_distance</span></code> must
+be specified.</p></li>
+<li><p><strong>lens_material</strong> (<em>dict</em><em> or </em><em>str</em>) – Lens material properties, or a key specifying a
+predefined lens material.</p></li>
+</ul>
+</dd>
+</dl>
+<p><code class="docutils literal notranslate"><span class="pre">lens_material</span></code> may be one of the following strings:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">&quot;beryllium&quot;</span></code> or <code class="docutils literal notranslate"><span class="pre">&quot;Be&quot;</span></code> for beryllium</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">&quot;diamond&quot;</span></code> or <code class="docutils literal notranslate"><span class="pre">&quot;C&quot;</span></code> for diamond</p></li>
+</ul>
+<p>If <code class="docutils literal notranslate"><span class="pre">lens_material</span></code> is a dictionary, it must contain:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">&quot;atomic_number&quot;</span></code>: atomic number</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">&quot;density&quot;</span></code>: density in g/cm³</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">&quot;atomic_mass&quot;</span></code>: atomic mass in g/mol</p></li>
+</ul>
+<p>The default is <code class="docutils literal notranslate"><span class="pre">&quot;Be&quot;</span></code>.</p>
+<dl class="py property">
+<dt class="sig sig-object py" id="darling.diffraction.CompoundRefractiveLens.energy">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">energy</span></span><a class="reference external" href="https://github.com/AxelHenningsson/darling/tree/main/darling/diffraction.py/"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darling.diffraction.CompoundRefractiveLens.energy" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="darling.diffraction.CompoundRefractiveLens.goto">
+<span class="sig-name descname"><span class="pre">goto</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">theta</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">eta</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/AxelHenningsson/darling/tree/main/darling/diffraction.py/"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darling.diffraction.CompoundRefractiveLens.goto" title="Link to this definition">#</a></dt>
+<dd><p>Go to a fixed theta eta setting, rotates imaging system.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>theta</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">float</span></code>) – Bragg angle in radians.</p></li>
+<li><p><strong>eta</strong> (<code class="xref py py-obj docutils literal notranslate"><span class="pre">float</span></code>) – Azimuth angle in radians.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="darling.diffraction.CompoundRefractiveLens.optical_axis">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">optical_axis</span></span><a class="reference external" href="https://github.com/AxelHenningsson/darling/tree/main/darling/diffraction.py/"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darling.diffraction.CompoundRefractiveLens.optical_axis" title="Link to this definition">#</a></dt>
+<dd><p>optical axis for the current angles (as given in lab coordinates).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>optical axis. shape=(3,).</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>(<code class="xref py py-obj docutils literal notranslate"><span class="pre">numpy</span> <span class="pre">array</span></code>)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="darling.diffraction.CompoundRefractiveLens.imaging_system">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">imaging_system</span></span><a class="reference external" href="https://github.com/AxelHenningsson/darling/tree/main/darling/diffraction.py/"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darling.diffraction.CompoundRefractiveLens.imaging_system" title="Link to this definition">#</a></dt>
+<dd><p>imaging coordinate system for the current angles (as given in lab coordinates).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>imaging coordinate system. shape=(3,3).</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>(<code class="xref py py-obj docutils literal notranslate"><span class="pre">numpy</span> <span class="pre">array</span></code>)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="darling.diffraction.CompoundRefractiveLens.T">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">T</span></span><a class="reference external" href="https://github.com/AxelHenningsson/darling/tree/main/darling/diffraction.py/"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darling.diffraction.CompoundRefractiveLens.T" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="darling.diffraction.CompoundRefractiveLens.R">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">R</span></span><a class="reference external" href="https://github.com/AxelHenningsson/darling/tree/main/darling/diffraction.py/"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darling.diffraction.CompoundRefractiveLens.R" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="darling.diffraction.CompoundRefractiveLens.N">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">N</span></span><a class="reference external" href="https://github.com/AxelHenningsson/darling/tree/main/darling/diffraction.py/"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darling.diffraction.CompoundRefractiveLens.N" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="darling.diffraction.CompoundRefractiveLens.delta">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">delta</span></span><a class="reference external" href="https://github.com/AxelHenningsson/darling/tree/main/darling/diffraction.py/"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darling.diffraction.CompoundRefractiveLens.delta" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="darling.diffraction.CompoundRefractiveLens.f">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">f</span></span><a class="reference external" href="https://github.com/AxelHenningsson/darling/tree/main/darling/diffraction.py/"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darling.diffraction.CompoundRefractiveLens.f" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="darling.diffraction.CompoundRefractiveLens.f_N">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">f_N</span></span><a class="reference external" href="https://github.com/AxelHenningsson/darling/tree/main/darling/diffraction.py/"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darling.diffraction.CompoundRefractiveLens.f_N" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="darling.diffraction.CompoundRefractiveLens.phi">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">phi</span></span><a class="reference external" href="https://github.com/AxelHenningsson/darling/tree/main/darling/diffraction.py/"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darling.diffraction.CompoundRefractiveLens.phi" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="darling.diffraction.CompoundRefractiveLens.M_N">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">M_N</span></span><a class="reference external" href="https://github.com/AxelHenningsson/darling/tree/main/darling/diffraction.py/"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darling.diffraction.CompoundRefractiveLens.M_N" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="darling.diffraction.CompoundRefractiveLens.K">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">K</span></span><a class="reference external" href="https://github.com/AxelHenningsson/darling/tree/main/darling/diffraction.py/"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darling.diffraction.CompoundRefractiveLens.K" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="darling.diffraction.CompoundRefractiveLens.lens_focal_length">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">lens_focal_length</span></span><a class="reference external" href="https://github.com/AxelHenningsson/darling/tree/main/darling/diffraction.py/"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darling.diffraction.CompoundRefractiveLens.lens_focal_length" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="darling.diffraction.CompoundRefractiveLens.crl_focal_length">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">crl_focal_length</span></span><a class="reference external" href="https://github.com/AxelHenningsson/darling/tree/main/darling/diffraction.py/"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darling.diffraction.CompoundRefractiveLens.crl_focal_length" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="darling.diffraction.CompoundRefractiveLens.d2">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">d2</span></span><a class="reference external" href="https://github.com/AxelHenningsson/darling/tree/main/darling/diffraction.py/"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darling.diffraction.CompoundRefractiveLens.d2" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="darling.diffraction.CompoundRefractiveLens.d1">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">d1</span></span><a class="reference external" href="https://github.com/AxelHenningsson/darling/tree/main/darling/diffraction.py/"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darling.diffraction.CompoundRefractiveLens.d1" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="darling.diffraction.CompoundRefractiveLens.source_to_detector_distance">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">source_to_detector_distance</span></span><a class="reference external" href="https://github.com/AxelHenningsson/darling/tree/main/darling/diffraction.py/"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darling.diffraction.CompoundRefractiveLens.source_to_detector_distance" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="darling.diffraction.CompoundRefractiveLens.length">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">length</span></span><a class="reference external" href="https://github.com/AxelHenningsson/darling/tree/main/darling/diffraction.py/"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darling.diffraction.CompoundRefractiveLens.length" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="darling.diffraction.CompoundRefractiveLens.L">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">L</span></span><a class="reference external" href="https://github.com/AxelHenningsson/darling/tree/main/darling/diffraction.py/"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darling.diffraction.CompoundRefractiveLens.L" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="darling.diffraction.CompoundRefractiveLens.sample_to_detector_distance">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">sample_to_detector_distance</span></span><a class="reference external" href="https://github.com/AxelHenningsson/darling/tree/main/darling/diffraction.py/"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darling.diffraction.CompoundRefractiveLens.sample_to_detector_distance" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="darling.diffraction.CompoundRefractiveLens.info">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">info</span></span><a class="reference external" href="https://github.com/AxelHenningsson/darling/tree/main/darling/diffraction.py/"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#darling.diffraction.CompoundRefractiveLens.info" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
 </section>
 </section>
 
@@ -2443,7 +2657,7 @@ depending on which one/ones of the input angles have a size&gt;1</p>
   <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="visible nav section-nav flex-column">
 <li class="toc-h1 nav-item toc-entry"><a class="reference internal nav-link" href="#">DARLING</a></li>
-<li class="toc-h1 nav-item toc-entry"><a class="reference internal nav-link" href="#authors">Authors</a></li>
+<li class="toc-h1 nav-item toc-entry"><a class="reference internal nav-link" href="#citation">Citation</a></li>
 <li class="toc-h1 nav-item toc-entry"><a class="reference internal nav-link" href="#usecase">Usecase</a><ul class="visible nav section-nav flex-column">
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#loading-plotting-data">Loading &amp; plotting Data</a></li>
 </ul>
@@ -2452,7 +2666,8 @@ depending on which one/ones of the input angles have a size&gt;1</p>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#note-on-jupyter-the-esrf-slurm-cluster">Note on jupyter &amp; the ESRF slurm cluster</a></li>
 </ul>
 </li>
-<li class="toc-h1 nav-item toc-entry"><a class="reference internal nav-link" href="#documentation">Documentation</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h1 nav-item toc-entry"><a class="reference internal nav-link" href="#documentation">Documentation</a></li>
+<li class="toc-h1 nav-item toc-entry"><a class="reference internal nav-link" href="#authors">Authors</a><ul class="visible nav section-nav flex-column">
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-darling.io._dataset.DataSet">DataSet</a><ul class="nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#darling.io._dataset.DataSet.roi"><code class="docutils literal notranslate"><span class="pre">roi</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#darling.io._dataset.DataSet.__delattr__"><code class="docutils literal notranslate"><span class="pre">__delattr__()</span></code></a></li>
@@ -2551,7 +2766,33 @@ depending on which one/ones of the input angles have a size&gt;1</p>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#darling.diffraction.ccmth_to_energy"><code class="docutils literal notranslate"><span class="pre">ccmth_to_energy()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#darling.diffraction.wavelength_to_energy"><code class="docutils literal notranslate"><span class="pre">wavelength_to_energy()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#darling.diffraction.energy_to_wavelength"><code class="docutils literal notranslate"><span class="pre">energy_to_wavelength()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#darling.diffraction.refractive_decrement"><code class="docutils literal notranslate"><span class="pre">refractive_decrement()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#darling.diffraction.diffraction_vectors"><code class="docutils literal notranslate"><span class="pre">diffraction_vectors()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#darling.diffraction.CompoundRefractiveLens"><code class="docutils literal notranslate"><span class="pre">CompoundRefractiveLens</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darling.diffraction.CompoundRefractiveLens.energy"><code class="docutils literal notranslate"><span class="pre">CompoundRefractiveLens.energy</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darling.diffraction.CompoundRefractiveLens.goto"><code class="docutils literal notranslate"><span class="pre">CompoundRefractiveLens.goto()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darling.diffraction.CompoundRefractiveLens.optical_axis"><code class="docutils literal notranslate"><span class="pre">CompoundRefractiveLens.optical_axis</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darling.diffraction.CompoundRefractiveLens.imaging_system"><code class="docutils literal notranslate"><span class="pre">CompoundRefractiveLens.imaging_system</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darling.diffraction.CompoundRefractiveLens.T"><code class="docutils literal notranslate"><span class="pre">CompoundRefractiveLens.T</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darling.diffraction.CompoundRefractiveLens.R"><code class="docutils literal notranslate"><span class="pre">CompoundRefractiveLens.R</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darling.diffraction.CompoundRefractiveLens.N"><code class="docutils literal notranslate"><span class="pre">CompoundRefractiveLens.N</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darling.diffraction.CompoundRefractiveLens.delta"><code class="docutils literal notranslate"><span class="pre">CompoundRefractiveLens.delta</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darling.diffraction.CompoundRefractiveLens.f"><code class="docutils literal notranslate"><span class="pre">CompoundRefractiveLens.f</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darling.diffraction.CompoundRefractiveLens.f_N"><code class="docutils literal notranslate"><span class="pre">CompoundRefractiveLens.f_N</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darling.diffraction.CompoundRefractiveLens.phi"><code class="docutils literal notranslate"><span class="pre">CompoundRefractiveLens.phi</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darling.diffraction.CompoundRefractiveLens.M_N"><code class="docutils literal notranslate"><span class="pre">CompoundRefractiveLens.M_N</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darling.diffraction.CompoundRefractiveLens.K"><code class="docutils literal notranslate"><span class="pre">CompoundRefractiveLens.K</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darling.diffraction.CompoundRefractiveLens.lens_focal_length"><code class="docutils literal notranslate"><span class="pre">CompoundRefractiveLens.lens_focal_length</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darling.diffraction.CompoundRefractiveLens.crl_focal_length"><code class="docutils literal notranslate"><span class="pre">CompoundRefractiveLens.crl_focal_length</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darling.diffraction.CompoundRefractiveLens.d2"><code class="docutils literal notranslate"><span class="pre">CompoundRefractiveLens.d2</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darling.diffraction.CompoundRefractiveLens.d1"><code class="docutils literal notranslate"><span class="pre">CompoundRefractiveLens.d1</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darling.diffraction.CompoundRefractiveLens.source_to_detector_distance"><code class="docutils literal notranslate"><span class="pre">CompoundRefractiveLens.source_to_detector_distance</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darling.diffraction.CompoundRefractiveLens.length"><code class="docutils literal notranslate"><span class="pre">CompoundRefractiveLens.length</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darling.diffraction.CompoundRefractiveLens.L"><code class="docutils literal notranslate"><span class="pre">CompoundRefractiveLens.L</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darling.diffraction.CompoundRefractiveLens.sample_to_detector_distance"><code class="docutils literal notranslate"><span class="pre">CompoundRefractiveLens.sample_to_detector_distance</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#darling.diffraction.CompoundRefractiveLens.info"><code class="docutils literal notranslate"><span class="pre">CompoundRefractiveLens.info</span></code></a></li>
+</ul>
+</li>
 </ul>
 </li>
 </ul>

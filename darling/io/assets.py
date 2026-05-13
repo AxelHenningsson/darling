@@ -50,7 +50,7 @@ def mosa_field():
                 [0.54936605, -0.53253069,  0.64390062]
 
     from 3DXRD. The sample is in tensile strain with the grain 1-11 aling the
-    tensile axis wich is identified as the lab-z axis.
+    tensile axis which is identified as the lab-z axis.
 
     Returns:
         mosa (:obj:`numpy array`): 2D array of shape=(m, n) with mosaicity values.
