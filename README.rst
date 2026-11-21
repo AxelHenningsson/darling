@@ -72,6 +72,36 @@ For example, it is possible to segment per-pixel peaks and extract features from
 
 for more examples see the externally hosted documentation at https://axelhenningsson.github.io/darling/
 
+Single Gaussian on a 2D mosaicity scan
+------------------------------------------------
+
+Fit the joint intensity distribution over both motor angles at every detector
+pixel. Each diagonal covariance entry is the variance projected onto one
+motor axis. Combine the two marginal FWHMs in degrees with their Euclidean norm.
+
+.. code-block:: python
+
+   import numpy as np
+   import matplotlib.pyplot as plt
+   from darling import io, properties
+
+   _, data, motors = io.assets.domains("1.1")
+   center, cov, nrmse = properties.fit_gaussian(data, motors, weight_power=6)
+   widths = np.sqrt(8 * np.log(2)) * np.sqrt(cov.diagonal(axis1=-2, axis2=-1))
+   fwhm = np.hypot(widths[..., 0], widths[..., 1])
+   usable = np.isfinite(nrmse) & (fwhm > 0)
+   plt.imshow(np.where(usable, fwhm, np.nan), vmin=0)
+   plt.colorbar(label="Combined FWHM (degrees)")
+   plt.show()
+
+The fit starts from the intensity moments and weights residuals by
+``(I / Imax)**6`` at motor samples reaching 20% of the pixel maximum.
+``nrmse`` measures the unweighted RMS residual over the entire motor scan,
+divided by its peak intensity. For amplitude and correlation as well as
+center and widths, use ``properties.curvefit.fit_2D_gaussian(data, motors)``.
+Its default residual power is six. Its final axis contains amplitude, the
+two centers, the two marginal sigmas, correlation, and a validity flag.
+
 Installation
 ------------------------------------------------
 From source the key is simply to clone and pip install
