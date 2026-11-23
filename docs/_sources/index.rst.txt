@@ -6,10 +6,26 @@
 
 
 ======================================
+DataSet
+======================================
+
+.. automodule:: darling.io._dataset.DataSet
+    :members:
+    :show-inheritance:
+
+======================================
 properties
 ======================================
 
 .. automodule:: darling.properties
+    :members:
+    :show-inheritance:
+
+======================================
+filters
+======================================
+
+.. automodule:: darling.filters
     :members:
     :show-inheritance:
 
@@ -22,57 +38,33 @@ transforms
     :show-inheritance:
 
 ======================================
-goniometer
+io
 ======================================
 
-.. automodule:: darling.goniometer
+.. automodule:: darling.io
     :members:
     :show-inheritance:
 
 ======================================
-peaksearcher
+geometry
 ======================================
 
-.. automodule:: darling.peaksearcher
+.. automodule:: darling.geometry
     :members:
     :show-inheritance:
 
 ======================================
-DataSet
+crystal
 ======================================
 
-.. automodule:: darling._dataset
+.. automodule:: darling.crystal
     :members:
     :show-inheritance:
 
 ======================================
-reader
+diffraction
 ======================================
 
-.. automodule:: darling.reader
-    :members:
-    :show-inheritance:
-
-======================================
-assets
-======================================
-
-.. automodule:: darling.assets
-    :members:
-    :show-inheritance:
-
-======================================
-metadata
-======================================
-
-.. automodule:: darling.metadata
-    :members:
-    :show-inheritance:
-
-======================================
-utils
-======================================
-
-.. automodule:: darling.utils
+.. automodule:: darling.diffraction
     :members:
     :show-inheritance:

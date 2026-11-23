@@ -22,20 +22,16 @@ the python **[D]ark** field x-ray microscopy **[A]nalysis** & **[R]econstruction
    :target: https://axelhenningsson.github.io/darling/
    :alt: Sphinx documentation
 
-Authors
+Citation
 ------------------------------------
-``darling`` is written and maintained by: 
+If you use ``darling`` in your research, please cite the following papers.
 
-`Axel Henningsson <https://github.com/AxelHenningsson>`_,
-`Felix Tristan Frankus <https://github.com/adcret>`_ and
-`Adam André William Cretton <https://github.com/fetrifra>`_
+.. code-block:: bibtex
 
-affiliated with DTU. The core ideas of this library was originally written during a beamtime at ESRF id03D. 
+   Henningsson A, Frankus F T, Cretton A A W, Shukla A, Gayoso Padula A, La Bella M, Haack J, Staeck S, Poulsen H F and Winther G (2026) Multi-peak diffraction analysis for enhanced orientation mapping in dark-field X-ray microscopy of deformed metals using Darling. Submitted to the proceedings of the 46th Risø International Symposium on Materials Science: Characterization of Evolving Microstructures in Metals, IOP Conf. Ser.: Mater. Sci. Eng. In review as of May 13, 2026.
+   Shukla A, Henningsson A, Cretton A A W and Yildirim C (2026) Direct visualization, segmentation and quantification of dislocation cells in cold-rolled Fe-3% Si using dark-field X-ray microscopy. Submitted to the proceedings of the 46th Risø International Symposium on Materials Science: Characterization of Evolving Microstructures in Metals, IOP Conf. Ser.: Mater. Sci. Eng. In review as of May 13, 2026.
 
-Until an associated journal publication is available, if you use this code in your research, we ask that you cite this repository.
-
-If you are interested in collaborating with us on DFXM data analysis, please reach out to us at: naxhe@dtu.dk
-and we can discuss the possibilities.
+BibTeX is available here: `citation.bib <docs/_static/citation.bib>`_
 
 Usecase
 ------------------------------------------------
@@ -44,52 +40,67 @@ Usecase
 Loading & plotting Data
 ================================================
 
-Darling collects many useful tools in the properties module.
+Darling collects many useful tools in the ``properties`` and ``transforms`` modules.
 
-For example, it is possible to model the angular intensity distribution of a scan using a Gaussian Mixture Model (GMM)
-and then color code the scan based on the first maxima of the GMM using a RGB color map known as a mosaicity map.
-
-
-.. code-block:: python
-
-   import numpy as np
-
-   # read some toy data in
-   path_to_data, _, _ = darling.assets.domains()  # replace with your own data
-   scan_id = "1.1"  # tope level key in the hdf5 file
-   dset = darling.DataSet(path_to_data, scan_id)
-
-   # model the intensity distribution using a GMM
-   features = darling.properties.gaussian_mixture(dset.data, k=4, coordinates=dset.motors)
-
-   # color code the scan based on the first maxima of the GMM
-   first_maxima_mean = np.concatenate(
-      (features["mean_motor1"][..., 0, None], features["mean_motor2"][..., 0, None]),
-      axis=-1,
-   )
-   rgbmap, colorkey, colorgrid = darling.properties.rgb(
-      first_maxima_mean, norm="dynamic", coordinates=dset.motors
-   )
-
-To visualize the resulting mosaicity map, you can use the following code:
+For example, it is possible to segment per-pixel peaks and extract features from them. Color-coding the the mean motor position of the first peak per pixel gives a mosaicity map as shown below.
 
 
 .. code-block:: python
 
-   import matplotlib.pyplot as plt
+   import darling
 
-   # plot the resulting mosaicity map
-   plt.style.use('dark_background')
-   fig, ax = plt.subplots(1, 1, figsize=(7,7))
-   im = ax.imshow(rgbmap)
-   plt.tight_layout()
+   # replace with your own data path
+   path_to_data, _, _ = darling.io.assets.domains()
+   dset = darling.DataSet(path_to_data, scan_id="1.1")
+
+   # segment per-pixel peaks and extract features
+   peakmap = darling.properties.peaks(dset.data, k=4, coordinates=dset.motors)
+
+   # color code the scan based on the first peak-maxima mean motor position
+   rgbmap, colorkey, colorgrid = darling.transforms.rgb(
+      peakmap.mean, coordinates=dset.motors
+   )
+
+   plt.figure()
+   plt.imshow(rgbmap)
    plt.show()
+
 
 .. image:: https://github.com/AxelHenningsson/darling/blob/dev/docs/source/images/domains_mosa.png?raw=true
    :align: center
 
 
 for more examples see the externally hosted documentation at https://axelhenningsson.github.io/darling/
+
+Single Gaussian on a 2D mosaicity scan
+------------------------------------------------
+
+Fit the joint intensity distribution over both motor angles at every detector
+pixel. Each diagonal covariance entry is the variance projected onto one
+motor axis. Combine the two marginal FWHMs in degrees with their Euclidean norm.
+
+.. code-block:: python
+
+   import numpy as np
+   import matplotlib.pyplot as plt
+   from darling import io, properties
+
+   _, data, motors = io.assets.domains("1.1")
+   center, cov, nrmse = properties.fit_gaussian(data, motors, weight_power=6)
+   widths = np.sqrt(8 * np.log(2)) * np.sqrt(cov.diagonal(axis1=-2, axis2=-1))
+   fwhm = np.hypot(widths[..., 0], widths[..., 1])
+   usable = np.isfinite(nrmse) & (fwhm > 0)
+   plt.imshow(np.where(usable, fwhm, np.nan), vmin=0)
+   plt.colorbar(label="Combined FWHM (degrees)")
+   plt.show()
+
+The fit starts from the intensity moments and weights residuals by
+``(I / Imax)**6`` at motor samples reaching 20% of the pixel maximum.
+``nrmse`` measures the unweighted RMS residual over the entire motor scan,
+divided by its peak intensity. For amplitude and correlation as well as
+center and widths, use ``properties.curvefit.fit_2D_gaussian(data, motors)``.
+Its default residual power is six. Its final axis contains amplitude, the
+two centers, the two marginal sigmas, correlation, and a validity flag.
 
 Installation
 ------------------------------------------------
@@ -111,7 +122,7 @@ In general, you probably want to install in a fresh virtual environment as
    cd darling
    pip install -e .
 
-use 
+use
 
 .. code-block:: bash
 
@@ -157,4 +168,21 @@ This appraoch should work on other clusters as well, as long as some user permis
 Documentation
 ------------------------------------------------
 Darling hosts documentation at https://axelhenningsson.github.io/darling/
+
+
+
+Authors
+------------------------------------
+``darling`` is written and maintained by:
+
+`Axel Henningsson <https://github.com/AxelHenningsson>`_,
+
+with important early contributions from:
+`Felix Tristan Frankus <https://github.com/adcret>`_ and
+`Adam André William Cretton <https://github.com/fetrifra>`_
+
+The core ideas of this library was originally written during a beamtime at ESRF id03D.
+
+If you are interested in collaborating with us on DFXM data analysis, please reach out to us at: naxhe@dtu.dk
+and we can discuss the possibilities.
 
