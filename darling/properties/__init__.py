@@ -1,5 +1,4 @@
 from . import curvefit, models
-from ._gaussian import fit_gaussian
 from ._moments import covariance, mean, moments
 from ._noise import estimate_white_noise
 from ._peakmap import PeakMap
@@ -7,7 +6,6 @@ from ._peaks import extract_features, local_max_label, peaks
 
 __all__ = [
     "curvefit",
-    "fit_gaussian",
     "models",
     "moments",
     "mean",

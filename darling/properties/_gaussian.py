@@ -5,18 +5,27 @@ import numpy as np
 
 
 def fit_2D_gaussian(
-    data, coordinates, weight_power=6.0, mask=None, *, stat_mean=None, stat_cov=None
+    data, coordinates, weight_power=1.0, mask=None, *, stat_mean=None, stat_cov=None,
+    tolerance=1e-3,
 ):
     """Fit one correlated Gaussian to both motor axes of each detector pixel.
 
     The model has a single peak and zero background. The fit uses motor
     samples at or above 20% of the maximum intensity for each pixel.
+    For a noisy motor scan, try smoothing each detector pixel's motor data
+    before fitting. The domains example uses
+    ``darling.filters.gaussian_filter(data.astype(np.float64), sigma=1.5, axis=(0, 1))``,
+    where sigma is measured in motor steps along each axis.
 
     Args:
         data (:obj:`numpy.ndarray`): Nonnegative intensities of shape (ny, nx, m, n).
         coordinates (:obj:`numpy.ndarray`): Two motor grids of shape (m, n).
         weight_power (:obj:`float`): Exponent in the residual weight
-            ``(I / Imax)**weight_power``. Defaults to 6.
+            ``(I / Imax)**weight_power``. Defaults to 1.
+        tolerance (float): Absolute target for the mean squared weighted residual
+            over included samples, with intensities normalized by the pixel peak.
+            Defaults to 1e-3. The fit can also stop after 50 evaluations without
+            improvement or 5000 Adam steps, returning the lowest-loss iterate.
         mask (:obj:`numpy.ndarray`, optional): Boolean array of shape (ny, nx).
             True selects a pixel for fitting. Defaults to all pixels.
         stat_mean (:obj:`numpy.ndarray`, optional): Initial centers of shape
@@ -31,46 +40,33 @@ def fit_2D_gaussian(
             between the two motor coordinates. Valid fits have a final value
             of one. Masked or unusable pixels return seven zeros.
     """
-    params, _ = _fit_gaussian_map(
-        data, coordinates, weight_power, stat_mean, stat_cov, mask
+    data = np.asarray(data)
+    grid = np.ascontiguousarray(coordinates, dtype=np.float32)
+    if data.ndim != 4 or grid.shape != (2, *data.shape[2:]) or not grid.size:
+        raise ValueError("expected data (ny, nx, m, n) and two motor grids (2, m, n)")
+    if not np.isfinite(grid).all() or not np.isfinite(weight_power) or weight_power < 0:
+        raise ValueError(
+            "coordinates and weight_power must be finite, with weight_power >= 0"
+        )
+    if not np.isfinite(tolerance) or tolerance < 0:
+        raise ValueError("tolerance must be finite and nonnegative")
+    if data.dtype not in (np.uint16, np.float32, np.float64):
+        if data.dtype.kind not in "iuf":
+            raise ValueError("expected real intensity data")
+        data = data.astype(np.float64)
+    if mask is not None:
+        mask = np.asarray(mask)
+        if mask.shape != data.shape[:2] or mask.dtype != bool:
+            raise ValueError("mask must be boolean with the detector shape")
+    return _fit_map(
+        data,
+        grid,
+        np.float32(weight_power),
+        float(tolerance),
+        mask,
+        _seed(stat_mean, (*data.shape[:2], 2)),
+        _seed(stat_cov, (*data.shape[:2], 2, 2)),
     )
-    return params
-
-
-def fit_gaussian(
-    data, coordinates, weight_power=1.0, stat_mean=None, stat_cov=None, *, mask=None
-):
-    """Fit a correlated 2D Gaussian and return its center, covariance and fit error.
-
-    Args:
-        data (:obj:`numpy.ndarray`): Nonnegative intensities of shape (ny, nx, m, n).
-        coordinates (:obj:`numpy.ndarray`): Two motor grids of shape (m, n).
-        weight_power (:obj:`float`): Exponent in the residual weight
-            ``(I / Imax)**weight_power``. Defaults to 1. The fit uses samples
-            at or above 20% of the pixel maximum.
-        stat_mean (:obj:`numpy.ndarray`, optional): Initial centers of shape
-            (ny, nx, 2). Defaults to the intensity-weighted mean.
-        stat_cov (:obj:`numpy.ndarray`, optional): Initial covariances of shape
-            (ny, nx, 2, 2). Defaults to the intensity-weighted covariance.
-        mask (:obj:`numpy.ndarray`, optional): Boolean array of shape (ny, nx).
-            True selects a pixel for fitting. Defaults to all pixels.
-
-    Returns:
-        tuple: Float32 arrays for the center (ny, nx, 2), covariance
-            (ny, nx, 2, 2), and error (ny, nx). The error is the unweighted
-            RMS residual over the full scan divided by the pixel maximum.
-            Masked or unusable pixels have zero center and covariance and
-            NaN error. An unmasked pixel with zero intensity returns zeros.
-    """
-    params, errors = _fit_gaussian_map(
-        data, coordinates, weight_power, stat_mean, stat_cov, mask
-    )
-    sx, sy, rho = params[..., 3], params[..., 4], params[..., 5]
-    cov = np.zeros((*params.shape[:2], 2, 2), dtype=np.float32)
-    cov[..., 0, 0] = sx**2
-    cov[..., 1, 1] = sy**2
-    cov[..., 0, 1] = cov[..., 1, 0] = rho * sx * sy
-    return params[..., 1:3].astype(np.float32), cov, errors
 
 
 @numba.njit(cache=True)
@@ -221,6 +217,35 @@ def nrmse(data, res):
 
 
 @numba.njit(cache=True)
+def _weighted_mse_and_grad(params, x, y, observed, weights):
+    """Mean squared weighted residual and its six analytic derivatives."""
+    amplitude, mx, my, sx, sy, rho = params
+    denom = 1.0 - rho**2
+    grad = np.zeros(6)
+    loss = 0.0
+    for i in range(observed.size):
+        u, v = (x[i] - mx) / sx, (y[i] - my) / sy
+        distance = u**2 + (v - rho * u)**2 / denom
+        basis = np.exp(-0.5 * distance)
+        prediction = amplitude * basis
+        residual = weights[i] * (prediction - observed[i])
+        loss += residual**2
+
+        # One weight is in the residual, the other in its derivative.
+        weighted = residual * weights[i]
+        factor = weighted * prediction / denom
+        center_x = factor * (u - rho * v) / sx
+        center_y = factor * (v - rho * u) / sy
+        grad[0] += weighted * basis
+        grad[1] += center_x
+        grad[2] += center_y
+        grad[3] += center_x * u
+        grad[4] += center_y * v
+        grad[5] += factor * (u * v - rho * distance)
+    return loss / observed.size, grad * (2.0 / observed.size)
+
+
+@numba.njit(cache=True)
 def fit_gaussian_2d(
     data_flat,
     x_flat,
@@ -241,7 +266,7 @@ def fit_gaussian_2d(
         stat_cov (:obj:`numpy.ndarray`): Statistical covariance matrix
         weight_power (:obj:`float`): Weight power for the weight function
         max_iter (:obj:`int`): Maximum number of iterations
-        tolerance (:obj:`float`): Convergence tolerance for error reduction
+        tolerance (:obj:`float`): Absolute target for the mean squared weighted residual
 
     Returns:
         :obj:`numpy.ndarray`: Fitted parameters [amplitude, x0, y0, sigma_x, sigma_y, rho]
@@ -263,7 +288,6 @@ def fit_gaussian_2d(
 
     m = np.zeros_like(params)
     v = np.zeros_like(params)
-    t = 1
 
     min_error = np.inf
     best_params = params.copy()
@@ -273,83 +297,30 @@ def fit_gaussian_2d(
     error_history = np.zeros(3)
     error_idx = 0
 
-    threshold = np.max(data_norm) * 0.2
+    active = data_norm >= np.max(data_norm) * 0.2
+    x, y = x_flat[active], y_flat[active]
+    observed = data_norm[active]
+    weights = observed**weight_power
 
-    for _ in range(max_iter):
-        grad = np.zeros_like(params)
-        total_error = 0
-        active_points = 0
+    # Score the initial guess and each updated iterate, including the final one.
+    for step in range(max_iter + 1):
+        total_error, grad = _weighted_mse_and_grad(params, x, y, observed, weights)
+        if not np.isfinite(total_error):
+            break
+        shape_error = (
+            abs(params[3] - best_params[3]) / best_params[3]
+            + abs(params[4] - best_params[4]) / best_params[4]
+        )
+        if total_error < min_error:
+            min_error = total_error
+            best_params = params.copy()
+            patience_counter = 0
+        else:
+            patience_counter += 1
+        if total_error <= tolerance or patience_counter >= patience or step == max_iter:
+            break
 
-        for i in range(len(data_flat)):
-            if data_norm[i] < threshold:
-                continue
-
-            active_points += 1
-            pred = gaussian_2d(
-                x_flat[i],
-                y_flat[i],
-                params[0],
-                params[1],
-                params[2],
-                params[3],
-                params[4],
-                params[5],
-            )
-
-            weight = data_norm[i] ** weight_power
-
-            residual = (pred - data_norm[i]) * weight
-            total_error += residual**2
-
-            if abs(residual) < 1e-10:
-                continue
-
-            dx = x_flat[i] - params[1]
-            dy = y_flat[i] - params[2]
-            sigma_x = max(params[3], 1e-10)
-            sigma_y = max(params[4], 1e-10)
-            rho = params[5]
-
-            z = (
-                (dx / sigma_x) ** 2
-                + (dy / sigma_y) ** 2
-                - 2 * rho * dx * dy / (sigma_x * sigma_y)
-            )
-            exp_term = np.exp(-z / (2 * (1 - rho**2)))
-
-            grad[0] += residual * exp_term
-            grad[1] += (
-                residual
-                * params[0]
-                * exp_term
-                * (dx / (sigma_x**2) - rho * dy / (sigma_x * sigma_y))
-                / (1 - rho**2)
-            )
-            grad[2] += (
-                residual
-                * params[0]
-                * exp_term
-                * (dy / (sigma_y**2) - rho * dx / (sigma_x * sigma_y))
-                / (1 - rho**2)
-            )
-            grad[3] += (
-                residual * params[0] * exp_term * dx**2 / (sigma_x**3) / (1 - rho**2)
-            )
-            grad[4] += (
-                residual * params[0] * exp_term * dy**2 / (sigma_y**3) / (1 - rho**2)
-            )
-            grad[5] += (
-                residual
-                * params[0]
-                * exp_term
-                * (rho / (1 - rho**2) - dx * dy / (sigma_x * sigma_y))
-            )
-
-        if active_points == 0:
-            continue
-
-        total_error /= active_points
-
+        t = step + 1
         error_history[error_idx] = total_error
         error_idx = (error_idx + 1) % 3
 
@@ -367,10 +338,6 @@ def fit_gaussian_2d(
         elif error_trend > -0.01:
             alphas *= 0.8 if t < 50 else 0.9
 
-        shape_error = (
-            abs(params[3] - best_params[3]) / best_params[3]
-            + abs(params[4] - best_params[4]) / best_params[4]
-        )
         if shape_error > 0.1:
             # Speed up updates to the shape parameters when their drift is large
             alphas[3:5] *= 1.2
@@ -385,34 +352,19 @@ def fit_gaussian_2d(
         params[4] = max(params[4], 0.5 * np.sqrt(stat_cov[1, 1]))
         params[5] = clip_value(params[5], -0.99, 0.99)
 
-        if total_error < min_error:
-            min_error = total_error
-            best_params = params.copy()
-            patience_counter = 0
-        else:
-            patience_counter += 1
-
-        if patience_counter >= patience or total_error < tolerance:
-            params = best_params
-            break
-
-        t += 1
-
-    params[0] *= scale
-    return params
+    best_params[0] *= scale
+    return best_params
 
 
 @numba.njit(cache=True)
-def _fit_pixel(data, grid, points, weight_power, i, j, mean_map, cov_map):
+def _fit_pixel(data, grid, points, weight_power, tolerance, i, j, mean_map, cov_map):
     x, y = grid[0], grid[1]
     params = np.zeros(7, dtype=np.float64)
     if not np.isfinite(data).all() or np.min(data) < 0:
-        return params, np.nan
+        return params
     total = np.sum(data)
-    if total == 0:
-        return params, 0.0
     if np.max(data) == np.min(data):
-        return params, np.nan
+        return params
 
     flat = data.flatten()
     # Keep the float32 moment reductions in this order. Rounding changes
@@ -437,30 +389,31 @@ def _fit_pixel(data, grid, points, weight_power, i, j, mean_map, cov_map):
         or second[0, 0] <= 0
         or second[1, 1] <= 0
     ):
-        return params, np.nan
-    p = fit_gaussian_2d(flat, points[0], points[1], first, second, weight_power)
+        return params
+    p = fit_gaussian_2d(
+        flat, points[0], points[1], first, second, weight_power, tolerance=tolerance
+    )
     if not np.isfinite(p).all() or p[3] <= 0 or p[4] <= 0:
-        return params, np.nan
+        return params
     error = nrmse(data, residual_map(data, x, y, p))
     if np.isfinite(error):
         params[:6] = p
         params[6] = 1
-    return params, error
+    return params
 
 
 @numba.njit(cache=True, parallel=True)
-def _fit_map(data, grid, weight_power, mask, first, second):
+def _fit_map(data, grid, weight_power, tolerance, mask, first, second):
     rows, cols = data.shape[:2]
     params = np.zeros((rows, cols, 7), dtype=np.float64)
-    errors = np.full((rows, cols), np.nan, dtype=np.float32)
     points = grid.reshape(2, -1)
     for index in numba.prange(rows * cols):
         i, j = index // cols, index % cols
         if mask is None or mask[i, j]:
-            params[i, j], errors[i, j] = _fit_pixel(
-                data[i, j], grid, points, weight_power, i, j, first, second
+            params[i, j] = _fit_pixel(
+                data[i, j], grid, points, weight_power, tolerance, i, j, first, second
             )
-    return params, errors
+    return params
 
 
 def _seed(value, shape):
@@ -470,30 +423,3 @@ def _seed(value, shape):
     if value.shape != shape:
         raise ValueError(f"expected moment map with shape {shape}, got {value.shape}")
     return value
-
-
-def _fit_gaussian_map(data, coordinates, weight_power, stat_mean, stat_cov, mask):
-    data = np.asarray(data)
-    grid = np.ascontiguousarray(coordinates, dtype=np.float32)
-    if data.ndim != 4 or grid.shape != (2, *data.shape[2:]) or not grid.size:
-        raise ValueError("expected data (ny, nx, m, n) and two motor grids (2, m, n)")
-    if not np.isfinite(grid).all() or not np.isfinite(weight_power) or weight_power < 0:
-        raise ValueError(
-            "coordinates and weight_power must be finite, with weight_power >= 0"
-        )
-    if data.dtype not in (np.uint16, np.float32, np.float64):
-        if data.dtype.kind not in "iuf":
-            raise ValueError("expected real intensity data")
-        data = data.astype(np.float64)
-    if mask is not None:
-        mask = np.asarray(mask)
-        if mask.shape != data.shape[:2] or mask.dtype != bool:
-            raise ValueError("mask must be boolean with the detector shape")
-    return _fit_map(
-        data,
-        grid,
-        np.float32(weight_power),
-        mask,
-        _seed(stat_mean, (*data.shape[:2], 2)),
-        _seed(stat_cov, (*data.shape[:2], 2, 2)),
-    )

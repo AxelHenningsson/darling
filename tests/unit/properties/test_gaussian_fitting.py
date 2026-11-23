@@ -2,7 +2,8 @@ import unittest
 
 import numpy as np
 
-from darling import _gaussian, properties
+from darling import properties
+from darling.properties import _gaussian
 
 
 class TestGaussianFitting(unittest.TestCase):
@@ -158,6 +159,44 @@ class TestGaussianFitting(unittest.TestCase):
 
         self.assertAlmostEqual(new_param, param, delta=0.01)
 
+    def test_weighted_mse_gradient(self):
+        x = np.array([-0.8, 0.4, 1.2, 0.3])
+        y = np.array([0.1, -0.2, 0.8, 1.0])
+        data = np.array([0.55, 1.0, 0.78, 0.21])
+        weights = data**4
+
+        def mse(p):
+            u, v = (x - p[1]) / p[3], (y - p[2]) / p[4]
+            pred = p[0] * np.exp(-(u*u + v*v - 2*p[5]*u*v) / (2*(1 - p[5]**2)))
+            return np.mean((weights * (pred - data))**2)
+
+        for rho in (-0.6, 0.0, 0.45):
+            p = np.array([1.2, 0.25, -0.1, 1.1, 0.7, rho])
+            loss, grad = _gaussian._weighted_mse_and_grad(p, x, y, data, weights)
+            self.assertAlmostEqual(loss, mse(p))
+            steps = np.eye(6) * 1e-6
+            numerical = [(mse(p + h) - mse(p - h)) / 2e-6 for h in steps]
+            np.testing.assert_allclose(grad, numerical, rtol=1e-6, atol=1e-9)
+
+    def test_returns_scored_parameters(self):
+        x, y = np.indices((4, 5), dtype=float).reshape(2, -1)
+        data = np.linspace(0.25, 1.0, x.size)
+        mean, cov = np.array([1.5, 2.0]), np.eye(2)
+        seed = _gaussian.params_from_moments(data, mean, cov)
+
+        def fit(steps, tol):
+            return _gaussian.fit_gaussian_2d(data, x, y, mean, cov, 4, steps, tol)
+
+        # The initial guess already satisfies this loose absolute threshold.
+        np.testing.assert_array_equal(fit(100, 1.0), seed)
+        # Extending the step budget must never lose a better evaluated iterate.
+        def loss(p):
+            pred = _gaussian.gaussian_2d(x, y, *p)
+            return np.mean((data**4 * (pred - data))**2)
+
+        losses = [loss(fit(n, 0.0)) for n in (0, 1, 5, 50, 100)]
+        self.assertTrue(np.all(np.diff(losses) <= 1e-12))
+
     def test_fit_gaussian_2d_simple(self):
         """Test fitting a simple 2D Gaussian without noise."""
         x = y = np.linspace(-5, 5, 30)
@@ -285,85 +324,6 @@ class TestGaussianFitting(unittest.TestCase):
         self.assertAlmostEqual(params[1], x[15], delta=0.5)  # x0
         self.assertAlmostEqual(params[2], y[15], delta=0.5)  # y0
 
-    def test_moments_2d_gaussian_ufunc(self):
-        x = np.linspace(-5, 5, 30, dtype=np.float32)
-        y = np.linspace(-3, 6, 20, dtype=np.float32)
-        X, Y = np.meshgrid(x, y, indexing="xy")
-        amp, x0, y0, sigma_x, sigma_y, rho = 100.0, 1.5, -1.2, 1.2, 0.9, 0.3
-        Z = _gaussian.gaussian_2d(X, Y, amp, x0, y0, sigma_x, sigma_y, rho)
-        data_u16 = np.clip(Z, 0, np.iinfo(np.uint16).max).astype(np.uint16)
-
-        dum = np.zeros(2, dtype=np.float32)
-        stat_mean, stat_cov = self.moments(X, Y, Z)
-        stat_mean = stat_mean.astype(np.float32)
-        stat_cov = stat_cov.astype(np.float32)
-
-        # Prepare output arrays for guvectorize function
-        res = np.zeros(2, dtype=np.float32)
-        rmse = np.zeros(1, dtype=np.float32)
-
-        _gaussian.moments_2d_gaussian(
-            data_u16,
-            X.astype(np.float32),
-            Y.astype(np.float32),
-            dum,
-            stat_mean,
-            stat_cov,
-            1.0,  # weight_power
-            res,
-            rmse,
-        )
-        self.assertEqual(res.shape, (2,))
-        self.assertTrue(np.isclose(res[0], x0, rtol=5e-2))
-        self.assertTrue(np.isclose(res[1], y0, rtol=5e-2))
-
-    def test_ufuncs_zero_input(self):
-        """Ufuncs should return zeros for empty or zero data."""
-        x = np.linspace(-1, 1, 8, dtype=np.float32)
-        y = np.linspace(-1, 1, 6, dtype=np.float32)
-        X, Y = np.meshgrid(x, y, indexing="xy")
-        zeros_u16 = np.zeros_like(X, dtype=np.uint16)
-        dum = np.zeros(2, dtype=np.float32)
-        stat_mean = np.zeros(2, dtype=np.float32)
-        stat_cov = np.zeros((2, 2), dtype=np.float32)
-
-        res_m = np.zeros(2, dtype=np.float32)
-        rmse_m = np.zeros(1, dtype=np.float32)
-
-        _gaussian.moments_2d_gaussian(
-            zeros_u16,
-            X.astype(np.float32),
-            Y.astype(np.float32),
-            dum,
-            stat_mean,
-            stat_cov,
-            1.0,  # weight_power
-            res_m,
-            rmse_m,
-        )
-        self.assertEqual(res_m.shape, (2,))
-        self.assertTrue(np.allclose(res_m, 0.0))
-        self.assertTrue(np.allclose(rmse_m, 0.0))
-
-        res_mean = np.zeros(2, dtype=np.float32)
-        res_cov = np.zeros((2, 2), dtype=np.float32)
-        rmse = np.zeros(1, dtype=np.float32)
-        _gaussian.fit_2d_gaussian(
-            zeros_u16,
-            X.astype(np.float32),
-            Y.astype(np.float32),
-            dum,
-            stat_mean,
-            stat_cov,
-            1.0,
-            res_mean,
-            rmse,
-            res_cov,
-        )
-        self.assertTrue(np.allclose(res_mean, 0.0))
-        self.assertTrue(np.allclose(res_cov, 0.0))
-        self.assertTrue(np.allclose(rmse, 0.0))
-
     def test_gaussian_pred_map(self):
         """Test gaussian_pred_map function produces correct predictions."""
         x = np.linspace(-3, 3, 20, dtype=np.float32)
@@ -438,191 +398,6 @@ class TestGaussianFitting(unittest.TestCase):
         nrmse_val3 = _gaussian.nrmse(tiny_data, tiny_residual)
         self.assertTrue(np.isfinite(nrmse_val3))
 
-    def test_fit_2d_gaussian_ufunc(self):
-        """Test fit_2d_gaussian ufunc returns mean, rmse, and covariance."""
-        x = np.linspace(-5, 5, 30, dtype=np.float32)
-        y = np.linspace(-3, 6, 20, dtype=np.float32)
-        X, Y = np.meshgrid(x, y, indexing="xy")
-        amp, x0, y0, sigma_x, sigma_y, rho = 100.0, 1.5, -1.2, 1.2, 0.9, 0.3
-        Z = _gaussian.gaussian_2d(X, Y, amp, x0, y0, sigma_x, sigma_y, rho)
-        data_u16 = np.clip(Z, 0, np.iinfo(np.uint16).max).astype(np.uint16)
-
-        dum = np.arange(2, dtype=np.float32)
-        stat_mean, stat_cov = self.moments(X, Y, Z)
-        stat_mean = stat_mean.astype(np.float32)
-        stat_cov = stat_cov.astype(np.float32)
-
-        res_mean = np.zeros(2, dtype=np.float32)
-        res_cov = np.zeros((2, 2), dtype=np.float32)
-        rmse = np.zeros(1, dtype=np.float32)
-
-        _gaussian.fit_2d_gaussian(
-            data_u16,
-            X.astype(np.float32),
-            Y.astype(np.float32),
-            dum,
-            stat_mean,
-            stat_cov,
-            1.0,
-            res_mean,
-            rmse,
-            res_cov,
-        )
-
-        self.assertEqual(res_mean.shape, (2,))
-        self.assertTrue(np.isclose(res_mean[0], x0, rtol=5e-2))
-        self.assertTrue(np.isclose(res_mean[1], y0, rtol=5e-2))
-
-        self.assertEqual(res_cov.shape, (2, 2))
-        self.assertTrue(np.isclose(res_cov[0, 0], sigma_x**2, rtol=5e-2))
-        self.assertTrue(np.isclose(res_cov[1, 1], sigma_y**2, rtol=5e-2))
-        expected_offdiag = rho * (sigma_x * sigma_y)
-        self.assertTrue(np.isclose(res_cov[0, 1], expected_offdiag, rtol=5e-2))
-        self.assertTrue(np.isclose(res_cov[1, 0], expected_offdiag, rtol=5e-2))
-
-        self.assertEqual(rmse.shape, (1,))
-        self.assertTrue(np.isfinite(rmse[0]))
-        self.assertTrue(rmse[0] >= 0)
-
-    def test_fit_2d_gaussian_ufunc_zero_input(self):
-        """Test fit_2d_gaussian ufunc handles zero input correctly."""
-        x = np.linspace(-1, 1, 8, dtype=np.float32)
-        y = np.linspace(-1, 1, 6, dtype=np.float32)
-        X, Y = np.meshgrid(x, y, indexing="xy")
-        zeros_u16 = np.zeros_like(X, dtype=np.uint16)
-        dum = np.arange(2, dtype=np.float32)
-        stat_mean = np.zeros(2, dtype=np.float32)
-        stat_cov = np.zeros((2, 2), dtype=np.float32)
-
-        res_mean = np.ones(2, dtype=np.float32) * np.nan
-        res_cov = np.ones((2, 2), dtype=np.float32) * np.nan
-        rmse = np.ones(1, dtype=np.float32) * np.nan
-
-        _gaussian.fit_2d_gaussian(
-            zeros_u16,
-            X.astype(np.float32),
-            Y.astype(np.float32),
-            dum,
-            stat_mean,
-            stat_cov,
-            1.0,
-            res_mean,
-            rmse,
-            res_cov,
-        )
-
-        self.assertTrue(np.allclose(res_mean, 0.0))
-        self.assertTrue(np.allclose(res_cov, 0.0))
-        self.assertTrue(np.allclose(rmse, 0.0))
-
-
-class TestFitGaussian(unittest.TestCase):
-    """Tests for the fit_gaussian function in properties module."""
-
-    def test_fit_gaussian_basic(self):
-        """Test fit_gaussian with simple synthetic data."""
-        a, b, m, n = 10, 10, 15, 15
-        x = np.linspace(-2, 2, m, dtype=np.float32)
-        y = np.linspace(-2, 2, n, dtype=np.float32)
-        X, Y = np.meshgrid(x, y, indexing="ij")
-
-        data = np.zeros((a, b, m, n), dtype=np.uint16)
-
-        for i in range(a):
-            for j in range(b):
-                x0 = 0.1 * (i - a / 2) / (a / 2)
-                y0 = 0.1 * (j - b / 2) / (b / 2)
-                amp = 100.0
-                sigma = 0.5
-
-                gauss = np.exp(-((X - x0) ** 2 + (Y - y0) ** 2) / (2 * sigma**2)) * amp
-                data[i, j] = np.clip(gauss, 0, 65535).astype(np.uint16)
-
-        fitted_mean, fitted_cov, rmse = properties.fit_gaussian(
-            data, coordinates=(X, Y)
-        )
-
-        self.assertEqual(fitted_mean.shape, (a, b, 2))
-        self.assertEqual(fitted_cov.shape, (a, b, 2, 2))
-        self.assertEqual(rmse.shape, (a, b))
-
-        self.assertEqual(fitted_mean.dtype, np.float32)
-        self.assertEqual(fitted_cov.dtype, np.float32)
-        self.assertEqual(rmse.dtype, np.float32)
-
-        self.assertTrue(np.all(np.isfinite(fitted_mean)))
-        self.assertTrue(np.all(np.isfinite(fitted_cov)))
-        self.assertTrue(np.all(np.isfinite(rmse)))
-
-        self.assertTrue(np.all(rmse >= 0))
-
-        np.testing.assert_array_equal(fitted_cov[..., 0, 1], fitted_cov[..., 1, 0])
-
-    def test_fit_gaussian_with_stat_moments(self):
-        """Test fit_gaussian with provided statistical moments."""
-        a, b, m, n = 5, 5, 10, 10
-        x = np.linspace(-1, 1, m, dtype=np.float32)
-        y = np.linspace(-1, 1, n, dtype=np.float32)
-        X, Y = np.meshgrid(x, y, indexing="ij")
-
-        data = np.zeros((a, b, m, n), dtype=np.uint16)
-        center_m, center_n = m // 2, n // 2
-        data[:, :, center_m, center_n] = 1000
-
-        grid = np.stack((X, Y))
-        stat_mean, stat_cov = properties.moments(data, grid)
-
-        fitted_mean, fitted_cov, rmse = properties.fit_gaussian(
-            data, coordinates=(X, Y), stat_mean=stat_mean, stat_cov=stat_cov
-        )
-
-        self.assertEqual(fitted_mean.shape, (a, b, 2))
-        self.assertEqual(fitted_cov.shape, (a, b, 2, 2))
-        self.assertEqual(rmse.shape, (a, b))
-
-    def test_fit_gaussian_weight_power(self):
-        """Test fit_gaussian with different weight_power values."""
-        a, b, m, n = 3, 3, 10, 10
-        x = np.linspace(-1, 1, m, dtype=np.float32)
-        y = np.linspace(-1, 1, n, dtype=np.float32)
-        X, Y = np.meshgrid(x, y, indexing="ij")
-
-        data = np.zeros((a, b, m, n), dtype=np.uint16)
-        for i in range(a):
-            for j in range(b):
-                gauss = np.exp(-(X**2 + Y**2) / 0.5) * 200
-                data[i, j] = np.clip(gauss, 0, 65535).astype(np.uint16)
-
-        for weight_power in [0.5, 1.0, 2.0]:
-            fitted_mean, fitted_cov, rmse = properties.fit_gaussian(
-                data, coordinates=(X, Y), weight_power=weight_power
-            )
-
-            self.assertEqual(fitted_mean.shape, (a, b, 2))
-            self.assertTrue(np.all(np.isfinite(fitted_mean)))
-            self.assertTrue(np.all(np.isfinite(rmse)))
-
-    def test_fit_gaussian_zero_data(self):
-        """Test fit_gaussian handles zero data correctly."""
-        a, b, m, n = 5, 5, 8, 8
-        x = np.linspace(-1, 1, m, dtype=np.float32)
-        y = np.linspace(-1, 1, n, dtype=np.float32)
-        X, Y = np.meshgrid(x, y, indexing="ij")
-
-        data = np.zeros((a, b, m, n), dtype=np.uint16)
-
-        fitted_mean, fitted_cov, rmse = properties.fit_gaussian(
-            data, coordinates=(X, Y)
-        )
-
-        self.assertEqual(fitted_mean.shape, (a, b, 2))
-        self.assertEqual(fitted_cov.shape, (a, b, 2, 2))
-        self.assertEqual(rmse.shape, (a, b))
-
-        self.assertTrue(np.all(np.isfinite(fitted_mean)))
-        self.assertTrue(np.all(np.isfinite(fitted_cov)))
-        self.assertTrue(np.all(np.isfinite(rmse)))
-
     def test_fit_gaussian_improves_over_stat_moments(self):
         """Test that fit_gaussian improves estimates compared to raw statistical moments."""
         a, b, m, n = 5, 5, 20, 20
@@ -641,16 +416,16 @@ class TestFitGaussian(unittest.TestCase):
         data = np.clip(peak + noise, 0, 65535).astype(np.uint16)
         grid = np.stack((X, Y))
         stat_mean, stat_cov = properties.moments(data, grid)
-        fitted_mean, _, rmse = properties.fit_gaussian(
-            data, grid, stat_mean=stat_mean, stat_cov=stat_cov
+        fit = properties.curvefit.fit_2D_gaussian(
+            data, grid, weight_power=1, stat_mean=stat_mean, stat_cov=stat_cov, tolerance=1e-6
         )
 
+        fitted_mean = fit[..., 1:3]
         center = np.array([true_x0, true_y0])
         self.assertLess(
             np.abs(fitted_mean - center).mean(), np.abs(stat_mean - center).mean()
         )
-        self.assertTrue(np.isfinite(rmse).all())
-        self.assertTrue((rmse >= 0).all())
+        np.testing.assert_array_equal(fit[..., 6], 1)
 
     def test_fit_gaussian_shape_validation(self):
         """Test that fit_gaussian validates input shapes correctly."""
@@ -660,11 +435,11 @@ class TestFitGaussian(unittest.TestCase):
 
         data_wrong = np.zeros((10, 10, 5), dtype=np.uint16)
         with self.assertRaisesRegex(ValueError, "two motor grids"):
-            properties.fit_gaussian(data_wrong, coordinates=(X, Y))
+            properties.curvefit.fit_2D_gaussian(data_wrong, coordinates=(X, Y))
 
         data_4d = np.zeros((5, 5, 5, 5), dtype=np.uint16)
         with self.assertRaisesRegex(ValueError, "two motor grids"):
-            properties.fit_gaussian(data_4d, coordinates=(X, Y, X))
+            properties.curvefit.fit_2D_gaussian(data_4d, coordinates=(X, Y, X))
 
 
 if __name__ == "__main__":
