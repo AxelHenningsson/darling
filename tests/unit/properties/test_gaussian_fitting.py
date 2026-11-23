@@ -1,6 +1,5 @@
 import unittest
 
-import matplotlib.pyplot as plt
 import numpy as np
 
 from darling import _gaussian, properties
@@ -11,7 +10,29 @@ class TestGaussianFitting(unittest.TestCase):
 
     def setUp(self):
         self.debug = False  # Set to True to show debug plots
-        np.random.seed(42)
+
+    def moments(self, x, y, data):
+        total = data.sum()
+        mean = np.array([(data * x).sum(), (data * y).sum()]) / total
+        dx, dy = x - mean[0], y - mean[1]
+        cov_xy = (data * dx * dy).sum()
+        cov = (
+            np.array([[(data * dx**2).sum(), cov_xy], [cov_xy, (data * dy**2).sum()]])
+            / total
+        )
+        return mean, cov
+
+    def plot_fit(self, x, y, data, params):
+        import matplotlib.pyplot as plt
+
+        fitted = _gaussian.gaussian_2d(x, y, *params)
+        fig, axes = plt.subplots(1, 3)
+        for ax, image, title in zip(
+            axes, (data, fitted, data - fitted), ("Data", "Fit", "Residual")
+        ):
+            fig.colorbar(ax.imshow(image), ax=ax)
+            ax.set_title(title)
+        plt.show()
 
     def test_clip_value(self):
         """Test the clip_value function."""
@@ -71,23 +92,13 @@ class TestGaussianFitting(unittest.TestCase):
         sigma_x, sigma_y = 1.5, 0.8
         rho = 0.3
 
-        Z = np.zeros_like(X)
-        for i in range(len(x)):
-            for j in range(len(y)):
-                Z[j, i] = _gaussian.gaussian_2d(
-                    X[j, i], Y[j, i], 100.0, x0, y0, sigma_x, sigma_y, rho
-                )
+        Z = _gaussian.gaussian_2d(X, Y, 100.0, x0, y0, sigma_x, sigma_y, rho)
 
-        total = np.sum(Z)
-        mean_x = np.sum(Z * X) / total
-        mean_y = np.sum(Z * Y) / total
-        var_x = np.sum(Z * (X - mean_x) ** 2) / total
-        var_y = np.sum(Z * (Y - mean_y) ** 2) / total
-        cov_xy = np.sum(Z * (X - mean_x) * (Y - mean_y)) / total
-
+        stat_mean, stat_cov = self.moments(X, Y, Z)
+        mean_x, mean_y = stat_mean
+        var_x, var_y = stat_cov.diagonal()
+        cov_xy = stat_cov[0, 1]
         data_flat = Z.flatten()
-        stat_mean = np.array([mean_x, mean_y])
-        stat_cov = np.array([[var_x, cov_xy], [cov_xy, var_y]])
 
         params = _gaussian.params_from_moments(data_flat, stat_mean, stat_cov)
 
@@ -159,37 +170,17 @@ class TestGaussianFitting(unittest.TestCase):
         true_sigma_x, true_sigma_y = 1.2, 0.9
         true_rho = 0.3
 
-        data = np.zeros_like(X)
-        for i in range(len(x)):
-            for j in range(len(y)):
-                data[j, i] = _gaussian.gaussian_2d(
-                    X[j, i],
-                    Y[j, i],
-                    true_amplitude,
-                    true_x0,
-                    true_y0,
-                    true_sigma_x,
-                    true_sigma_y,
-                    true_rho,
-                )
+        data = _gaussian.gaussian_2d(
+            X, Y, true_amplitude, true_x0, true_y0, true_sigma_x, true_sigma_y, true_rho
+        )
 
-        total = np.sum(data)
-        mean_x = np.sum(data * X) / total
-        mean_y = np.sum(data * Y) / total
-        var_x = np.sum(data * (X - mean_x) ** 2) / total
-        var_y = np.sum(data * (Y - mean_y) ** 2) / total
-        cov_xy = np.sum(data * (X - mean_x) * (Y - mean_y)) / total
-
-        stat_mean = np.array([mean_x, mean_y])
-        stat_cov = np.array([[var_x, cov_xy], [cov_xy, var_y]])
+        stat_mean, stat_cov = self.moments(X, Y, data)
 
         params = _gaussian.fit_gaussian_2d(
             data.flatten(), x_flat, y_flat, stat_mean, stat_cov, 1.0
         )
 
-        self.assertAlmostEqual(
-            params[0], true_amplitude, delta=true_amplitude * 0.05
-        )
+        self.assertAlmostEqual(params[0], true_amplitude, delta=true_amplitude * 0.05)
         self.assertAlmostEqual(params[1], true_x0, delta=0.05)  # x0
         self.assertAlmostEqual(params[2], true_y0, delta=0.05)  # y0
         self.assertAlmostEqual(params[3], true_sigma_x, delta=0.05)  # sigma_x
@@ -197,37 +188,7 @@ class TestGaussianFitting(unittest.TestCase):
         self.assertAlmostEqual(params[5], true_rho, delta=0.05)  # rho
 
         if self.debug:
-            fitted_data = np.zeros_like(X)
-            for i in range(len(x)):
-                for j in range(len(y)):
-                    fitted_data[j, i] = _gaussian.gaussian_2d(
-                        X[j, i],
-                        Y[j, i],
-                        params[0],
-                        params[1],
-                        params[2],
-                        params[3],
-                        params[4],
-                        params[5],
-                    )
-
-            plt.style.use("dark_background")
-            fig, ax = plt.subplots(1, 3, figsize=(15, 5))
-
-            im0 = ax[0].imshow(data, cmap="viridis")
-            fig.colorbar(im0, ax=ax[0])
-            ax[0].set_title("Original Gaussian")
-
-            im1 = ax[1].imshow(fitted_data, cmap="viridis")
-            fig.colorbar(im1, ax=ax[1])
-            ax[1].set_title("Fitted Gaussian")
-
-            im2 = ax[2].imshow(np.abs(data - fitted_data), cmap="jet")
-            fig.colorbar(im2, ax=ax[2])
-            ax[2].set_title("Residual")
-
-            plt.tight_layout()
-            plt.show()
+            self.plot_fit(X, Y, data, params)
 
     def test_fit_gaussian_2d_noisy(self):
         """Test fitting a 2D Gaussian with noise."""
@@ -241,41 +202,20 @@ class TestGaussianFitting(unittest.TestCase):
         true_sigma_x, true_sigma_y = 1.2, 0.9
         true_rho = 0.3
 
-        data = np.zeros_like(X)
-        for i in range(len(x)):
-            for j in range(len(y)):
-                data[j, i] = _gaussian.gaussian_2d(
-                    X[j, i],
-                    Y[j, i],
-                    true_amplitude,
-                    true_x0,
-                    true_y0,
-                    true_sigma_x,
-                    true_sigma_y,
-                    true_rho,
-                )
+        data = _gaussian.gaussian_2d(
+            X, Y, true_amplitude, true_x0, true_y0, true_sigma_x, true_sigma_y, true_rho
+        )
 
-        np.random.seed(42)
-        noise = np.random.normal(0, 5.0, data.shape)
+        noise = np.random.RandomState(42).normal(0, 5.0, data.shape)
         noisy_data = data + noise
 
-        total = np.sum(noisy_data)
-        mean_x = np.sum(noisy_data * X) / total
-        mean_y = np.sum(noisy_data * Y) / total
-        var_x = np.sum(noisy_data * (X - mean_x) ** 2) / total
-        var_y = np.sum(noisy_data * (Y - mean_y) ** 2) / total
-        cov_xy = np.sum(noisy_data * (X - mean_x) * (Y - mean_y)) / total
-
-        stat_mean = np.array([mean_x, mean_y])
-        stat_cov = np.array([[var_x, cov_xy], [cov_xy, var_y]])
+        stat_mean, stat_cov = self.moments(X, Y, noisy_data)
 
         params = _gaussian.fit_gaussian_2d(
             noisy_data.flatten(), x_flat, y_flat, stat_mean, stat_cov, 1.0
         )
 
-        self.assertAlmostEqual(
-            params[0], true_amplitude, delta=true_amplitude * 0.1
-        )
+        self.assertAlmostEqual(params[0], true_amplitude, delta=true_amplitude * 0.1)
         self.assertAlmostEqual(params[1], true_x0, delta=0.2)
         self.assertAlmostEqual(params[2], true_y0, delta=0.2)
         self.assertAlmostEqual(params[3], true_sigma_x, delta=0.3)
@@ -283,41 +223,7 @@ class TestGaussianFitting(unittest.TestCase):
         self.assertAlmostEqual(params[5], true_rho, delta=0.3)
 
         if self.debug:
-            fitted_data = np.zeros_like(X)
-            for i in range(len(x)):
-                for j in range(len(y)):
-                    fitted_data[j, i] = _gaussian.gaussian_2d(
-                        X[j, i],
-                        Y[j, i],
-                        params[0],
-                        params[1],
-                        params[2],
-                        params[3],
-                        params[4],
-                        params[5],
-                    )
-
-            plt.style.use("dark_background")
-            fig, ax = plt.subplots(2, 2, figsize=(10, 10))
-
-            im0 = ax[0, 0].imshow(data, cmap="viridis")
-            fig.colorbar(im0, ax=ax[0, 0])
-            ax[0, 0].set_title("Original Gaussian")
-
-            im1 = ax[0, 1].imshow(noisy_data, cmap="viridis")
-            fig.colorbar(im1, ax=ax[0, 1])
-            ax[0, 1].set_title("Noisy Gaussian")
-
-            im2 = ax[1, 0].imshow(fitted_data, cmap="viridis")
-            fig.colorbar(im2, ax=ax[1, 0])
-            ax[1, 0].set_title("Fitted Gaussian")
-
-            im3 = ax[1, 1].imshow(np.abs(noisy_data - fitted_data), cmap="jet")
-            fig.colorbar(im3, ax=ax[1, 1])
-            ax[1, 1].set_title("Residual")
-
-            plt.tight_layout()
-            plt.show()
+            self.plot_fit(X, Y, noisy_data, params)
 
     def test_fit_reduces_mse_vs_moment_init(self):
         """Fitting should reduce MSE compared to raw moment-based initialization."""
@@ -331,22 +237,14 @@ class TestGaussianFitting(unittest.TestCase):
         rng = np.random.default_rng(123)
         noisy = clean + rng.normal(0, 6.0, clean.shape)
 
-        total = noisy.sum()
-        mean_x = (noisy * X).sum() / total
-        mean_y = (noisy * Y).sum() / total
-        var_x = (noisy * (X - mean_x) ** 2).sum() / total
-        var_y = (noisy * (Y - mean_y) ** 2).sum() / total
-        cov_xy = (noisy * (X - mean_x) * (Y - mean_y)).sum() / total
-
-        stat_mean = np.array([mean_x, mean_y])
-        stat_cov = np.array([[var_x, cov_xy], [cov_xy, var_y]])
+        stat_mean, stat_cov = self.moments(X, Y, noisy)
 
         init_params = _gaussian.params_from_moments(
             noisy.flatten(), stat_mean, stat_cov
         )
 
         def mse_from_params(p):
-            pred = _gaussian.gaussian_2d(X, Y, p[0], p[1], p[2], p[3], p[4], p[5])
+            pred = _gaussian.gaussian_2d(X, Y, *p)
             return np.mean((pred - noisy) ** 2)
 
         mse_init = mse_from_params(init_params)
@@ -377,15 +275,7 @@ class TestGaussianFitting(unittest.TestCase):
         single_point_data = np.zeros_like(X)
         single_point_data[15, 15] = 100.0
 
-        total = np.sum(single_point_data)
-        mean_x = np.sum(single_point_data * X) / total
-        mean_y = np.sum(single_point_data * Y) / total
-        var_x = np.sum(single_point_data * (X - mean_x) ** 2) / total
-        var_y = np.sum(single_point_data * (Y - mean_y) ** 2) / total
-        cov_xy = np.sum(single_point_data * (X - mean_x) * (Y - mean_y)) / total
-
-        stat_mean = np.array([mean_x, mean_y])
-        stat_cov = np.array([[var_x, cov_xy], [cov_xy, var_y]])
+        stat_mean, stat_cov = self.moments(X, Y, single_point_data)
 
         params = _gaussian.fit_gaussian_2d(
             single_point_data.flatten(), x_flat, y_flat, stat_mean, stat_cov, 1.0
@@ -403,16 +293,10 @@ class TestGaussianFitting(unittest.TestCase):
         Z = _gaussian.gaussian_2d(X, Y, amp, x0, y0, sigma_x, sigma_y, rho)
         data_u16 = np.clip(Z, 0, np.iinfo(np.uint16).max).astype(np.uint16)
 
-        total = Z.sum()
-        mean_x = (Z * X).sum() / total
-        mean_y = (Z * Y).sum() / total
-        var_x = (Z * (X - mean_x) ** 2).sum() / total
-        var_y = (Z * (Y - mean_y) ** 2).sum() / total
-        cov_xy = (Z * (X - mean_x) * (Y - mean_y)).sum() / total
-
         dum = np.zeros(2, dtype=np.float32)
-        stat_mean = np.array([mean_x, mean_y], np.float32)
-        stat_cov = np.array([[var_x, cov_xy], [cov_xy, var_y]], np.float32)
+        stat_mean, stat_cov = self.moments(X, Y, Z)
+        stat_mean = stat_mean.astype(np.float32)
+        stat_cov = stat_cov.astype(np.float32)
 
         # Prepare output arrays for guvectorize function
         res = np.zeros(2, dtype=np.float32)
@@ -465,8 +349,16 @@ class TestGaussianFitting(unittest.TestCase):
         res_cov = np.zeros((2, 2), dtype=np.float32)
         rmse = np.zeros(1, dtype=np.float32)
         _gaussian.fit_2d_gaussian(
-            zeros_u16, X.astype(np.float32), Y.astype(np.float32), dum,
-            stat_mean, stat_cov, 1.0, res_mean, rmse, res_cov
+            zeros_u16,
+            X.astype(np.float32),
+            Y.astype(np.float32),
+            dum,
+            stat_mean,
+            stat_cov,
+            1.0,
+            res_mean,
+            rmse,
+            res_cov,
         )
         self.assertTrue(np.allclose(res_mean, 0.0))
         self.assertTrue(np.allclose(res_cov, 0.0))
@@ -485,7 +377,9 @@ class TestGaussianFitting(unittest.TestCase):
         self.assertEqual(pred.dtype, np.float32)
 
         center_pred = _gaussian.gaussian_2d(0.5, -0.5, 100.0, 0.5, -0.5, 1.2, 0.8, 0.3)
-        center_idx = np.unravel_index(np.argmin(np.abs(X - 0.5) + np.abs(Y + 0.5)), X.shape)
+        center_idx = np.unravel_index(
+            np.argmin(np.abs(X - 0.5) + np.abs(Y + 0.5)), X.shape
+        )
         self.assertAlmostEqual(pred[center_idx], center_pred, delta=1.0)
 
         self.assertTrue(np.all(pred >= 0))
@@ -493,8 +387,14 @@ class TestGaussianFitting(unittest.TestCase):
         for i in [5, 10, 15]:
             for j in [5, 10, 15]:
                 expected = _gaussian.gaussian_2d(
-                    X[i, j], Y[i, j], params[0], params[1], params[2],
-                    params[3], params[4], params[5]
+                    X[i, j],
+                    Y[i, j],
+                    params[0],
+                    params[1],
+                    params[2],
+                    params[3],
+                    params[4],
+                    params[5],
                 )
                 self.assertAlmostEqual(pred[i, j], expected, delta=1e-5)
 
@@ -547,24 +447,26 @@ class TestGaussianFitting(unittest.TestCase):
         Z = _gaussian.gaussian_2d(X, Y, amp, x0, y0, sigma_x, sigma_y, rho)
         data_u16 = np.clip(Z, 0, np.iinfo(np.uint16).max).astype(np.uint16)
 
-        total = Z.sum()
-        mean_x = (Z * X).sum() / total
-        mean_y = (Z * Y).sum() / total
-        var_x = (Z * (X - mean_x) ** 2).sum() / total
-        var_y = (Z * (Y - mean_y) ** 2).sum() / total
-        cov_xy = (Z * (X - mean_x) * (Y - mean_y)).sum() / total
-
         dum = np.arange(2, dtype=np.float32)
-        stat_mean = np.array([mean_x, mean_y], dtype=np.float32)
-        stat_cov = np.array([[var_x, cov_xy], [cov_xy, var_y]], dtype=np.float32)
+        stat_mean, stat_cov = self.moments(X, Y, Z)
+        stat_mean = stat_mean.astype(np.float32)
+        stat_cov = stat_cov.astype(np.float32)
 
         res_mean = np.zeros(2, dtype=np.float32)
         res_cov = np.zeros((2, 2), dtype=np.float32)
         rmse = np.zeros(1, dtype=np.float32)
 
         _gaussian.fit_2d_gaussian(
-            data_u16, X.astype(np.float32), Y.astype(np.float32), dum,
-            stat_mean, stat_cov, 1.0, res_mean, rmse, res_cov
+            data_u16,
+            X.astype(np.float32),
+            Y.astype(np.float32),
+            dum,
+            stat_mean,
+            stat_cov,
+            1.0,
+            res_mean,
+            rmse,
+            res_cov,
         )
 
         self.assertEqual(res_mean.shape, (2,))
@@ -597,8 +499,16 @@ class TestGaussianFitting(unittest.TestCase):
         rmse = np.ones(1, dtype=np.float32) * np.nan
 
         _gaussian.fit_2d_gaussian(
-            zeros_u16, X.astype(np.float32), Y.astype(np.float32), dum,
-            stat_mean, stat_cov, 1.0, res_mean, rmse, res_cov
+            zeros_u16,
+            X.astype(np.float32),
+            Y.astype(np.float32),
+            dum,
+            stat_mean,
+            stat_cov,
+            1.0,
+            res_mean,
+            rmse,
+            res_cov,
         )
 
         self.assertTrue(np.allclose(res_mean, 0.0))
@@ -608,10 +518,6 @@ class TestGaussianFitting(unittest.TestCase):
 
 class TestFitGaussian(unittest.TestCase):
     """Tests for the fit_gaussian function in properties module."""
-
-    def setUp(self):
-        self.debug = False
-        np.random.seed(42)
 
     def test_fit_gaussian_basic(self):
         """Test fit_gaussian with simple synthetic data."""
@@ -624,13 +530,12 @@ class TestFitGaussian(unittest.TestCase):
 
         for i in range(a):
             for j in range(b):
-                x0 = 0.1 * (i - a/2) / (a/2)
-                y0 = 0.1 * (j - b/2) / (b/2)
+                x0 = 0.1 * (i - a / 2) / (a / 2)
+                y0 = 0.1 * (j - b / 2) / (b / 2)
                 amp = 100.0
                 sigma = 0.5
 
-                # Generate Gaussian
-                gauss = np.exp(-((X - x0)**2 + (Y - y0)**2) / (2 * sigma**2)) * amp
+                gauss = np.exp(-((X - x0) ** 2 + (Y - y0) ** 2) / (2 * sigma**2)) * amp
                 data[i, j] = np.clip(gauss, 0, 65535).astype(np.uint16)
 
         fitted_mean, fitted_cov, rmse = properties.fit_gaussian(
@@ -651,11 +556,7 @@ class TestFitGaussian(unittest.TestCase):
 
         self.assertTrue(np.all(rmse >= 0))
 
-        for i in range(a):
-            for j in range(b):
-                self.assertAlmostEqual(
-                    fitted_cov[i, j, 0, 1], fitted_cov[i, j, 1, 0], places=5
-                )
+        np.testing.assert_array_equal(fitted_cov[..., 0, 1], fitted_cov[..., 1, 0])
 
     def test_fit_gaussian_with_stat_moments(self):
         """Test fit_gaussian with provided statistical moments."""
@@ -668,9 +569,8 @@ class TestFitGaussian(unittest.TestCase):
         center_m, center_n = m // 2, n // 2
         data[:, :, center_m, center_n] = 1000
 
-        # Compute statistical moments first
-        stat_mean = properties.mean(data, coordinates=np.stack((X, Y)))
-        stat_cov = properties.covariance(data, coordinates=np.stack((X, Y)), first_moments=stat_mean)
+        grid = np.stack((X, Y))
+        stat_mean, stat_cov = properties.moments(data, grid)
 
         fitted_mean, fitted_cov, rmse = properties.fit_gaussian(
             data, coordinates=(X, Y), stat_mean=stat_mean, stat_cov=stat_cov
@@ -734,31 +634,23 @@ class TestFitGaussian(unittest.TestCase):
         true_sigma_x, true_sigma_y = 0.8, 0.6
         true_rho = 0.4
 
-        data = np.zeros((a, b, m, n), dtype=np.uint16)
-        for i in range(a):
-            for j in range(b):
-                gauss = _gaussian.gaussian_2d(
-                    X, Y, 100.0, true_x0, true_y0, true_sigma_x, true_sigma_y, true_rho
-                )
-                noise = np.random.normal(0, 2.0, gauss.shape)
-                gauss_noisy = np.clip(gauss + noise, 0, None)
-                data[i, j] = np.clip(gauss_noisy, 0, 65535).astype(np.uint16)
-
-        stat_mean = properties.mean(data, coordinates=np.stack((X, Y)))
-        stat_cov = properties.covariance(data, coordinates=np.stack((X, Y)), first_moments=stat_mean)
-
-        fitted_mean, fitted_cov, rmse = properties.fit_gaussian(
-            data, coordinates=(X, Y), stat_mean=stat_mean, stat_cov=stat_cov
+        peak = _gaussian.gaussian_2d(
+            X, Y, 100.0, true_x0, true_y0, true_sigma_x, true_sigma_y, true_rho
+        )
+        noise = np.random.default_rng(42).normal(0, 2.0, (a, b, m, n))
+        data = np.clip(peak + noise, 0, 65535).astype(np.uint16)
+        grid = np.stack((X, Y))
+        stat_mean, stat_cov = properties.moments(data, grid)
+        fitted_mean, _, rmse = properties.fit_gaussian(
+            data, grid, stat_mean=stat_mean, stat_cov=stat_cov
         )
 
-        mean_errors_stat = np.abs(stat_mean - np.array([true_x0, true_y0]))
-        mean_errors_fit = np.abs(fitted_mean - np.array([true_x0, true_y0]))
-
-        for i in [a//2]:
-            for j in [b//2]:
-                self.assertTrue(np.isfinite(fitted_mean[i, j, 0]))
-                self.assertTrue(np.isfinite(fitted_mean[i, j, 1]))
-                self.assertTrue(rmse[i, j] >= 0)
+        center = np.array([true_x0, true_y0])
+        self.assertLess(
+            np.abs(fitted_mean - center).mean(), np.abs(stat_mean - center).mean()
+        )
+        self.assertTrue(np.isfinite(rmse).all())
+        self.assertTrue((rmse >= 0).all())
 
     def test_fit_gaussian_shape_validation(self):
         """Test that fit_gaussian validates input shapes correctly."""

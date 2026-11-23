@@ -1,11 +1,76 @@
-"""Single correlated 2D Gaussian used for Darling mosaicity scans.
-
-The residual weighting, Adam updates, width bounds, and stopping criterion
-follow Adam Cretton's fitting branch (b7ba50a).
-"""
+"""Fit a correlated 2D Gaussian to each detector pixel in a mosaicity scan."""
 
 import numba
 import numpy as np
+
+
+def fit_2D_gaussian(
+    data, coordinates, weight_power=6.0, mask=None, *, stat_mean=None, stat_cov=None
+):
+    """Fit one correlated Gaussian to both motor axes of each detector pixel.
+
+    The model has a single peak and zero background. The fit uses motor
+    samples at or above 20% of the maximum intensity for each pixel.
+
+    Args:
+        data (:obj:`numpy.ndarray`): Nonnegative intensities of shape (ny, nx, m, n).
+        coordinates (:obj:`numpy.ndarray`): Two motor grids of shape (m, n).
+        weight_power (:obj:`float`): Exponent in the residual weight
+            ``(I / Imax)**weight_power``. Defaults to 6.
+        mask (:obj:`numpy.ndarray`, optional): Boolean array of shape (ny, nx).
+            True selects a pixel for fitting. Defaults to all pixels.
+        stat_mean (:obj:`numpy.ndarray`, optional): Initial centers of shape
+            (ny, nx, 2). Defaults to the intensity-weighted mean.
+        stat_cov (:obj:`numpy.ndarray`, optional): Initial covariances of shape
+            (ny, nx, 2, 2). Defaults to the intensity-weighted covariance.
+
+    Returns:
+        :obj:`numpy.ndarray`: Float64 array of shape (ny, nx, 7) containing
+            [amplitude, mu0, mu1, sigma0, sigma1, rho, valid]. The sigmas are
+            marginal widths in motor units and rho is the correlation
+            between the two motor coordinates. Valid fits have a final value
+            of one. Masked or unusable pixels return seven zeros.
+    """
+    params, _ = _fit_gaussian_map(
+        data, coordinates, weight_power, stat_mean, stat_cov, mask
+    )
+    return params
+
+
+def fit_gaussian(
+    data, coordinates, weight_power=1.0, stat_mean=None, stat_cov=None, *, mask=None
+):
+    """Fit a correlated 2D Gaussian and return its center, covariance and fit error.
+
+    Args:
+        data (:obj:`numpy.ndarray`): Nonnegative intensities of shape (ny, nx, m, n).
+        coordinates (:obj:`numpy.ndarray`): Two motor grids of shape (m, n).
+        weight_power (:obj:`float`): Exponent in the residual weight
+            ``(I / Imax)**weight_power``. Defaults to 1. The fit uses samples
+            at or above 20% of the pixel maximum.
+        stat_mean (:obj:`numpy.ndarray`, optional): Initial centers of shape
+            (ny, nx, 2). Defaults to the intensity-weighted mean.
+        stat_cov (:obj:`numpy.ndarray`, optional): Initial covariances of shape
+            (ny, nx, 2, 2). Defaults to the intensity-weighted covariance.
+        mask (:obj:`numpy.ndarray`, optional): Boolean array of shape (ny, nx).
+            True selects a pixel for fitting. Defaults to all pixels.
+
+    Returns:
+        tuple: Float32 arrays for the center (ny, nx, 2), covariance
+            (ny, nx, 2, 2), and error (ny, nx). The error is the unweighted
+            RMS residual over the full scan divided by the pixel maximum.
+            Masked or unusable pixels have zero center and covariance and
+            NaN error. An unmasked pixel with zero intensity returns zeros.
+    """
+    params, errors = _fit_gaussian_map(
+        data, coordinates, weight_power, stat_mean, stat_cov, mask
+    )
+    sx, sy, rho = params[..., 3], params[..., 4], params[..., 5]
+    cov = np.zeros((*params.shape[:2], 2, 2), dtype=np.float32)
+    cov[..., 0, 0] = sx**2
+    cov[..., 1, 1] = sy**2
+    cov[..., 0, 1] = cov[..., 1, 0] = rho * sx * sy
+    return params[..., 1:3].astype(np.float32), cov, errors
 
 
 @numba.njit(cache=True)
@@ -13,16 +78,16 @@ def clip_value(x, min_val, max_val):
     """Clip a scalar value between minimum and maximum values.
 
     Args:
-        x (float): Value to be clipped
-        min_val (float): Minimum allowed value
-        max_val (float): Maximum allowed value
+        x (:obj:`float`): Value to be clipped
+        min_val (:obj:`float`): Minimum allowed value
+        max_val (:obj:`float`): Maximum allowed value
 
     Returns:
-        float: Clipped value between min_val and max_val
+        :obj:`float`: Clipped value between min_val and max_val
     """
     if x < min_val:
         return min_val
-    elif x > max_val:
+    if x > max_val:
         return max_val
     return x
 
@@ -32,17 +97,17 @@ def gaussian_2d(x, y, amplitude, x0, y0, sigma_x, sigma_y, rho):
     """Calculate the value of a 2D Gaussian function with correlation at point (x,y).
 
     Args:
-        x (float): X-coordinate
-        y (float): Y-coordinate
-        amplitude (float): Peak height of the Gaussian
-        x0 (float): X-coordinate of the center
-        y0 (float): Y-coordinate of the center
-        sigma_x (float): Standard deviation in x-direction
-        sigma_y (float): Standard deviation in y-direction
-        rho (float): Correlation coefficient between x and y (-1 to 1)
+        x (:obj:`float`): X-coordinate
+        y (:obj:`float`): Y-coordinate
+        amplitude (:obj:`float`): Peak height of the Gaussian
+        x0 (:obj:`float`): X-coordinate of the center
+        y0 (:obj:`float`): Y-coordinate of the center
+        sigma_x (:obj:`float`): Standard deviation in x-direction
+        sigma_y (:obj:`float`): Standard deviation in y-direction
+        rho (:obj:`float`): Correlation coefficient between x and y (-1 to 1)
 
     Returns:
-        float: Value of the 2D Gaussian at point (x,y)
+        :obj:`float`: Value of the 2D Gaussian at point (x,y)
     """
     dx = x - x0
     dy = y - y0
@@ -62,12 +127,12 @@ def params_from_moments(data_flat, stat_mean, stat_cov):
     """Initialize Gaussian parameters directly from statistical moments.
 
     Args:
-        data_flat (numpy.ndarray): Flattened intensity data
-        stat_mean (numpy.ndarray): Statistical mean vector [x0, y0]
-        stat_cov (numpy.ndarray): Statistical covariance matrix [[σ_xx, σ_xy], [σ_xy, σ_yy]
+        data_flat (:obj:`numpy.ndarray`): Flattened intensity data
+        stat_mean (:obj:`numpy.ndarray`): Statistical mean vector [x0, y0]
+        stat_cov (:obj:`numpy.ndarray`): 2 x 2 covariance matrix of the motor coordinates.
 
     Returns:
-        numpy.ndarray: Initial parameter estimates [amplitude, x0, y0, sigma_x, sigma_y, rho]
+        :obj:`numpy.ndarray`: Initial parameter estimates [amplitude, x0, y0, sigma_x, sigma_y, rho]
     """
     total_intensity = np.sum(data_flat)
     if total_intensity < 1e-10:
@@ -98,15 +163,15 @@ def adam_update(
     """Perform one Adam optimization step.
 
     Args:
-        param (float): Current parameter value
-        m (float): First moment estimate
-        v (float): Second moment estimate
-        grad (float): Gradient of the loss with respect to the parameter
-        t (int): Iteration number
-        alpha (float): Learning rate
-        beta1 (float): Exponential decay rate for first moment
-        beta2 (float): Exponential decay rate for second moment
-        epsilon (float): Small constant to prevent division by zero
+        param (:obj:`float`): Current parameter value
+        m (:obj:`float`): First moment estimate
+        v (:obj:`float`): Second moment estimate
+        grad (:obj:`float`): Gradient of the loss with respect to the parameter
+        t (:obj:`int`): Iteration number
+        alpha (:obj:`float`): Learning rate
+        beta1 (:obj:`float`): Exponential decay rate for first moment
+        beta2 (:obj:`float`): Exponential decay rate for second moment
+        epsilon (:obj:`float`): Small constant to prevent division by zero
 
     Returns:
         tuple: Updated parameter value, updated first moment, updated second moment
@@ -118,7 +183,6 @@ def adam_update(
     m_hat = m / (1 - beta1**t)
     v_hat = v / (1 - beta2**t)
 
-    # Update
     param -= alpha * m_hat / (np.sqrt(v_hat) + epsilon)
 
     return param, m, v
@@ -127,7 +191,9 @@ def adam_update(
 @numba.njit(cache=True)
 def gaussian_pred_map(x, y, p):
     out = np.empty_like(x, dtype=np.float32)
-    ax, x0, y0, sx, sy, r = p[0], p[1], p[2], max(p[3], 1e-10), max(p[4], 1e-10), p[5]
+    amplitude, x0, y0 = p[0], p[1], p[2]
+    sx, sy = max(p[3], 1e-10), max(p[4], 1e-10)
+    r = p[5]
     inv = 1.0 / (2.0 * (1.0 - r * r))
     for i in range(x.shape[0]):
         for j in range(x.shape[1]):
@@ -138,7 +204,7 @@ def gaussian_pred_map(x, y, p):
                 + (dy / sy) * (dy / sy)
                 - 2.0 * r * dx * dy / (sx * sy)
             )
-            out[i, j] = ax * np.exp(-z * inv)
+            out[i, j] = amplitude * np.exp(-z * inv)
     return out
 
 
@@ -167,22 +233,18 @@ def fit_gaussian_2d(
 ):
     """Fit a 2D Gaussian using Adam optimization with adaptive learning rates.
 
-    This function fits a 2D Gaussian to the provided data points using Adam optimization.
-    It uses statistical moments for initialization and implements an adaptive learning
-    rate strategy based on the optimization progress.
-
     Args:
-        data_flat (numpy.ndarray): Flattened intensity data
-        x_flat (numpy.ndarray): Flattened x-coordinates
-        y_flat (numpy.ndarray): Flattened y-coordinates
-        stat_mean (numpy.ndarray): Statistical mean vector [x0, y0]
-        stat_cov (numpy.ndarray): Statistical covariance matrix
-        weight_power (float): Weight power for the weight function
-        max_iter (int): Maximum number of iterations
-        tolerance (float): Convergence tolerance for error reduction
+        data_flat (:obj:`numpy.ndarray`): Flattened intensity data
+        x_flat (:obj:`numpy.ndarray`): Flattened x-coordinates
+        y_flat (:obj:`numpy.ndarray`): Flattened y-coordinates
+        stat_mean (:obj:`numpy.ndarray`): Statistical mean vector [x0, y0]
+        stat_cov (:obj:`numpy.ndarray`): Statistical covariance matrix
+        weight_power (:obj:`float`): Weight power for the weight function
+        max_iter (:obj:`int`): Maximum number of iterations
+        tolerance (:obj:`float`): Convergence tolerance for error reduction
 
     Returns:
-        numpy.ndarray: Fitted parameters [amplitude, x0, y0, sigma_x, sigma_y, rho]
+        :obj:`numpy.ndarray`: Fitted parameters [amplitude, x0, y0, sigma_x, sigma_y, rho]
     """
     params = params_from_moments(data_flat, stat_mean, stat_cov)
 
@@ -196,10 +258,7 @@ def fit_gaussian_2d(
     data_norm = data_flat / scale
     params[0] /= scale
 
-    # Per-parameter base learning rates for Adam.
-    # Order corresponds to params = [A, x0, y0, sigma_x, sigma_y, rho].
-    # These are starting step sizes; we adapt them each iteration based on
-    # error trend and simple heuristics to stabilize/focus the optimization.
+    # Initial step sizes for amplitude, x0, y0, sigma_x, sigma_y and rho.
     base_rates = np.array([0.01, 0.006, 0.006, 0.03, 0.03, 0.01])
 
     m = np.zeros_like(params)
@@ -286,63 +345,58 @@ def fit_gaussian_2d(
                 * (rho / (1 - rho**2) - dx * dy / (sigma_x * sigma_y))
             )
 
-        if active_points > 0:
-            total_error /= active_points
+        if active_points == 0:
+            continue
 
-            error_history[error_idx] = total_error
-            error_idx = (error_idx + 1) % 3
+        total_error /= active_points
 
-            if t > 3:
-                error_trend = (
-                    error_history[(error_idx - 1) % 3] - error_history[error_idx % 3]
-                ) / error_history[error_idx % 3]
-            else:
-                error_trend = -1.0
+        error_history[error_idx] = total_error
+        error_idx = (error_idx + 1) % 3
 
-            # Begin with the base rates and adapt per-iteration
-            alphas = base_rates.copy()
+        if t > 3:
+            error_trend = (
+                error_history[(error_idx - 1) % 3] - error_history[error_idx % 3]
+            ) / error_history[error_idx % 3]
+        else:
+            error_trend = -1.0
 
-            if t < 50:
-                if error_trend > 0:
-                    alphas *= 1.2
-                elif error_trend > -0.01:
-                    alphas *= 0.8
-            else:
-                if error_trend > 0:
-                    alphas *= 1.05
-                elif error_trend > -0.01:
-                    alphas *= 0.9
+        alphas = base_rates.copy()
 
-            shape_error = (
-                abs(params[3] - best_params[3]) / best_params[3]
-                + abs(params[4] - best_params[4]) / best_params[4]
+        if error_trend > 0:
+            alphas *= 1.2 if t < 50 else 1.05
+        elif error_trend > -0.01:
+            alphas *= 0.8 if t < 50 else 0.9
+
+        shape_error = (
+            abs(params[3] - best_params[3]) / best_params[3]
+            + abs(params[4] - best_params[4]) / best_params[4]
+        )
+        if shape_error > 0.1:
+            # Speed up updates to the shape parameters when their drift is large
+            alphas[3:5] *= 1.2
+
+        for i in range(len(params)):
+            params[i], m[i], v[i] = adam_update(
+                params[i], m[i], v[i], grad[i], t, alpha=alphas[i]
             )
-            if shape_error > 0.1:
-                # Speed up updates to the shape parameters when their drift is large
-                alphas[3:5] *= 1.2
 
-            for i in range(len(params)):
-                params[i], m[i], v[i] = adam_update(
-                    params[i], m[i], v[i], grad[i], t, alpha=alphas[i]
-                )
+        params[0] = max(params[0], 0)
+        params[3] = max(params[3], 0.5 * np.sqrt(stat_cov[0, 0]))
+        params[4] = max(params[4], 0.5 * np.sqrt(stat_cov[1, 1]))
+        params[5] = clip_value(params[5], -0.99, 0.99)
 
-            params[0] = max(params[0], 0)
-            params[3] = max(params[3], 0.5 * np.sqrt(stat_cov[0, 0]))
-            params[4] = max(params[4], 0.5 * np.sqrt(stat_cov[1, 1]))
-            params[5] = clip_value(params[5], -0.99, 0.99)
+        if total_error < min_error:
+            min_error = total_error
+            best_params = params.copy()
+            patience_counter = 0
+        else:
+            patience_counter += 1
 
-            if total_error < min_error:
-                min_error = total_error
-                best_params = params.copy()
-                patience_counter = 0
-            else:
-                patience_counter += 1
+        if patience_counter >= patience or total_error < tolerance:
+            params = best_params
+            break
 
-            if patience_counter >= patience or total_error < tolerance:
-                params = best_params
-                break
-
-            t += 1
+        t += 1
 
     params[0] *= scale
     return params
@@ -361,9 +415,8 @@ def _fit_pixel(data, grid, points, weight_power, i, j, mean_map, cov_map):
         return params, np.nan
 
     flat = data.flatten()
-    # The reference implementation rounds both moment maps to float32 before
-    # Adam sees them. Preserve its reduction order as the stopping rule is
-    # sensitive to small variations in the starting point.
+    # Keep the float32 moment reductions in this order. Rounding changes
+    # the initial parameters and can change when the optimizer stops.
     if mean_map is None:
         first = np.array(
             [np.sum(data * x) / total, np.sum(data * y) / total], dtype=np.float32
@@ -419,7 +472,7 @@ def _seed(value, shape):
     return value
 
 
-def _fit(data, coordinates, weight_power, stat_mean, stat_cov, mask):
+def _fit_gaussian_map(data, coordinates, weight_power, stat_mean, stat_cov, mask):
     data = np.asarray(data)
     grid = np.ascontiguousarray(coordinates, dtype=np.float32)
     if data.ndim != 4 or grid.shape != (2, *data.shape[2:]) or not grid.size:
@@ -444,43 +497,3 @@ def _fit(data, coordinates, weight_power, stat_mean, stat_cov, mask):
         _seed(stat_mean, (*data.shape[:2], 2)),
         _seed(stat_cov, (*data.shape[:2], 2, 2)),
     )
-
-
-def fit_2D_gaussian(
-    data, coordinates, weight_power=6.0, mask=None, *, stat_mean=None, stat_cov=None
-):
-    """Fit one correlated Gaussian to both motor axes of each detector pixel.
-
-    data has shape (ny, nx, m, n), and coordinates contains the two (m, n)
-    motor grids. mask selects detector pixels. Optional stat_mean and stat_cov
-    supply starting values of shape (ny, nx, 2) and (ny, nx, 2, 2).
-
-    Return (ny, nx, 7) with [amplitude, mu0, mu1, sigma0, sigma1, rho, valid].
-    The last field is 1 for a finite fit and 0 for a masked or unusable scan.
-    Intensities must be nonnegative. Supply background-corrected data if needed.
-    Starting at intensity moments, fit samples at or above 20% of the local
-    maximum, multiplying residuals by (I / Imax)**weight_power. There is no
-    fitted background. Both sigmas are marginal widths in motor units.
-    """
-    return _fit(data, coordinates, weight_power, stat_mean, stat_cov, mask)[0]
-
-
-def fit_gaussian(
-    data, coordinates, weight_power=1.0, stat_mean=None, stat_cov=None, *, mask=None
-):
-    """Original mosaicity API: return float32 center, covariance and peak-normalized RMSE.
-
-    For data of shape (ny, nx, m, n) and two (m, n) motor grids, the outputs
-    have shapes (ny, nx, 2), (ny, nx, 2, 2), and (ny, nx). The error uses
-    all motor samples and is divided by the maximum observed intensity.
-    Pass weight_power=6 for the bright-signal mosaicity maps. Empty pixels return
-    zeros. For masked or unusable nonempty scans the error is NaN. The parameter
-    map interface in curvefit.fit_2D_gaussian also exposes amplitude and validity.
-    """
-    params, errors = _fit(data, coordinates, weight_power, stat_mean, stat_cov, mask)
-    sx, sy, rho = params[..., 3], params[..., 4], params[..., 5]
-    cov = np.zeros((*params.shape[:2], 2, 2), dtype=np.float32)
-    cov[..., 0, 0] = sx**2
-    cov[..., 1, 1] = sy**2
-    cov[..., 0, 1] = cov[..., 1, 0] = rho * sx * sy
-    return params[..., 1:3].astype(np.float32), cov, errors
