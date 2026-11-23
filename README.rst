@@ -72,6 +72,41 @@ For example, it is possible to segment per-pixel peaks and extract features from
 
 for more examples see the externally hosted documentation at https://axelhenningsson.github.io/darling/
 
+Single Gaussian on a 2D mosaicity scan
+------------------------------------------------
+
+Fit the joint intensity distribution over both motor angles at every detector
+pixel. Convert the fitted marginal widths to FWHMs in degrees and combine
+them with their Euclidean norm.
+
+.. code-block:: python
+
+   import numpy as np
+   import matplotlib.pyplot as plt
+   from darling import filters, io, properties
+
+   _, data, motors = io.assets.domains("1.1")
+   # Smooth the two motor axes independently at each detector pixel.
+   smoothed = filters.gaussian_filter(data.astype(np.float64), sigma=1.5, axis=(0, 1))
+   fit = properties.curvefit.fit_2D_gaussian(smoothed, motors)
+   sigma0, sigma1 = fit[..., 3], fit[..., 4]
+   fwhm = np.sqrt(8 * np.log(2)) * np.hypot(sigma0, sigma1)
+   plt.imshow(np.where(fit[..., 6] == 1, fwhm, np.nan), vmin=0)
+   plt.colorbar(label="Combined FWHM (degrees)")
+   plt.show()
+
+The Adam fit starts from the intensity moments and, by default, weights residuals by
+``I / Imax`` at motor samples reaching 20% of the pixel maximum.
+In this example the smoothing kernel has a standard deviation of 1.5 motor steps.
+The keyword ``tolerance`` sets the target mean squared weighted residual in
+peak-normalized intensity units (default ``1e-3``). The fitter returns the
+lowest-loss parameters it evaluated.
+The final axis contains amplitude, the two centers, the two marginal sigmas,
+correlation, and a validity flag. A value of one means the fitter returned
+finite parameters and a finite normalized residual. Sparse pixels can still
+return a moment-initialized fit.
+
+
 Installation
 ------------------------------------------------
 From source the key is simply to clone and pip install

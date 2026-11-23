@@ -152,6 +152,9 @@ venv.bak/
 # mkdocs documentation
 /site
 
+#scripts
+scripts/
+
 # mypy
 .mypy_cache/
 .dmypy.json

@@ -1,6 +1,7 @@
 import numba
 import numpy as np
 
+from ._gaussian import combined_fwhm, fit_2D_gaussian
 from .models import func_and_grad_gaussian_with_linear_background
 
 
