@@ -26,7 +26,9 @@ class TestGaussianFitting(unittest.TestCase):
     def plot_fit(self, x, y, data, params):
         import matplotlib.pyplot as plt
 
-        fitted = _gaussian.gaussian_2d(x, y, *params)
+        fitted = _gaussian.gaussian_2d(x, y, *params[:6])
+        if len(params) == 7:
+            fitted += params[6]
         fig, axes = plt.subplots(1, 3)
         for ax, image, title in zip(
             axes, (data, fitted, data - fitted), ("Data", "Fit", "Residual")
@@ -164,17 +166,19 @@ class TestGaussianFitting(unittest.TestCase):
         y = np.array([0.1, -0.2, 0.8, 1.0])
         data = np.array([0.55, 1.0, 0.78, 0.21])
         weights = data**4
+        weights /= np.linalg.norm(weights)
 
         def mse(p):
             u, v = (x - p[1]) / p[3], (y - p[2]) / p[4]
             pred = p[0] * np.exp(-(u*u + v*v - 2*p[5]*u*v) / (2*(1 - p[5]**2)))
-            return np.mean((weights * (pred - data))**2)
+            pred += p[6]
+            return np.sum((weights * (pred - data))**2)
 
         for rho in (-0.6, 0.0, 0.45):
-            p = np.array([1.2, 0.25, -0.1, 1.1, 0.7, rho])
+            p = np.array([1.2, 0.25, -0.1, 1.1, 0.7, rho, 0.07])
             loss, grad = _gaussian._weighted_mse_and_grad(p, x, y, data, weights)
             self.assertAlmostEqual(loss, mse(p))
-            steps = np.eye(6) * 1e-6
+            steps = np.eye(7) * 1e-6
             numerical = [(mse(p + h) - mse(p - h)) / 2e-6 for h in steps]
             np.testing.assert_allclose(grad, numerical, rtol=1e-6, atol=1e-9)
 
@@ -182,16 +186,15 @@ class TestGaussianFitting(unittest.TestCase):
         x, y = np.indices((4, 5), dtype=float).reshape(2, -1)
         data = np.linspace(0.25, 1.0, x.size)
         mean, cov = np.array([1.5, 2.0]), np.eye(2)
-        seed = _gaussian.params_from_moments(data, mean, cov)
 
         def fit(steps, tol):
             return _gaussian.fit_gaussian_2d(data, x, y, mean, cov, 4, steps, tol)
 
         # The initial guess already satisfies this loose absolute threshold.
-        np.testing.assert_array_equal(fit(100, 1.0), seed)
+        np.testing.assert_array_equal(fit(100, 1.0), fit(0, 0.0))
         # Extending the step budget must never lose a better evaluated iterate.
         def loss(p):
-            pred = _gaussian.gaussian_2d(x, y, *p)
+            pred = _gaussian.gaussian_2d(x, y, *p[:6]) + p[6]
             return np.mean((data**4 * (pred - data))**2)
 
         losses = [loss(fit(n, 0.0)) for n in (0, 1, 5, 50, 100)]
@@ -283,7 +286,9 @@ class TestGaussianFitting(unittest.TestCase):
         )
 
         def mse_from_params(p):
-            pred = _gaussian.gaussian_2d(X, Y, *p)
+            pred = _gaussian.gaussian_2d(X, Y, *p[:6])
+            if len(p) == 7:
+                pred += p[6]
             return np.mean((pred - noisy) ** 2)
 
         mse_init = mse_from_params(init_params)
